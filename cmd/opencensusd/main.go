@@ -36,8 +36,8 @@ import (
 )
 
 func main() {
-	listen := flag.String("listen", "127.0.0.1:", "")
-	listenHttp := flag.String("listen_http", "127.0.0.1:", "")
+	listen := flag.String("listen", "127.0.0.1:", "IP/port for gRPC")
+	listenHttp := flag.String("listen_http", "", "(Optional) IP/port for HTTP/JSON")
 	flag.Parse()
 
 	const configFile = "config.yaml"
@@ -84,7 +84,6 @@ func main() {
 }
 
 func serveHttpGateway(listenHttp string, grpcEndpoint string) {
-	fmt.Printf("Starting HTTP listen..")
 	ctx := context.Background()
 	mux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithInsecure()}
@@ -92,9 +91,8 @@ func serveHttpGateway(listenHttp string, grpcEndpoint string) {
 		log.Fatalf("Failed to register HTTP gateway: %v", err)
 	}
 	if err := http.ListenAndServe(listenHttp, mux); err != nil {
-		log.Fatalf("Failed to listen/service HTTP gateway: %v", err)
+		log.Fatalf("Failed to listen/serve HTTP gateway: %v", err)
 	}
-	fmt.Printf("Listening for http..")
 }
 
 type server struct{}
