@@ -28,8 +28,8 @@ import (
 	"go.opencensus.io/trace"
 	"google.golang.org/grpc"
 
-	"github.com/census-instrumentation/opencensus-proto/gen-go/exporterproto"
-	"github.com/census-instrumentation/opencensus-proto/gen-go/traceproto"
+	"github.com/census-instrumentation/opencensus-proto/gen-go/exporter/v1"
+	"github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/internal"
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
