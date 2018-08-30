@@ -19,21 +19,25 @@ package main
 import (
 	"flag"
 	"fmt"
+	"golang.org/x/net/context"
 	"io"
 	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 
 	pb "github.com/census-instrumentation/opencensus-proto/gen-go/exporter/v1"
 	"github.com/census-instrumentation/opencensus-service/cmd/opencensusd/exporter"
 	"github.com/census-instrumentation/opencensus-service/internal"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"google.golang.org/grpc"
 )
 
 func main() {
-	listen := flag.String("listen", "127.0.0.1:", "")
+	listen := flag.String("listen", "127.0.0.1:", "IP/port for gRPC")
+	listenHttp := flag.String("listen_http", "", "(Optional) IP/port for HTTP/JSON")
 	flag.Parse()
 
 	const configFile = "config.yaml"
@@ -68,10 +72,26 @@ func main() {
 		os.Exit(0)
 	}()
 
+	if *listenHttp != "" {
+		go serveHttpGateway(*listenHttp, service.Endpoint)
+	}
+
 	s := grpc.NewServer()
 	pb.RegisterExportServer(s, &server{})
 	if err := s.Serve(ls); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
+	}
+}
+
+func serveHttpGateway(listenHttp string, grpcEndpoint string) {
+	ctx := context.Background()
+	mux := runtime.NewServeMux()
+	opts := []grpc.DialOption{grpc.WithInsecure()}
+	if err := pb.RegisterExportHandlerFromEndpoint(ctx, mux, grpcEndpoint, opts); err != nil {
+		log.Fatalf("Failed to register HTTP gateway: %v", err)
+	}
+	if err := http.ListenAndServe(listenHttp, mux); err != nil {
+		log.Fatalf("Failed to listen/serve HTTP gateway: %v", err)
 	}
 }
 

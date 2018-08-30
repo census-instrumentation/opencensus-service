@@ -37,6 +37,7 @@
 [[projects]]
   name = "github.com/golang/protobuf"
   packages = [
+    "jsonpb",
     "proto",
     "protoc-gen-go/descriptor",
     "ptypes",
@@ -55,6 +56,16 @@
   packages = ["."]
   revision = "317e0006254c44a0ac427cc52a0e083ff0b9622f"
   version = "v2.0.0"
+
+[[projects]]
+  name = "github.com/grpc-ecosystem/grpc-gateway"
+  packages = [
+    "runtime",
+    "runtime/internal",
+    "utilities"
+  ]
+  revision = "92583770e3f01b09a0d3e9bdf64321d8bebd48f2"
+  version = "v1.4.1"
 
 [[projects]]
   name = "github.com/openzipkin/zipkin-go"
@@ -256,6 +267,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9c63df1e8e813c490dce3f098964a0f5ec7e65f9dbcaa44342816583d1e2e1de"
+  inputs-digest = "813ea8341ef8b22e442fb44c8e96a3c2a6484ac3c3d3c2c5809425a0e69bb661"
   solver-name = "gps-cdcl"
   solver-version = 1
