@@ -1,7 +1,7 @@
 language: go
 
 go:
-  - 1.10.x
+  - 1.11.x
 
 before_script:
   - GO_FILES=$(find . -iname '*.go' | grep -v /vendor/)  # All the .go files, excluding vendor/ if any
