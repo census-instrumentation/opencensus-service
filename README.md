@@ -35,10 +35,11 @@ We are planning to address this problem in the future.
 
 ## Usage
 
-First, install opencensusd if you haven't.
+First, install OpenCensus-Agent if you haven't.
 
+TODO: update the url.
 ```
-$ go get github.com/census-instrumentation/opencensus-service/cmd/opencensusd
+$ go get 
 ```
 
 Create a config.yaml file in the current directory and modify
@@ -64,12 +65,13 @@ to the daemon if it is running.
 $ go run "$(go env GOPATH)/src/github.com/census-instrumentation/opencensus-service/example/main.go"
 ```
 
-Run opencensusd:
+Run OpenCensus-Agent:
 
+TODO: update the command.
 ```
-$ opencensusd
+$ 
 ```
 
 You should be able to see the traces in Stackdriver and Zipkin.
-If you stop the opencensusd, example application will stop exporting.
+If you stop the OpenCensus-Agent, example application will stop exporting.
 If you run it again, it will start exporting again.
