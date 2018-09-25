@@ -213,7 +213,7 @@ agent/client health information/inventory metadata to downstream exporters.
 ### Architecture Overview
 
 The OpenCensus Collector runs as a standalone instance and receives spans and
-metrics exporterd by one or more OpenCensus Clients or Agents, or by
+metrics exporterd by one or more OpenCensus Libraries or Agents, or by
 tasks/agents that emit in one of the supported protocols. The Collector is
 configured to send data to the configured exporter(s). The following figure
 summarizes the deployment architecture:
