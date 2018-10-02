@@ -1,6 +1,6 @@
-# OpenCensus service
+# OpenCensus Service
 
-OpenCensus service is an experimental component that collects and
+OpenCensus Service is an experimental component that collects and
 exports from the OpenCensus instrumented processes available from the
 same host machine.
 
@@ -13,7 +13,9 @@ with OpenCensus, they have to modify their code to register an
 exporter and redeploy. Asking our users recompile and redeploy is
 not an ideal at an incident time.
 
-OpenCensus service is trying to eliminate this requirement.
+OpenCensus Service is trying to eliminate this requirement. Currently
+OpenCensus Service consists of two components, [OpenCensus Agent](#opencensus-agent)
+and [OpenCensus Collector](#opencensus-collector).
 
 ## Goals
 
@@ -26,53 +28,6 @@ to adopt OpenCensus without having to link any exporters into their binary.
 * Easier to scale the exporter development. Not every language has to
 implement support for each backend.
 * Custom daemons containing only the required exporters compiled in can be created.
-
-## Future goals
-* Providing cluster-wide collections and cluster-wide z-pages.
-* Currently we provide no ways to push configuration changes such as the
-default sampling rate. It might be a problem at troubleshooting time.
-We are planning to address this problem in the future.
-
-## Usage
-
-First, install ocagent if you haven't.
-
-```
-$ go get github.com/census-instrumentation/opencensus-service/cmd/ocagent
-```
-
-Create a config.yaml file in the current directory and modify
-it with the exporter configuration. For example, following
-configuration exports both to Stackdriver and Zipkin.
-
-
-config.yaml:
-
-```
-stackdriver:
-  project: "your-project-id"
-  enableTraces: true
-
-zipkin:
-  endpoint: "http://localhost:9411/api/v2/spans"
-```
-
-Run the example application that collects traces and exports
-to the daemon if it is running.
-
-```
-$ go run "$(go env GOPATH)/src/github.com/census-instrumentation/opencensus-service/example/main.go"
-```
-
-Run ocagent:
-
-```
-$ ocagent
-```
-
-You should be able to see the traces in Stackdriver and Zipkin.
-If you stop the ocagent, example application will stop exporting.
-If you run it again, it will start exporting again.
 
 ## OpenCensus Agent
 
@@ -186,6 +141,47 @@ streams that cannot be kept alive all the time (e.g gRPC-Python).
 Once in a while, Agent Core will push `SpanProto` with `Node` to each exporter. After
 receiving them, each exporter will translate `SpanProto` to the format supported by the
 backend (e.g Jaeger Thrift Span), and then push them to corresponding backend or service.
+
+### Usage
+
+First, install ocagent if you haven't.
+
+```
+$ go get github.com/census-instrumentation/opencensus-service/cmd/ocagent
+```
+
+Create a config.yaml file in the current directory and modify
+it with the exporter configuration. For example, following
+configuration exports both to Stackdriver and Zipkin.
+
+
+config.yaml:
+
+```
+stackdriver:
+  project: "your-project-id"
+  enableTraces: true
+
+zipkin:
+  endpoint: "http://localhost:9411/api/v2/spans"
+```
+
+Run the example application that collects traces and exports
+to the daemon if it is running.
+
+```
+$ go run "$(go env GOPATH)/src/github.com/census-instrumentation/opencensus-service/example/main.go"
+```
+
+Run ocagent:
+
+```
+$ ocagent
+```
+
+You should be able to see the traces in Stackdriver and Zipkin.
+If you stop the ocagent, example application will stop exporting.
+If you run it again, it will start exporting again.
 
 ## OpenCensus Collector
 
