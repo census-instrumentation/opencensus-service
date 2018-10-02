@@ -122,11 +122,11 @@ By default, Agent is available on port 55678.
 ### Protocol Workflow
 
 1. Library will try to directly establish connections for Config and Export streams.
-2. As the first message in each stream, Library must sent its identifier. Each identifier should
+2. As the first message in each stream, Library must send its identifier. Each identifier should
 uniquely identify Library within the VM/container. If there is no identifier in the first message,
 Agent should drop the whole message and return an error to the client. In addition, the first
 message MAY contain additional data (such as `Span`s). As long as it has a valid identifier
-assoicated, Agent should handle the data properly, as if they are sent in a subsequent message.
+assoicated, Agent should handle the data properly, as if they were sent in a subsequent message.
 Identifier is no longer needed once the streams are established.
 3. If streams were disconnected and retries failed, the Library identifier would be considered
 expired on Agent side. Library needs to start a new connection with a unique identifier
