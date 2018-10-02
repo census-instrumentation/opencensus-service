@@ -1,8 +1,10 @@
 # OpenCensus Service
 
-OpenCensus Service is an experimental component that collects and
-exports from the OpenCensus instrumented processes available from the
-same host machine.
+OpenCensus Service is an experimental component that can collect traces
+and metrics from processes instrumented by OpenCensus or other
+monitoring/tracing libraries (Jaeger, Prometheus, etc.), do the
+aggregation and smart sampling, and export traces and metrics
+to monitoring/tracing backends.
 
 Some frameworks and ecosystems are now providing out-of-the-box
 instrumentation by using OpenCensus but the user is still expected
@@ -11,11 +13,18 @@ during an incident. Even though our users can benefit from having
 more diagnostics data coming out of services already instrumented
 with OpenCensus, they have to modify their code to register an
 exporter and redeploy. Asking our users recompile and redeploy is
-not an ideal at an incident time.
+not an ideal at an incident time. In addition, currently users need
+to decide which service backend they want to export to, before they
+distribute their binary instrumented by OpenCensus.
 
-OpenCensus Service is trying to eliminate this requirement. Currently
-OpenCensus Service consists of two components, [OpenCensus Agent](#opencensus-agent)
-and [OpenCensus Collector](#opencensus-collector).
+OpenCensus Service is trying to eliminate these requirements. With
+OpenCensus Service, users do not need to redeploy or restart their binary
+as long as it has the OpenCensus Agent exporter. All they need to do is
+just configuring and deploying OpenCensus Service, then it will automatically
+collect traces and metrics and export to any backend of users' choice.
+
+Currently OpenCensus Service consists of two components,
+[OpenCensus Agent](#opencensus-agent) and [OpenCensus Collector](#opencensus-collector).
 
 ## Goals
 
