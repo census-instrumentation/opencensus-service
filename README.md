@@ -18,10 +18,11 @@ to decide which service backend they want to export to, before they
 distribute their binary instrumented by OpenCensus.
 
 OpenCensus Service is trying to eliminate these requirements. With
-OpenCensus Service, users do not need to redeploy or restart their binary
+OpenCensus Service, users do not need to redeploy or restart their applications
 as long as it has the OpenCensus Agent exporter. All they need to do is
-just configuring and deploying OpenCensus Service, then it will automatically
-collect traces and metrics and export to any backend of users' choice.
+just configure and deploy OpenCensus Service separately. OpenCensus Service
+will then automatically collect traces and metrics and export to any
+backend of users' choice.
 
 Currently OpenCensus Service consists of two components,
 [OpenCensus Agent](#opencensus-agent) and [OpenCensus Collector](#opencensus-collector).
