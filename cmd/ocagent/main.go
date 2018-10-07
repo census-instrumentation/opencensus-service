@@ -28,6 +28,7 @@ import (
 
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/cmd/ocagent/exporterparser"
+	"github.com/census-instrumentation/opencensus-service/cmd/ocagent/plugins"
 	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/interceptor/opencensus"
 	"github.com/census-instrumentation/opencensus-service/internal"
@@ -38,26 +39,16 @@ import (
 
 func main() {
 	ocInterceptorPort := flag.Int("oci-port", 55678, "The port on which the OpenCensus interceptor is run")
-	flag.Parse()
-
 	exportersYAMLConfigFile := flag.String("exporters-yaml", "config.yaml", "The YAML file with the configurations for the various exporters")
+	pluginPaths := flag.String("plugins", "", "A comma separated string specifying the paths of the various exporter plugins")
+
+	flag.Parse()
 
 	yamlBlob, err := ioutil.ReadFile(*exportersYAMLConfigFile)
 	if err != nil {
 		log.Fatalf("Cannot read the YAML file %v error: %v", exportersYAMLConfigFile, err)
 	}
 	traceExporters, _, closeFns := exporterparser.ExportersFromYAMLConfig(yamlBlob)
-
-	commonSpanReceiver := exporter.OCExportersToTraceExporter(traceExporters...)
-
-	// Add other interceptors here as they are implemented
-	ocInterceptorDoneFn, err := runOCInterceptor(*ocInterceptorPort, commonSpanReceiver)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	closeFns = append(closeFns, ocInterceptorDoneFn)
-
 	// Always cleanup finally
 	defer func() {
 		for _, closeFn := range closeFns {
@@ -66,6 +57,21 @@ func main() {
 			}
 		}
 	}()
+	inCodeExportersSpanReceiver := exporter.OCExportersToTraceExporter(traceExporters...)
+
+	// Load the various traceExporter plugins if specified
+	pluginsSpanReceiver, pluginsDoneFn := plugins.LoadTraceExporterPlugins(yamlBlob, *pluginPaths)
+	defer pluginsDoneFn()
+
+	// Combine the various spanreceiver.SpanReceiver instances into one
+	commonSpanReceiver := spanreceiver.Multi(inCodeExportersSpanReceiver, pluginsSpanReceiver)
+
+	// Add other interceptors here as they are implemented
+	ocInterceptorDoneFn, err := runOCInterceptor(*ocInterceptorPort, commonSpanReceiver)
+	if err != nil {
+		log.Fatal(err)
+	}
+	closeFns = append(closeFns, ocInterceptorDoneFn)
 
 	signalsChan := make(chan os.Signal)
 	signal.Notify(signalsChan, os.Interrupt)

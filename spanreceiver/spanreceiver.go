@@ -30,3 +30,18 @@ type Acknowledgement struct {
 	SavedSpans   uint64
 	DroppedSpans uint64
 }
+
+type multiSpanReceiver []SpanReceiver
+
+// Multi is a helper function that is useful to combine multiple
+// SpanReceiver instances. It serves a purpose similar to io.MultiReader.
+func Multi(spanreceivers ...SpanReceiver) SpanReceiver {
+	return multiSpanReceiver(spanreceivers)
+}
+
+func (msr multiSpanReceiver) ReceiveSpans(ctx context.Context, node *commonpb.Node, spans ...*tracepb.Span) (*Acknowledgement, error) {
+	for _, sr := range msr {
+		_, _ = sr.ReceiveSpans(ctx, node, spans...)
+	}
+	return &Acknowledgement{SavedSpans: uint64(len(spans))}, nil
+}
