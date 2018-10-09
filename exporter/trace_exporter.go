@@ -58,7 +58,7 @@ func (tse *toOCExportersTransformer) ExportSpanData(node *commonpb.Node, spanDat
 	return nil
 }
 
-func (tse *toOCExportersTransformer) ReceiveSpans(ctx context.Context, node *commonpb.Node, spans ...*tracepb.Span) (*spanreceiver.Acknowledgement, error) {
+func spansToOCSpanData(spans []*tracepb.Span) []*trace.SpanData {
 	// Firstly transform them into spanData.
 	spanDataList := make([]*trace.SpanData, 0, len(spans))
 	for _, span := range spans {
@@ -71,6 +71,13 @@ func (tse *toOCExportersTransformer) ReceiveSpans(ctx context.Context, node *com
 	// Note: We may want to enhance the SpanData in spanDataList
 	// before they get sent to the various exporters.
 
+	return spanDataList
+}
+
+func (tse *toOCExportersTransformer) ReceiveSpans(ctx context.Context, node *commonpb.Node, spans ...*tracepb.Span) (*spanreceiver.Acknowledgement, error) {
+	// Firstly transform them into spanData.
+	spanDataList := spansToOCSpanData(spans)
+
 	// Now invoke ExportSpanData.
 	err := tse.ExportSpanData(node, spanDataList...)
 	nSaved := len(spanDataList)
@@ -79,4 +86,20 @@ func (tse *toOCExportersTransformer) ReceiveSpans(ctx context.Context, node *com
 		DroppedSpans: uint64(len(spans) - nSaved),
 	}
 	return ack, err
+}
+
+type traceExporters []TraceExporter
+
+var _ spanreceiver.SpanReceiver = (traceExporters)(nil)
+
+func TraceExportersToSpanReceiver(exporters ...TraceExporter) spanreceiver.SpanReceiver {
+	return traceExporters(exporters)
+}
+
+func (tes traceExporters) ReceiveSpans(ctx context.Context, node *commonpb.Node, spans ...*tracepb.Span) (*spanreceiver.Acknowledgement, error) {
+	spanDataList := spansToOCSpanData(spans)
+	for _, traceExporter := range tes {
+		traceExporter.ExportSpanData(node, spanDataList...)
+	}
+	return &spanreceiver.Acknowledgement{SavedSpans: uint64(len(spans))}, nil
 }

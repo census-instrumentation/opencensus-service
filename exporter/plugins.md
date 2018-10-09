@@ -39,6 +39,9 @@ type TraceExporterPlugin interface {
 package main
 ```
 
+* The next step is to ensure that the file contains the symbol `NewTraceExporterPlugin`
+whose type is `func () exporter.TraceExporterPlugin`
+
 Now with that we'll to create a type that exports to multiple files in parallel
 
 ### Sample implementation
@@ -70,6 +73,10 @@ type customInParallelFilesTraceExporter struct {
 
 type config struct {
 	Filepaths []string `yaml:"file_paths"`
+}
+
+func NewTraceExporterPlugin() exporter.TraceExporterPlugin {
+	return &customInParallelFilesTracesExporter{}
 }
 
 var _ exporter.TraceExporterPlugin = (*customInParallelFilesTraceExporter)(nil)
