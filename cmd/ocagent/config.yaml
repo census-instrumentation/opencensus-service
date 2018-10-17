@@ -2,13 +2,13 @@ interceptors:
     opencensus:
         address: "127.0.0.1:55678"
 
-exporters:
-    stackdriver:
-        project: "project-id"
-        enable_tracing: true
-
     zipkin:
         endpoint: "http://localhost:9411/api/v2/spans"
+
+exporters:
+    stackdriver:
+        project: "census-demos"
+        enable_tracing: true
 
 zpages:
     port: 55679

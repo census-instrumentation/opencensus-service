@@ -42,8 +42,9 @@ import (
 //      port: 55679
 
 const (
-	defaultOCInterceptorAddress = "localhost:55678"
-	defaultZPagesPort           = 55679
+	defaultOCInterceptorAddress     = "localhost:55678"
+	defaultZPagesPort               = 55679
+	defaultZipkinInterceptorAddress = "localhost:9411"
 )
 
 type config struct {
@@ -52,7 +53,8 @@ type config struct {
 }
 
 type interceptors struct {
-	OpenCensusInterceptor *interceptorConfig `yaml:"opencensus"`
+	OpenCensus *interceptorConfig `yaml:"opencensus"`
+	Zipkin     *interceptorConfig `yaml:"zipkin"`
 }
 
 type interceptorConfig struct {
@@ -70,10 +72,10 @@ func (c *config) ocInterceptorAddress() string {
 		return defaultOCInterceptorAddress
 	}
 	inCfg := c.Interceptors
-	if inCfg.OpenCensusInterceptor == nil || inCfg.OpenCensusInterceptor.Address == "" {
+	if inCfg.OpenCensus == nil || inCfg.OpenCensus.Address == "" {
 		return defaultOCInterceptorAddress
 	}
-	return inCfg.OpenCensusInterceptor.Address
+	return inCfg.OpenCensus.Address
 }
 
 func (c *config) zPagesDisabled() bool {
@@ -94,6 +96,24 @@ func (c *config) zPagesPort() (int, bool) {
 	return port, true
 }
 
+func (c *config) zipkinInterceptorEnabled() bool {
+	if c == nil {
+		return false
+	}
+	return c.Interceptors != nil && c.Interceptors.Zipkin != nil
+}
+
+func (c *config) zipkinInterceptorAddress() string {
+	if c == nil || c.Interceptors == nil {
+		return defaultZipkinInterceptorAddress
+	}
+	inCfg := c.Interceptors
+	if inCfg.Zipkin == nil {
+		return defaultZipkinInterceptorAddress
+	}
+	return inCfg.Zipkin.Address
+}
+
 func parseOCAgentConfig(yamlBlob []byte) (*config, error) {
 	var cfg config
 	if err := yaml.Unmarshal(yamlBlob, &cfg); err != nil {
@@ -101,8 +121,6 @@ func parseOCAgentConfig(yamlBlob []byte) (*config, error) {
 	}
 	return &cfg, nil
 }
-
-type exporterParser func(yamlConfig []byte) (te []exporter.TraceExporter, err error)
 
 // exportersFromYAMLConfig parses the config yaml payload and returns the respective exporters
 func exportersFromYAMLConfig(config []byte) (traceExporters []exporter.TraceExporter, doneFns []func() error) {
@@ -128,6 +146,13 @@ func exportersFromYAMLConfig(config []byte) (traceExporters []exporter.TraceExpo
 				nonNilExporters += 1
 			}
 		}
+
+		// TODO: (@odeke-em) Add a catch here prevent logical errors
+		// e.g. if the Zipkin interceptor port is the exact
+		// same as that of the exporter, DO NOT run, crash hard
+		// lest we'll just recursively send traffic back to selves
+		// which is a potential self-DOS.
+
 		if nonNilExporters > 0 {
 			pluralization := "exporter"
 			if nonNilExporters > 1 {
