@@ -16,7 +16,6 @@ package exporterparser
 
 import (
 	"context"
-	"log"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	"github.com/census-instrumentation/opencensus-service/exporter"
@@ -26,9 +25,7 @@ import (
 
 // Slight modified version of go/src/go.opencensus.io/exporter/jaeger/jaeger.go
 type jaegerConfig struct {
-	Endpoint          string `yaml:"endpoint,omitempty"`
 	CollectorEndpoint string `yaml:"collector_endpoint,omitempty"`
-	AgentEndpoint     string `yaml:"agent_endpoint,omitempty"`
 	Username          string `yaml:"username,omitempty"`
 	Password          string `yaml:"password,omitempty"`
 	ServiceName       string `yaml:"service_name,omitempty"`
@@ -58,9 +55,7 @@ func JaegerExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneF
 
 	// jaeger.NewExporter performs configurqtion validation
 	je, err := jaeger.NewExporter(jaeger.Options{
-		Endpoint:          jc.Endpoint,
 		CollectorEndpoint: jc.CollectorEndpoint,
-		AgentEndpoint:     jc.AgentEndpoint,
 		Username:          jc.Username,
 		Password:          jc.Password,
 		Process: jaeger.Process{
@@ -68,7 +63,7 @@ func JaegerExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneF
 		},
 	})
 	if err != nil {
-		log.Fatalf("Cannot configure Jaeger exporter: %v", err)
+		return nil, nil, err
 	}
 
 	doneFns = append(doneFns, func() error {
