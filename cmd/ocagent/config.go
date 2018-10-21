@@ -17,10 +17,9 @@ package main
 import (
 	"log"
 
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/exporter/exporterparser"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // We expect the configuration.yaml file to look like this:
@@ -113,6 +112,7 @@ func exportersFromYAMLConfig(config []byte) (traceExporters []exporter.TraceExpo
 		{name: "datadog", fn: exporterparser.DatadogTraceExportersFromYAML},
 		{name: "stackdriver", fn: exporterparser.StackdriverTraceExportersFromYAML},
 		{name: "zipkin", fn: exporterparser.ZipkinExportersFromYAML},
+		{name: "jaeger", fn: exporterparser.JaegerExportersFromYAML},
 	}
 
 	for _, cfg := range parseFns {
