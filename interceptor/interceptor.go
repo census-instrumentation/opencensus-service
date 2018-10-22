@@ -17,6 +17,7 @@ package interceptor
 import (
 	"context"
 
+	"github.com/census-instrumentation/opencensus-service/metricreceiver"
 	"github.com/census-instrumentation/opencensus-service/spanreceiver"
 )
 
@@ -30,4 +31,16 @@ import (
 type TraceInterceptor interface {
 	StartTraceInterception(ctx context.Context, destination spanreceiver.SpanReceiver) error
 	StopTraceInterception(ctx context.Context) error
+}
+
+// A MetricInterceptor is an "arbitrary data"-to-"metric proto" converter.
+// Its purpose is to translate data from the wild into metric proto accompanied
+// by a *commonpb.Node to uniquely identify where that data comes from.
+// MetricInterceptor feeds a metricreceiver.MetricReceiver with data.
+//
+// For example it could be Prometheus data source which translates
+// Prometheus into *metricpb.Metric-s.
+type MetricInterceptor interface {
+	StartMetricInterception(ctx context.Context, destination metricreceiver.MetricReceiver) error
+	StopMetricInterception(ctx context.Context) error
 }
