@@ -41,6 +41,6 @@ type TraceInterceptor interface {
 // For example it could be Prometheus data source which translates
 // Prometheus metrics into *metricpb.Metric-s.
 type MetricsInterceptor interface {
-	StartMetricInterception(ctx context.Context, destination metricsreceiver.MetricsReceiver) error
-	StopMetricInterception(ctx context.Context) error
+	StartMetricsInterception(ctx context.Context, destination metricsreceiver.MetricsReceiver) error
+	StopMetricsInterception(ctx context.Context) error
 }
