@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metricreceiver
+package metricsreceiver
 
 import (
 	"context"
@@ -21,8 +21,8 @@ import (
 	metricpb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 )
 
-// MetricReceiver is an interface that receives metrics from a Node identifier.
-type MetricReceiver interface {
+// MetricsReceiver is an interface that receives metrics from a Node identifier.
+type MetricsReceiver interface {
 	ReceiveMetrics(ctx context.Context, node *commonpb.Node, metrics ...*metricpb.Metric) (*Acknowledgement, error)
 }
 
