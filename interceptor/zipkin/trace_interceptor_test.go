@@ -61,7 +61,9 @@ func TestConvertSpansToTraceSpans(t *testing.T) {
 			Name: "frontend",
 		},
 		Attributes: map[string]string{
-			"ipv6": "7::80:807f",
+			"ipv6":                       "7::80:807f",
+			"zipkin.remoteEndpoint.ipv4": "192.168.99.101",
+			"zipkin.remoteEndpoint.port": "9000",
 		},
 	}
 	if g, w := req.Node, wantNode; !reflect.DeepEqual(g, w) {
@@ -202,7 +204,9 @@ func TestConversionRoundtrip(t *testing.T) {
 			Node: &commonpb.Node{
 				ServiceInfo: &commonpb.ServiceInfo{Name: "frontend"},
 				Attributes: map[string]string{
-					"ipv6": "7::80:807f",
+					"ipv6":                       "7::80:807f",
+					"zipkin.remoteEndpoint.ipv4": "192.168.99.101",
+					"zipkin.remoteEndpoint.port": "9000",
 				},
 			},
 
@@ -237,12 +241,12 @@ func TestConversionRoundtrip(t *testing.T) {
 					},
 					Attributes: &tracepb.Span_Attributes{
 						AttributeMap: map[string]*tracepb.AttributeValue{
-							"http.path": &tracepb.AttributeValue{
+							"http.path": {
 								Value: &tracepb.AttributeValue_StringValue{
 									StringValue: &tracepb.TruncatableString{Value: "/api"},
 								},
 							},
-							"clnt/finagle.version": &tracepb.AttributeValue{
+							"clnt/finagle.version": {
 								Value: &tracepb.AttributeValue_StringValue{
 									StringValue: &tracepb.TruncatableString{Value: "6.45.0"},
 								},
@@ -280,12 +284,12 @@ func TestConversionRoundtrip(t *testing.T) {
 					},
 					Attributes: &tracepb.Span_Attributes{
 						AttributeMap: map[string]*tracepb.AttributeValue{
-							"http.path": &tracepb.AttributeValue{
+							"http.path": {
 								Value: &tracepb.AttributeValue_StringValue{
 									StringValue: &tracepb.TruncatableString{Value: "/api"},
 								},
 							},
-							"clnt/finagle.version": &tracepb.AttributeValue{
+							"clnt/finagle.version": {
 								Value: &tracepb.AttributeValue_StringValue{
 									StringValue: &tracepb.TruncatableString{Value: "6.45.0"},
 								},

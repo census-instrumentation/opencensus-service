@@ -140,28 +140,7 @@ func zipkinSpanToTraceSpan(zs *zipkinmodel.SpanModel) (*tracepb.Span, *commonpb.
 		return nil, nil, errNilZipkinSpan
 	}
 
-	var node *commonpb.Node
-	if lep := zs.LocalEndpoint; lep != nil {
-		node = &commonpb.Node{
-			ServiceInfo: &commonpb.ServiceInfo{
-				Name: lep.ServiceName,
-			},
-		}
-
-		attributes := make(map[string]string, 3)
-		if !lep.IPv4.Equal(blankIP) {
-			attributes["ipv4"] = lep.IPv4.String()
-		}
-		if !lep.IPv6.Equal(blankIP) {
-			attributes["ipv6"] = lep.IPv6.String()
-		}
-		if lep.Port > 0 {
-			attributes["port"] = fmt.Sprintf("%d", lep.Port)
-		}
-		if len(attributes) > 0 {
-			node.Attributes = attributes
-		}
-	}
+	node := nodeFromZipkinEndpoints(zs)
 
 	traceID, err := hexStrToBytes(zs.TraceID.String())
 	if err != nil {
@@ -193,6 +172,53 @@ func zipkinSpanToTraceSpan(zs *zipkinmodel.SpanModel) (*tracepb.Span, *commonpb.
 	}
 
 	return pbs, node, nil
+}
+
+func nodeFromZipkinEndpoints(zs *zipkinmodel.SpanModel) *commonpb.Node {
+	if zs.LocalEndpoint == nil && zs.RemoteEndpoint == nil {
+		return nil
+	}
+
+	node := new(commonpb.Node)
+
+	// Retrieve and make use of the local endpoint
+	if lep := zs.LocalEndpoint; lep != nil {
+		node.ServiceInfo = &commonpb.ServiceInfo{
+			Name: lep.ServiceName,
+		}
+		node.Attributes = zipkinEndpointIntoAttributes(lep, node.Attributes, func(s string) string { return s })
+	}
+
+	// Retrieve and make use of the remote endpoint
+	if rep := zs.RemoteEndpoint; rep != nil {
+		// For remoteEndpoint, our goal is to prefix its fields with "zipkin.remoteEndpoint."
+		// For example becoming:
+		// {
+		//      "zipkin.remoteEndpoint.ipv4": "192.168.99.101",
+		//      "zipkin.remoteEndpoint.port": "9000"
+		//      "zipkin.remoteEndpoint.serviceName": "backend",
+		// }
+		node.Attributes = zipkinEndpointIntoAttributes(rep, node.Attributes, func(s string) string {
+			return "zipkin.remoteEndpoint." + s
+		})
+	}
+	return node
+}
+
+func zipkinEndpointIntoAttributes(ep *zipkinmodel.Endpoint, into map[string]string, prefixFunc func(string) string) map[string]string {
+	if into == nil {
+		into = make(map[string]string)
+	}
+	if !ep.IPv4.Equal(blankIP) {
+		into[prefixFunc("ipv4")] = ep.IPv4.String()
+	}
+	if !ep.IPv6.Equal(blankIP) {
+		into[prefixFunc("ipv6")] = ep.IPv6.String()
+	}
+	if ep.Port > 0 {
+		into[prefixFunc("port")] = fmt.Sprintf("%d", ep.Port)
+	}
+	return into
 }
 
 const statusCodeUnknown = 2
