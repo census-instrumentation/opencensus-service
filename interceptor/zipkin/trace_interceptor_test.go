@@ -17,6 +17,7 @@ package zipkinterceptor
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -80,41 +81,6 @@ func TestConvertSpansToTraceSpans(t *testing.T) {
 	if g, w := nonNilSpans, 9; g != w {
 		t.Fatalf("Non-nil spans: Got %d Want %d", g, w)
 	}
-}
-
-func TestConversionRoundtrip_ZipkinInterceptedToAgentProtoToZipkinServer(t *testing.T) {
-	t.Skipf("Manual verification test here: NormalUserApp-->Zipkin Interceptor-->AgentCore-->ZipkinServer")
-
-	blob, err := ioutil.ReadFile("./testdata/sample1.json")
-	if err != nil {
-		t.Fatalf("Failed to read sample JSON file: %v", err)
-	}
-	zi := new(ZipkinInterceptor)
-	reqs, err := zi.parseAndConvertToTraceSpans(blob)
-	if err != nil {
-		t.Fatalf("Failed to parse convert Zipkin spans in JSON to Trace spans: %v", err)
-	}
-
-	// This will act as the final Zipkin server.
-	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		blob, _ := ioutil.ReadAll(r.Body)
-		_ = r.Body.Close()
-		t.Logf("%s\n", blob)
-	}))
-	defer backend.Close()
-
-	le, _ := openzipkin.NewEndpoint("test-src", "192.168.1.4:5454")
-	re := zhttp.NewReporter(backend.URL)
-	ze := zipkin.NewExporter(re, le)
-
-	for _, treq := range reqs {
-		for _, span := range treq.Spans {
-			sd, _ := tracetranslator.ProtoSpanToOCSpanData(span)
-			ze.ExportSpan(sd)
-		}
-	}
-
-	<-time.After(10 * time.Second)
 }
 
 func TestConversionRoundtrip(t *testing.T) {
@@ -419,18 +385,20 @@ func TestConversionRoundtrip(t *testing.T) {
 		// vs
 		//    [{"duration":207000,"timestamp":1472470996199000}]
 		// we should resort to an xorCheckSum
-		gx, wx := xorChecksum([]byte(gj)), xorChecksum([]byte(wj))
-		if gx != wx {
+		gs, ws := anagramSignature(gj), anagramSignature(wj)
+		if gs != ws {
 			t.Errorf("The roundtrip JSON doesn't match the JSON that we want\nGot:\n%s\nWant:\n%s", gj, wj)
 		}
 	}
 }
 
-func xorChecksum(bs []byte) (h int64) {
-	for _, b := range bs {
-		h ^= int64(b)
+func anagramSignature(ss string) string {
+	mp := make(map[rune]int64)
+	for _, s := range ss {
+		mp[s] += 1
 	}
-	return h
+	blob, _ := json.Marshal(mp)
+	return string(blob)
 }
 
 type noopSink int
