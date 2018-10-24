@@ -150,20 +150,20 @@ func (c *config) checkLogicalConflicts(blob []byte) error {
 	zExporterAddr := zc.EndpointURL()
 	zExporterURL, err := url.Parse(zExporterAddr)
 	if err != nil {
-		return fmt.Errorf("parsing exporter address %q got error: %v", zExporterAddr, err)
+		return fmt.Errorf("parsing ZipkinExporter address %q got error: %v", zExporterAddr, err)
 	}
 
 	zInterceptorHostPort := c.zipkinInterceptorAddress()
 
 	zExporterHostPort := zExporterURL.Host
 	if zInterceptorHostPort == zExporterHostPort {
-		return fmt.Errorf("ZipkinInterceptor address (%q) is the same as the interceptor address (%q)",
+		return fmt.Errorf("ZipkinExporter address (%q) is the same as the interceptor address (%q)",
 			zExporterHostPort, zInterceptorHostPort)
 	}
 	zExpHost, zExpPort, _ := net.SplitHostPort(zExporterHostPort)
 	zInterceptorHost, zInterceptorPort, _ := net.SplitHostPort(zExporterHostPort)
 	if eqHosts(zExpHost, zInterceptorHost) && zExpPort == zInterceptorPort {
-		return fmt.Errorf("ZipkinInterceptor address (%q) aka (%s on port %s)\nis the same as the interceptor address (%q) aka (%s on port %s)",
+		return fmt.Errorf("ZipkinExporter address (%q) aka (%s on port %s)\nis the same as the interceptor address (%q) aka (%s on port %s)",
 			zExporterHostPort, zExpHost, zExpPort, zInterceptorHostPort, zInterceptorHost, zInterceptorPort)
 	}
 
@@ -171,7 +171,7 @@ func (c *config) checkLogicalConflicts(blob []byte) error {
 	zExpIPAddr, _ := net.ResolveIPAddr("ip", zExpHost)
 	zInterceptorIPAddr, _ := net.ResolveIPAddr("ip", zInterceptorHost)
 	if zExpIPAddr != nil && zInterceptorIPAddr != nil && reflect.DeepEqual(zExpIPAddr, zInterceptorIPAddr) {
-		return fmt.Errorf("ZipkinInterceptor address (%q) aka (%+v)\nis the same as the\ninterceptor address (%q) aka (%+v)",
+		return fmt.Errorf("ZipkinExporter address (%q) aka (%+v)\nis the same as the\ninterceptor address (%q) aka (%+v)",
 			zExporterHostPort, zExpIPAddr, zInterceptorHostPort, zInterceptorIPAddr)
 	}
 	return nil

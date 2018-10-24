@@ -85,11 +85,11 @@ func runOCAgent() {
 	// If the Zipkin interceptor is enabled, then run it
 	if agentConfig.zipkinInterceptorEnabled() {
 		zipkinInterceptorAddr := agentConfig.zipkinInterceptorAddress()
-		zipkinterceptorDoneFn, err := runZipkinInterceptor(zipkinInterceptorAddr, commonSpanReceiver)
+		zipkinInterceptorDoneFn, err := runZipkinInterceptor(zipkinInterceptorAddr, commonSpanReceiver)
 		if err != nil {
 			log.Fatal(err)
 		}
-		closeFns = append(closeFns, zipkinterceptorDoneFn)
+		closeFns = append(closeFns, zipkinInterceptorDoneFn)
 	}
 
 	// Always cleanup finally
@@ -161,7 +161,7 @@ func runOCInterceptor(addr string, sr spanreceiver.SpanReceiver) (doneFn func() 
 }
 
 func runZipkinInterceptor(addr string, sr spanreceiver.SpanReceiver) (doneFn func() error, err error) {
-	zi, err := zipkinterceptor.New(sr)
+	zi, err := zipkininterceptor.New(sr)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create the Zipkin interceptor: %v", err)
 	}
