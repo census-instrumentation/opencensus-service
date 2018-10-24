@@ -28,7 +28,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/exporter"
 )
 
-type zipkinConfig struct {
+type ZipkinConfig struct {
 	ServiceName      string `yaml:"service_name,omitempty"`
 	Endpoint         string `yaml:"endpoint,omitempty"`
 	LocalEndpointURI string `yaml:"local_endpoint,omitempty"`
@@ -55,10 +55,24 @@ type zipkinExporter struct {
 	shutdownFns []func() error
 }
 
+const (
+	DefaultZipkinEndpointHostPort = "localhost:9411"
+	DefaultZipkinEndpointURL      = "http://" + DefaultZipkinEndpointHostPort + "/api/v2/spans"
+)
+
+func (zc *ZipkinConfig) EndpointURL() string {
+	// If no endpoint was set, use the default Zipkin reporter URI.
+	endpoint := DefaultZipkinEndpointURL
+	if zc.Endpoint != "" {
+		endpoint = zc.Endpoint
+	}
+	return endpoint
+}
+
 func ZipkinExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneFns []func() error, err error) {
 	var cfg struct {
 		Exporters *struct {
-			Zipkin *zipkinConfig `yaml:"zipkin"`
+			Zipkin *ZipkinConfig `yaml:"zipkin"`
 		} `yaml:"exporters"`
 	}
 	if err := yamlUnmarshal(config, &cfg); err != nil {
@@ -73,11 +87,6 @@ func ZipkinExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneF
 		return nil, nil, nil
 	}
 
-	// If no endpoint was set, use the default Zipkin reporter URI.
-	endpoint := "http://localhost:9411/api/v2/spans"
-	if zc.Endpoint != "" {
-		endpoint = zc.Endpoint
-	}
 	serviceName := ""
 	if zc.ServiceName != "" {
 		serviceName = zc.ServiceName
@@ -86,6 +95,7 @@ func ZipkinExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneF
 	if zc.LocalEndpointURI != "" {
 		localEndpointURI = zc.LocalEndpointURI
 	}
+	endpoint := zc.EndpointURL()
 	zle, err := newZipkinExporter(endpoint, serviceName, localEndpointURI)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Cannot configure Zipkin exporter: %v", err)

@@ -15,7 +15,12 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net"
+	"net/url"
+	"reflect"
+	"strings"
 
 	yaml "gopkg.in/yaml.v2"
 
@@ -42,9 +47,8 @@ import (
 //      port: 55679
 
 const (
-	defaultOCInterceptorAddress     = "localhost:55678"
-	defaultZPagesPort               = 55679
-	defaultZipkinInterceptorAddress = "localhost:9411"
+	defaultOCInterceptorAddress = "localhost:55678"
+	defaultZPagesPort           = 55679
 )
 
 type config struct {
@@ -105,11 +109,11 @@ func (c *config) zipkinInterceptorEnabled() bool {
 
 func (c *config) zipkinInterceptorAddress() string {
 	if c == nil || c.Interceptors == nil {
-		return defaultZipkinInterceptorAddress
+		return exporterparser.DefaultZipkinEndpointHostPort
 	}
 	inCfg := c.Interceptors
-	if inCfg.Zipkin == nil {
-		return defaultZipkinInterceptorAddress
+	if inCfg.Zipkin == nil || inCfg.Zipkin.Address == "" {
+		return exporterparser.DefaultZipkinEndpointHostPort
 	}
 	return inCfg.Zipkin.Address
 }
@@ -120,6 +124,72 @@ func parseOCAgentConfig(yamlBlob []byte) (*config, error) {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+// The goal of this function is to catch logical errors such as
+// if the Zipkin interceptor port conflicts with that of the exporter
+// lest we'll have a self DOS because spans will be exported "out" from
+// the exporter, yet be received from the interceptor, then sent back out
+// and back in a never ending loop.
+func (c *config) checkLogicalConflicts(blob []byte) error {
+	var cfg struct {
+		Exporters *struct {
+			Zipkin *exporterparser.ZipkinConfig `yaml:"zipkin"`
+		} `yaml:"exporters"`
+	}
+	if err := yaml.Unmarshal(blob, &cfg); err != nil {
+		return err
+	}
+
+	var zc *exporterparser.ZipkinConfig
+	if cfg.Exporters != nil {
+		zc = cfg.Exporters.Zipkin
+	}
+
+	zExporterAddr := zc.EndpointURL()
+	zExporterURL, err := url.Parse(zExporterAddr)
+	if err != nil {
+		return fmt.Errorf("parsing exporter address %q got error: %v", zExporterAddr, err)
+	}
+
+	zInterceptorHostPort := c.zipkinInterceptorAddress()
+
+	zExporterHostPort := zExporterURL.Host
+	if zInterceptorHostPort == zExporterHostPort {
+		return fmt.Errorf("ZipkinInterceptor address (%q) is the same as the interceptor address (%q)",
+			zExporterHostPort, zInterceptorHostPort)
+	}
+	zExpHost, zExpPort, _ := net.SplitHostPort(zExporterHostPort)
+	zInterceptorHost, zInterceptorPort, _ := net.SplitHostPort(zExporterHostPort)
+	if eqHosts(zExpHost, zInterceptorHost) && zExpPort == zInterceptorPort {
+		return fmt.Errorf("ZipkinInterceptor address (%q) aka (%s on port %s)\nis the same as the interceptor address (%q) aka (%s on port %s)",
+			zExporterHostPort, zExpHost, zExpPort, zInterceptorHostPort, zInterceptorHost, zInterceptorPort)
+	}
+
+	// Otherwise, now let's resolve the IPs and ensure that they aren't the same
+	zExpIPAddr, _ := net.ResolveIPAddr("ip", zExpHost)
+	zInterceptorIPAddr, _ := net.ResolveIPAddr("ip", zInterceptorHost)
+	if zExpIPAddr != nil && zInterceptorIPAddr != nil && reflect.DeepEqual(zExpIPAddr, zInterceptorIPAddr) {
+		return fmt.Errorf("ZipkinInterceptor address (%q) aka (%+v)\nis the same as the\ninterceptor address (%q) aka (%+v)",
+			zExporterHostPort, zExpIPAddr, zInterceptorHostPort, zInterceptorIPAddr)
+	}
+	return nil
+}
+
+func eqHosts(host1, host2 string) bool {
+	if host1 == host2 {
+		return true
+	}
+	return eqLocalHost(host1) && eqLocalHost(host2)
+}
+
+func eqLocalHost(host string) bool {
+	switch strings.ToLower(host) {
+	case "", "localhost", "127.0.0.1":
+		return true
+	default:
+		return false
+	}
 }
 
 // exportersFromYAMLConfig parses the config yaml payload and returns the respective exporters
@@ -146,12 +216,6 @@ func exportersFromYAMLConfig(config []byte) (traceExporters []exporter.TraceExpo
 				nonNilExporters += 1
 			}
 		}
-
-		// TODO: (@odeke-em) Add a catch here prevent logical errors
-		// e.g. if the Zipkin interceptor port is the exact
-		// same as that of the exporter, DO NOT run, crash hard
-		// lest we'll just recursively send traffic back to selves
-		// which is a potential self-DOS.
 
 		if nonNilExporters > 0 {
 			pluralization := "exporter"

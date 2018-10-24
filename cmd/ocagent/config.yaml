@@ -7,7 +7,7 @@ interceptors:
 
 exporters:
     stackdriver:
-        project: "census-demos"
+        project: "project-id"
         enable_tracing: true
 
 zpages:

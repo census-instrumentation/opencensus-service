@@ -55,6 +55,14 @@ func runOCAgent() {
 	if err != nil {
 		log.Fatalf("Failed to parse own configuration %v error: %v", configYAMLFile, err)
 	}
+
+	// Ensure that we check and catch any logical errors with the
+	// configuration e.g. if an interceptor shares the same address
+	// as an exporter which would cause a self DOS and waste resources.
+	if err := agentConfig.checkLogicalConflicts(yamlBlob); err != nil {
+		log.Fatalf("Configuration logical error: %v", err)
+	}
+
 	ocInterceptorAddr := agentConfig.ocInterceptorAddress()
 
 	traceExporters, closeFns := exportersFromYAMLConfig(yamlBlob)
