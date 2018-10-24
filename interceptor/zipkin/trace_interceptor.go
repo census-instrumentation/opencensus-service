@@ -157,6 +157,10 @@ func (zi *ZipkinInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_ = r.Body.Close()
 	ereqs, err := zi.parseAndConvertToTraceSpans(slurp)
 	if err != nil {
+		span.SetStatus(trace.Status{
+			Code:    trace.StatusCodeInvalidArgument,
+			Message: err.Error(),
+		})
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

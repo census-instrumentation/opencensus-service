@@ -40,6 +40,8 @@ import (
 var configYAMLFile string
 var ocInterceptorPort int
 
+const zipkinRoute = "/api/v2/spans"
+
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
@@ -170,7 +172,6 @@ func runZipkinInterceptor(addr string, sr spanreceiver.SpanReceiver) (doneFn fun
 	if err != nil {
 		return nil, fmt.Errorf("Cannot bind Zipkin interceptor to address %q: %v", addr, err)
 	}
-	zipkinRoute := "/api/v2/spans"
 	mux := http.NewServeMux()
 	mux.Handle(zipkinRoute, zi)
 	go func() {
