@@ -63,7 +63,7 @@ const (
 func (zc *ZipkinConfig) EndpointURL() string {
 	// If no endpoint was set, use the default Zipkin reporter URI.
 	endpoint := DefaultZipkinEndpointURL
-	if zc.Endpoint != "" {
+	if zc != nil && zc.Endpoint != "" {
 		endpoint = zc.Endpoint
 	}
 	return endpoint

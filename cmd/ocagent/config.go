@@ -141,10 +141,11 @@ func (c *config) checkLogicalConflicts(blob []byte) error {
 		return err
 	}
 
-	var zc *exporterparser.ZipkinConfig
-	if cfg.Exporters != nil {
-		zc = cfg.Exporters.Zipkin
+	if cfg.Exporters == nil || cfg.Exporters.Zipkin == nil {
+		return nil
 	}
+
+	zc := cfg.Exporters.Zipkin
 
 	zExporterAddr := zc.EndpointURL()
 	zExporterURL, err := url.Parse(zExporterAddr)

@@ -15,11 +15,14 @@
 package zipkinterceptor
 
 import (
+	"compress/gzip"
+	"compress/zlib"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -99,6 +102,42 @@ func (zi *ZipkinInterceptor) StopTraceInterception(ctx context.Context) error {
 	return nil
 }
 
+// processBodyIfNecessary checks the "Content-Encoding" HTTP header and if
+// a compression such as "gzip", "deflate", "zlib", is found, the body will
+// be uncompressed accordingly or return the body untouched if otherwise.
+// Clients such as Zipkin-Java do this behavior e.g.
+//    send "Content-Encoding":"gzip" of the JSON content.
+func processBodyIfNecessary(req *http.Request) io.Reader {
+	switch req.Header.Get("Content-Encoding") {
+	default:
+		return req.Body
+
+	case "gzip":
+		return gunzippedBodyIfPossible(req.Body)
+
+	case "deflate", "zlib":
+		return zlibUncompressedbody(req.Body)
+	}
+}
+
+func gunzippedBodyIfPossible(r io.Reader) io.Reader {
+	gzr, err := gzip.NewReader(r)
+	if err != nil {
+		// Just return the old body as was
+		return r
+	}
+	return gzr
+}
+
+func zlibUncompressedbody(r io.Reader) io.Reader {
+	zr, err := zlib.NewReader(r)
+	if err != nil {
+		// Just return the old body as was
+		return r
+	}
+	return zr
+}
+
 // The ZipkinInterceptor receives spans from endpoint /api/v2 as JSON,
 // unmarshals them and sends them along to the spanreceiver.
 func (zi *ZipkinInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -110,9 +149,13 @@ func (zi *ZipkinInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	parentCtx := r.Context()
 	internal.SetParentLink(parentCtx, span)
 
-	blob, err := ioutil.ReadAll(r.Body)
+	pr := processBodyIfNecessary(r)
+	slurp, err := ioutil.ReadAll(pr)
+	if c, ok := pr.(io.Closer); ok {
+		_ = c.Close()
+	}
 	_ = r.Body.Close()
-	ereqs, err := zi.parseAndConvertToTraceSpans(blob)
+	ereqs, err := zi.parseAndConvertToTraceSpans(slurp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
