@@ -65,22 +65,21 @@ func (zi *ZipkinInterceptor) parseAndConvertToTraceSpans(jsonBlob []byte) (reqs 
 	// *commonpb.Node instances have unique addresses hence
 	// for grouping within a map, we'll use the .String() value
 	byNodeGrouping := make(map[string][]*tracepb.Span)
-	nodes := make([]*commonpb.Node, 0, len(zipkinSpans))
+	uniqueNodes := make([]*commonpb.Node, 0, len(zipkinSpans))
 	// Now translate them into tracepb.Span
 	for _, zspan := range zipkinSpans {
 		span, node, err := zipkinSpanToTraceSpan(zspan)
 		// TODO:(@odeke-em) record errors
 		if err == nil && span != nil {
 			key := node.String()
-			if _, firstTime := byNodeGrouping[key]; firstTime {
-				nodes = append(nodes, node)
+			if _, alreadyAdded := byNodeGrouping[key]; !alreadyAdded {
+				uniqueNodes = append(uniqueNodes, node)
 			}
 			byNodeGrouping[key] = append(byNodeGrouping[key], span)
 		}
 	}
 
-	// TODO: @odeke-em perhaps maintain the relative order that the spans were received in
-	for _, node := range nodes {
+	for _, node := range uniqueNodes {
 		key := node.String()
 		spans := byNodeGrouping[key]
 		if len(spans) == 0 {

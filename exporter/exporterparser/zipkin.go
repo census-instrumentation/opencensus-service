@@ -40,6 +40,7 @@ type ZipkinConfig struct {
 // Zipkin servers and then transform them back to the final form when creating an
 // OpenCensus spandata.
 type zipkinExporter struct {
+	// mu protects the fields below
 	mu sync.RWMutex
 
 	defaultExporter         *zipkin.Exporter
