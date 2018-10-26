@@ -50,3 +50,7 @@ agent-all-platforms:
 	GOOS=darwin $(MAKE) agent
 	GOOS=linux $(MAKE) agent
 	GOOS=windows $(MAKE) agent
+
+.PHONY: install-tools
+install-tools:
+	go get -u golang.org/x/lint/golint
