@@ -62,7 +62,7 @@ func TestConvertSpansToTraceSpans(t *testing.T) {
 			Name: "frontend",
 		},
 		Attributes: map[string]string{
-			"ipv6": "7::80:807f",
+			"ipv6":                       "7::80:807f",
 			"zipkin.remoteEndpoint.ipv4": "192.168.99.101",
 			"zipkin.remoteEndpoint.port": "9000",
 		},
@@ -170,7 +170,7 @@ func TestConversionRoundtrip(t *testing.T) {
 			Node: &commonpb.Node{
 				ServiceInfo: &commonpb.ServiceInfo{Name: "frontend"},
 				Attributes: map[string]string{
-					"ipv6": "7::80:807f",
+					"ipv6":                       "7::80:807f",
 					"zipkin.remoteEndpoint.ipv4": "192.168.99.101",
 					"zipkin.remoteEndpoint.port": "9000",
 				},
