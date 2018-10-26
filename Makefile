@@ -13,7 +13,7 @@ BUILD_INFO=-ldflags "-X $(BUILD_INFO_IMPORT_PATH).GitHash=$(GIT_SHA)"
 .DEFAULT_GOAL := default_goal
 
 .PHONY: default_goal
-default_goal: fmt test
+default_goal: fmt lint test
 
 .PHONY: clean
 clean:
