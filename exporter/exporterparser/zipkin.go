@@ -41,7 +41,7 @@ type ZipkinConfig struct {
 // OpenCensus spandata.
 type zipkinExporter struct {
 	// mu protects the fields below
-	mu sync.RWMutex
+	mu sync.Mutex
 
 	defaultExporter         *zipkin.Exporter
 	defaultServiceName      string
