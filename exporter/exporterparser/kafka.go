@@ -17,10 +17,12 @@ package exporterparser
 import (
 	"context"
 	"fmt"
-	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
-	"github.com/census-instrumentation/opencensus-service/exporter"
+
 	"github.com/yancl/opencensus-go-exporter-kafka"
 	"go.opencensus.io/trace"
+
+	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
+	"github.com/census-instrumentation/opencensus-service/exporter"
 )
 
 type kafkaConfig struct {
@@ -47,14 +49,14 @@ func KafkaExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneFn
 	if cfg.Exporters == nil {
 		return nil, nil, nil
 	}
-	sc := cfg.Exporters.Kafka
-	if sc == nil {
+	kc := cfg.Exporters.Kafka
+	if kc == nil {
 		return nil, nil, nil
 	}
 
 	kde, kerr := kafka.NewExporter(kafka.Options{
-		Brokers: sc.Brokers,
-		Topic:   sc.Topic,
+		Brokers: kc.Brokers,
+		Topic:   kc.Topic,
 	})
 
 	if kerr != nil {
