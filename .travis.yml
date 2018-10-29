@@ -6,5 +6,4 @@ go:
   - 1.10.x
  
 install:
-  - make install-tools
   - go get -t -v ./...

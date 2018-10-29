@@ -2,7 +2,6 @@ ALL_SRC := $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
 GOTEST_OPT=-v -race
 GOTEST=go test
-GOLINT=golint
 GOFMT=gofmt
 GOOS=$(shell go env GOOS)
 
@@ -32,15 +31,6 @@ fmt:
 		exit 1; \
 	fi
 
-.PHONY: lint
-lint:
-	@LINTOUT=`$(GOLINT) ./... 2>&1`; \
-	if [ "$$LINTOUT" ]; then \
-		echo "$(GOLINT) FAILED => clean the following lint errors:\n"; \
-		echo "$$LINTOUT\n"; \
-		exit 1; \
-	fi
-
 .PHONY: agent
 agent:
 	CGO_ENABLED=0 go build -o ./bin/ocagent_$(GOOS) $(BUILD_INFO) ./cmd/ocagent
@@ -50,7 +40,3 @@ agent-all-platforms:
 	GOOS=darwin $(MAKE) agent
 	GOOS=linux $(MAKE) agent
 	GOOS=windows $(MAKE) agent
-
-.PHONY: install-tools
-install-tools:
-	go get -u golang.org/x/lint/golint
