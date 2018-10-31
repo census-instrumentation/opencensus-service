@@ -12,8 +12,6 @@ OpenCensus Collector.
         - [Interceptors](#agent-impl-interceptors)
         - [Agent Core](#agent-impl-agent-core)
         - [Exporters](#agent-impl-exporters)
-    - [Diagnostics](#agent-diagnostics)
-        - [zPages](#agent-zpages)
 - [OpenCensus Collector](#opencensus-collector)
     - [Architecture overview](#collector-architecture-overview)
 
@@ -137,41 +135,6 @@ streams that cannot be kept alive all the time (e.g gRPC-Python).
 Once in a while, Agent Core will push `SpanProto` with `Node` to each exporter. After
 receiving them, each exporter will translate `SpanProto` to the format supported by the
 backend (e.g Jaeger Thrift Span), and then push them to corresponding backend or service.
-
-### <a name="agent-diagnostics"></a>Diagnostics
-
-To monitor the agent itself, we provide some diagnostic tools like:
-
-#### <a name="agent-zpages"></a>zPages
-
-We provide zPages for information on ocagent's internals, running by default on port `55679`.
-These routes below contain the various diagnostic resources:
-
-Resource|Route
----|---
-RPC stats|/debug/rpcz
-Trace information|/debug/tracez
-
-The zPages configuration can be updated in the config.yaml file with fields:
-* `disabled`: if set to true, won't run zPages
-* `port`: by default is 55679, otherwise should be set to a value between 0 an 65535
-
-For example
-```yaml
-zpages:
-    port: 8888 # To override the port from 55679 to 8888
-```
-
-To disable zPages, you can use `disabled` like this:
-```yaml
-zpages:
-    disabled: true
-```
-
-and for example navigating to http://localhost:55679/debug/tracez to debug the
-OpenCensus interceptor's traces in your browser should produce something like this
-
-![zPages](https://user-images.githubusercontent.com/4898263/47132981-892bb500-d25b-11e8-980c-08f0115ba72e.png)
 
 ## OpenCensus Collector
 

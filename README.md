@@ -16,6 +16,8 @@
             - [OpenCensus](#details-interceptors-opencensus)
             - [Zipkin](#details-interceptors-zipkin)
         - [End-to-end example](#agent-config-end-to-end-example)
+    - [Diagnostics](#agent-diagnostics)
+        - [zPages](#agent-zpages)
     - [Docker image](#agent-docker-image)
 - [OpenCensus Collector](#opencensus-collector)
     - [Usage](#collector-usage)
@@ -118,7 +120,7 @@ exporters:
 ```
 
 #### <a name="agent-config-interceptors"></a>Interceptors
-Aent provides a couple of interceptors that receive spans from instrumentation libraries.
+Agent provides a couple of interceptors that receive spans from instrumentation libraries.
 
 #### <a name="details-interceptors-opencensus"></a>OpenCensus
 
@@ -170,6 +172,41 @@ $ go run "$(go env GOPATH)/src/github.com/census-instrumentation/opencensus-serv
 You should be able to see the traces in Stackdriver and Zipkin.
 If you stop the ocagent, the example application will stop exporting.
 If you run it again, exporting will resume.
+
+### <a name="agent-diagnostics"></a>Diagnostics
+
+To monitor the agent itself, we provide some diagnostic tools like:
+
+#### <a name="agent-zpages"></a>zPages
+
+We provide zPages for information on ocagent's internals, running by default on port `55679`.
+These routes below contain the various diagnostic resources:
+
+Resource|Route
+---|---
+RPC stats|/debug/rpcz
+Trace information|/debug/tracez
+
+The zPages configuration can be updated in the config.yaml file with fields:
+* `disabled`: if set to true, won't run zPages
+* `port`: by default is 55679, otherwise should be set to a value between 0 an 65535
+
+For example
+```yaml
+zpages:
+    port: 8888 # To override the port from 55679 to 8888
+```
+
+To disable zPages, you can use `disabled` like this:
+```yaml
+zpages:
+    disabled: true
+```
+
+and for example navigating to http://localhost:55679/debug/tracez to debug the
+OpenCensus interceptor's traces in your browser should produce something like this
+
+![zPages](https://user-images.githubusercontent.com/4898263/47132981-892bb500-d25b-11e8-980c-08f0115ba72e.png)
 
 ### <a name="agent-docker-image"></a>Docker image
 
