@@ -42,11 +42,11 @@ backends. We MAY also give Agent the ability to push configurations (e.g samplin
 Library. For those languages that cannot do stats aggregation in process, they should also be
 able to send raw measurements and have Agent do the aggregation.
 
+![agent-architecture](https://user-images.githubusercontent.com/10536136/46707027-dae59700-cbec-11e8-80ae-f16a8bdbacf4.png)
+
 For developers/maintainers of other libraries: Agent can also be extended to accept spans/stats/metrics from
 other tracing/monitoring libraries, such as Zipkin, Prometheus, etc. This is done by adding specific
 interceptors. See [Interceptors](#interceptors) for details.
-
-![agent-architecture](https://user-images.githubusercontent.com/10536136/46707027-dae59700-cbec-11e8-80ae-f16a8bdbacf4.png)
 
 To support Agent, Library should have “agent exporters”, similar to the existing exporters to
 other backends. There should be 3 separate agent exporters for tracing/stats/metrics

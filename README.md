@@ -49,7 +49,11 @@ backend of users' choice.
 
 Currently OpenCensus Service consists of two components,
 [OpenCensus Agent](#opencensus-agent) and [OpenCensus Collector](#opencensus-collector).
-For the detailed design specs, please see [DESIGN.md](DESIGN.md);
+High-level workflow:
+
+![service-architecture](https://user-images.githubusercontent.com/10536136/46637070-65f05f80-cb0f-11e8-96e6-bc56468486b3.png)
+
+For the detailed design specs, please see [DESIGN.md](DESIGN.md).
 
 ## Goals
 
