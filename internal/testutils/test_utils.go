@@ -23,7 +23,7 @@ import (
 // may have differences due to formatting. It returns nil in case of
 // invalid JSON.
 func GenerateNormalizedJSON(j string) string {
-	var i []interface{}
+	var i interface{}
 	json.Unmarshal([]byte(j), &i)
 	n, _ := json.Marshal(i)
 	return string(n)
