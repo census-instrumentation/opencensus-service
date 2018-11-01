@@ -5,8 +5,6 @@ GOTEST=go test
 GOFMT=gofmt
 GOOS=$(shell go env GOOS)
 
-OUT_DIR?=./bin/
-
 GIT_SHA=$(shell git rev-parse --short HEAD)
 BUILD_INFO_IMPORT_PATH=github.com/census-instrumentation/opencensus-service/internal/version
 BUILD_INFO=-ldflags "-X $(BUILD_INFO_IMPORT_PATH).GitHash=$(GIT_SHA)"
