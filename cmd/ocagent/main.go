@@ -124,7 +124,7 @@ func runZPages(port int) func() error {
 	srv := http.Server{Handler: zPagesMux}
 	go func() {
 		log.Printf("Running zPages at %q", addr)
-		if err := srv.Serve(ln); err != nil && err.Error() != "http: Server closed" {
+		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to serve zPages: %v", err)
 		}
 	}()
