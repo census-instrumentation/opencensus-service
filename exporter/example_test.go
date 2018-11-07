@@ -32,7 +32,7 @@ import (
 
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/exporter"
-	"github.com/census-instrumentation/opencensus-service/interceptor/opencensustrace"
+	"github.com/census-instrumentation/opencensus-service/interceptor/octrace"
 )
 
 func Example_endToEndExporting() {

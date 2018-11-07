@@ -26,7 +26,7 @@ import (
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/interceptor"
-	octrace "github.com/census-instrumentation/opencensus-service/interceptor/opencensustrace"
+	octrace "github.com/census-instrumentation/opencensus-service/interceptor/octrace"
 	"github.com/census-instrumentation/opencensus-service/spanreceiver"
 )
 
