@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package octraceinterceptor_test
+package octrace_test
 
 import (
 	"bytes"
@@ -48,7 +48,7 @@ func TestInterceptor_endToEnd(t *testing.T) {
 
 	sappender := newSpanAppender()
 
-	_, port, doneFn := ocInterceptorOnGRPCServer(t, sappender, octraceinterceptor.WithSpanBufferPeriod(100*time.Millisecond))
+	_, port, doneFn := ocInterceptorOnGRPCServer(t, sappender, octrace.WithSpanBufferPeriod(100*time.Millisecond))
 	defer doneFn()
 
 	// Now the opencensus-agent exporter.
@@ -171,7 +171,7 @@ func TestInterceptor_endToEnd(t *testing.T) {
 func TestExportMultiplexing(t *testing.T) {
 	spanSink := newSpanAppender()
 
-	_, port, doneFn := ocInterceptorOnGRPCServer(t, spanSink, octraceinterceptor.WithSpanBufferPeriod(90*time.Millisecond))
+	_, port, doneFn := ocInterceptorOnGRPCServer(t, spanSink, octrace.WithSpanBufferPeriod(90*time.Millisecond))
 	defer doneFn()
 
 	traceClient, traceClientDoneFn, err := makeTraceServiceClient(port)
@@ -290,7 +290,7 @@ func TestExportMultiplexing(t *testing.T) {
 func TestExportProtocolViolations_nodelessFirstMessage(t *testing.T) {
 	spanSink := newSpanAppender()
 
-	_, port, doneFn := ocInterceptorOnGRPCServer(t, spanSink, octraceinterceptor.WithSpanBufferPeriod(90*time.Millisecond))
+	_, port, doneFn := ocInterceptorOnGRPCServer(t, spanSink, octrace.WithSpanBufferPeriod(90*time.Millisecond))
 	defer doneFn()
 
 	traceClient, traceClientDoneFn, err := makeTraceServiceClient(port)
@@ -358,7 +358,7 @@ func TestExportProtocolViolations_nodelessFirstMessage(t *testing.T) {
 func TestExportProtocolConformation_spansInFirstMessage(t *testing.T) {
 	spanSink := newSpanAppender()
 
-	_, port, doneFn := ocInterceptorOnGRPCServer(t, spanSink, octraceinterceptor.WithSpanBufferPeriod(70*time.Millisecond))
+	_, port, doneFn := ocInterceptorOnGRPCServer(t, spanSink, octrace.WithSpanBufferPeriod(70*time.Millisecond))
 	defer doneFn()
 
 	traceClient, traceClientDoneFn, err := makeTraceServiceClient(port)
@@ -456,7 +456,7 @@ func (sa *spanAppender) ReceiveSpans(ctx context.Context, node *commonpb.Node, s
 	return &spanreceiver.Acknowledgement{SavedSpans: uint64(len(spans))}, nil
 }
 
-func ocInterceptorOnGRPCServer(t *testing.T, sr spanreceiver.SpanReceiver, opts ...octraceinterceptor.Option) (oci *octraceinterceptor.Interceptor, port int, done func()) {
+func ocInterceptorOnGRPCServer(t *testing.T, sr spanreceiver.SpanReceiver, opts ...octrace.Option) (oci *octrace.Interceptor, port int, done func()) {
 	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
 		t.Fatalf("Failed to find an available address to run the gRPC server: %v", err)
@@ -480,7 +480,7 @@ func ocInterceptorOnGRPCServer(t *testing.T, sr spanreceiver.SpanReceiver, opts 
 		t.Fatalf("Failed to create new agent: %v", err)
 	}
 
-	oci, err = octraceinterceptor.New(sr, opts...)
+	oci, err = octrace.New(sr, opts...)
 	if err != nil {
 		t.Fatalf("Failed to create the Interceptor: %v", err)
 	}

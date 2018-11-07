@@ -133,7 +133,7 @@ func runZPages(port int) func() error {
 }
 
 func runOCInterceptor(addr string, sr spanreceiver.SpanReceiver) (doneFn func() error, err error) {
-	oci, err := octraceinterceptor.New(sr, octraceinterceptor.WithSpanBufferPeriod(800*time.Millisecond))
+	oci, err := octrace.New(sr, octrace.WithSpanBufferPeriod(800*time.Millisecond))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create the OpenCensus interceptor: %v", err)
 	}

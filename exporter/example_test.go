@@ -111,7 +111,7 @@ func runServer() (port uint16, closeFn func()) {
 
 	// Now run the OCInterceptor which will receive traces from the client applications
 	// in the various languages instrumented with OpenCensus.
-	oci, err := octraceinterceptor.New(commonSpanReceiver, octraceinterceptor.WithSpanBufferPeriod(100*time.Millisecond))
+	oci, err := octrace.New(commonSpanReceiver, octrace.WithSpanBufferPeriod(100*time.Millisecond))
 	if err != nil {
 		log.Fatalf("Failed to create the OpenCensus interceptor: %v", err)
 	}

@@ -91,7 +91,7 @@ func runOCServerWithInterceptor(addr string, logger *zap.Logger) (func() error, 
 		logger: logger,
 	}
 
-	oci, err := octraceinterceptor.New(sr, octraceinterceptor.WithSpanBufferPeriod(800*time.Millisecond))
+	oci, err := octrace.New(sr, octrace.WithSpanBufferPeriod(800*time.Millisecond))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create the OpenCensus interceptor: %v", err)
 	}
