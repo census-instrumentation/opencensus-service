@@ -161,10 +161,13 @@ interceptors:
 Run the example application that collects traces and exports them
 to the daemon.
 
-Firstly run ocagent:
+Create an [Agent configuration file](#agent-configuration-file) as described above.
+
+Build the agent, see [Building binaries](#agent-building-binaries),
+and start it:
 
 ```shell
-$ ocagent
+$ ./bin/ocagent_$(go env GOOS)
 ```
 
 Next run the demo application:
@@ -232,7 +235,7 @@ and then the Docker image `v1.0.0` of the agent can be started  by
 docker run -v $(pwd)/config.yaml:/config.yaml  -p 55678:55678  ocagent:v1.0.0
 ```
 
-A Docker scratch image can be built with make by targetting `docker-agent`.
+A Docker scratch image can be built with make by targeting `docker-agent`.
 
 ## OpenCensus Collector
 
