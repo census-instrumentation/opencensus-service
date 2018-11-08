@@ -74,11 +74,11 @@ func TestJaegerThriftBatchToOCProto(t *testing.T) {
 
 func loadFromJSON(file string, obj interface{}) error {
 	blob, err := ioutil.ReadFile(file)
-	if err == nil {
-		err = json.Unmarshal(blob, obj)
+	if err != nil {
+		return err
 	}
 
-	return err
+	return json.Unmarshal(blob, obj)
 }
 
 // This test ensures that we conservatively allocate, only creating memory when necessary.

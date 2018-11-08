@@ -20,86 +20,13 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
-	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
-	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
-	"github.com/census-instrumentation/opencensus-service/receiver/opencensus"
-	"github.com/census-instrumentation/opencensus-service/spansink"
-
-	"go.opencensus.io/plugin/ocgrpc"
-	"go.opencensus.io/stats/view"
-	"go.uber.org/zap"
-)
-
-const (
-	defaultOCAddress = ":55678"
+	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/collector"
 )
 
 func main() {
-	var signalsChannel = make(chan os.Signal)
-	signal.Notify(signalsChannel, os.Interrupt, syscall.SIGTERM)
-
-	// TODO: Allow configuration of logger and other items such as servers, etc.
-	logger, err := zap.NewProduction()
-	if err != nil {
-		log.Fatalf("Failed to get production logger: %v", err)
+	if err := collector.Execute(); err != nil {
+		log.Fatalf("Failed to run the collector. Error: %v", err)
 	}
-
-	logger.Info("Starting...")
-
-	closeSrv, err := runOCServerWithReceiver(defaultOCAddress, logger)
-	if err != nil {
-		logger.Fatal("Cannot run opencensus server", zap.String("Address", defaultOCAddress), zap.Error(err))
-	}
-
-	logger.Info("Collector is up and running.")
-
-	<-signalsChannel
-	logger.Info("Starting shutdown...")
-
-	// TODO: orderly shutdown: first receivers, then flushing pipelines giving
-	// senders a chance to send all their data. This may take time, the allowed
-	// time should be part of configuration.
-	closeSrv()
-
-	logger.Info("Shutdown complete.")
-}
-
-func runOCServerWithReceiver(addr string, logger *zap.Logger) (func() error, error) {
-	if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
-		return nil, fmt.Errorf("Failed to register ocgrpc.DefaultServerViews: %v", err)
-	}
-
-	sr := &fakeSpanSink{
-		logger: logger,
-	}
-
-	ocr, err := opencensus.New(addr)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create the OpenCensus receiver: %v", err)
-	}
-	if err := ocr.StartTraceReception(context.Background(), sr); err != nil {
-		return nil, fmt.Errorf("Failed to start OpenCensus TraceReceiver : %v", err)
-	}
-	return ocr.Stop, nil
-}
-
-type fakeSpanSink struct {
-	logger *zap.Logger
-}
-
-func (sr *fakeSpanSink) ReceiveSpans(ctx context.Context, node *commonpb.Node, spans ...*tracepb.Span) (*spansink.Acknowledgement, error) {
-	ack := &spansink.Acknowledgement{
-		SavedSpans: uint64(len(spans)),
-	}
-
-	sr.logger.Info("ReceivedSpans", zap.Uint64("Received spans", ack.SavedSpans))
-
-	return ack, nil
 }
