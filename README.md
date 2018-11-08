@@ -327,14 +327,33 @@ Usage:
   occollector [flags]
 
 Flags:
-      --add-queued-processor   Flag to wrap one processor with the queued processor (flag will be remove soon, dev helper)
-      --config string          Path to the config file
-  -h, --help                   help for occollector
-      --log-level string       Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL) (default "INFO")
-      --noop-processor         Flag to add the no-op processor (combine with log level DEBUG to log incoming spans)
-      --receive-jaeger         Flag to run the Jaeger receiver (i.e.: Jaeger Collector), default settings: {ThriftTChannelPort:14267 ThriftHTTPPort:14268}
-      --receive-oc-trace       Flag to run the OpenCensus trace receiver, default settings: {Port:55678}
-      --receive-zipkin         Flag to run the Zipkin receiver, default settings: {Port:9411}
+      --config string      Path to the config file
+      --debug-processor    Flag to add a debug processor (combine with log level DEBUG to log incoming spans)
+  -h, --help               help for occollector
+      --log-level string   Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL) (default "INFO")
+      --receive-jaeger     Flag to run the Jaeger receiver (i.e.: Jaeger Collector), default settings: {ThriftTChannelPort:14267 ThriftHTTPPort:14268}
+      --receive-oc-trace   Flag to run the OpenCensus trace receiver, default settings: {Port:55678}
+      --receive-zipkin     Flag to run the Zipkin receiver, default settings: {Port:9411}
+```
+
+5. Sample configuration file:
+```yaml
+log-level: DEBUG
+
+receivers:
+  opencensus: {} # Runs OpenCensus receiver with default configuration
+
+processors:
+  docker-composer-test: # A friendly name for the processor
+    num-workers: 2
+    queue-size: 100
+    retry-on-failure: true
+    backoff-delay: 3s
+    sender-type: thrift-http
+    thrift-http:
+      collector-endpoint: "http://svc-jaeger-collector:4268/api/traces"
+      headers: { "x-omnition-api-key": "00000000-0000-0000-0000-000000000001" }
+      timeout: 5s
 ```
 
 [travis-image]: https://travis-ci.org/census-instrumentation/opencensus-service.svg?branch=master
