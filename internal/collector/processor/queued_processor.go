@@ -102,8 +102,6 @@ func (sp *queuedSpanProcessor) enqueueSpanBatch(batch *agenttracepb.ExportTraceS
 }
 
 func (sp *queuedSpanProcessor) processItemFromQueue(item *queueItem) {
-	// TODO: @(pjanotti) metrics: startTime := time.Now()
-	// TODO:
 	_, err := sp.sender.ProcessSpans(item.batch, item.spanFormat)
 	if err != nil {
 		batchSize := len(item.batch.Spans)

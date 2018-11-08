@@ -16,6 +16,7 @@ package testutils
 
 import (
 	"encoding/json"
+	"io/ioutil"
 )
 
 // GenerateNormalizedJSON generates a normalized JSON from the string
@@ -27,4 +28,14 @@ func GenerateNormalizedJSON(j string) string {
 	json.Unmarshal([]byte(j), &i)
 	n, _ := json.Marshal(i)
 	return string(n)
+}
+
+// SaveAsFormattedJSON save the object as a formatted JSON file to help
+// with investigations.
+func SaveAsFormattedJSON(file string, o interface{}) error {
+	blob, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		return nil
+	}
+	return ioutil.WriteFile(file, blob, 0644)
 }

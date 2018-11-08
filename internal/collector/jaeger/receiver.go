@@ -19,7 +19,7 @@
 // Note that the UDP transport is not supported since these protocol/transport
 // are for task->jaeger-agent communication only and the receiver does not try to
 // support jaeger-agent endpoints.
-// TODO: add support for the jaeger proto endpoint released in jaeger 1.8package jaegerreceiver
+// TODO: add support for the jaeger proto endpoint released in jaeger 1.8
 package jaegerreceiver
 
 import (
