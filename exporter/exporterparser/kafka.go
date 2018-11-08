@@ -36,6 +36,8 @@ type kafkaExporter struct {
 
 var _ exporter.TraceExporter = (*kafkaExporter)(nil)
 
+// KafkaExportersFromYAML parses the yaml bytes and returns an exporter.TraceExporter targeting
+// Kafka according to the configuration settings.
 func KafkaExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneFns []func() error, err error) {
 	var cfg struct {
 		Exporters *struct {
