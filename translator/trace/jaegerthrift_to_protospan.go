@@ -88,7 +88,7 @@ func jSpansToOCProtoSpans(jspans []*jaeger.Span) []*tracepb.Span {
 		}
 
 		startTime := epochMicrosecondsAsTime(uint64(jspan.StartTime))
-		sKind, sAttributes := jtagsToAttributes(jspan.Tags)
+		sKind, sStatus, sAttributes := jtagsToAttributes(jspan.Tags)
 		span := &tracepb.Span{
 			TraceId: jTraceIDToOCProtoTraceID(jspan.TraceIdHigh, jspan.TraceIdLow),
 			SpanId:  jSpanIDToOCProtoSpanID(jspan.SpanId),
@@ -102,6 +102,7 @@ func jSpansToOCProtoSpans(jspans []*jaeger.Span) []*tracepb.Span {
 			// TODO: StackTrace: OpenTracing defines a semantic key for "stack", should we attempt to its content to StackTrace?
 			TimeEvents: jLogsToOCProtoTimeEvents(jspan.Logs),
 			Links:      jReferencesToOCProtoLinks(jspan.References),
+			Status:     sStatus,
 		}
 
 		spans = append(spans, span)
@@ -115,11 +116,10 @@ func jLogsToOCProtoTimeEvents(logs []*jaeger.Log) *tracepb.Span_TimeEvents {
 		return nil
 	}
 
-	timeEvents := &tracepb.Span_TimeEvents{
-		TimeEvent: make([]*tracepb.Span_TimeEvent, 0, len(logs)),
-	}
+	timeEvents := make([]*tracepb.Span_TimeEvent, 0, len(logs))
+
 	for _, log := range logs {
-		_, attribs := jtagsToAttributes(log.Fields)
+		_, _, attribs := jtagsToAttributes(log.Fields)
 		annotation := &tracepb.Span_TimeEvent_Annotation{
 			Attributes: attribs,
 		}
@@ -128,10 +128,10 @@ func jLogsToOCProtoTimeEvents(logs []*jaeger.Log) *tracepb.Span_TimeEvents {
 			Value: &tracepb.Span_TimeEvent_Annotation_{Annotation: annotation},
 		}
 
-		timeEvents.TimeEvent = append(timeEvents.TimeEvent, timeEvent)
+		timeEvents = append(timeEvents, timeEvent)
 	}
 
-	return timeEvents
+	return &tracepb.Span_TimeEvents{TimeEvent: timeEvents}
 }
 
 func jReferencesToOCProtoLinks(jrefs []*jaeger.SpanRef) *tracepb.Span_Links {
@@ -139,16 +139,14 @@ func jReferencesToOCProtoLinks(jrefs []*jaeger.SpanRef) *tracepb.Span_Links {
 		return nil
 	}
 
-	links := &tracepb.Span_Links{
-		Link: make([]*tracepb.Span_Link, 0, len(jrefs)),
-	}
+	links := make([]*tracepb.Span_Link, 0, len(jrefs))
 
 	for _, jref := range jrefs {
 		var linkType tracepb.Span_Link_Type
 		if jref.RefType == jaeger.SpanRefType_CHILD_OF {
 			linkType = tracepb.Span_Link_CHILD_LINKED_SPAN
 		} else {
-			// SpanRefType_FOLLOWS_FROM doesn't map well to OC, so treat all other cases as unknown
+			// TODO: SpanRefType_FOLLOWS_FROM doesn't map well to OC, so treat all other cases as unknown
 			linkType = tracepb.Span_Link_TYPE_UNSPECIFIED
 		}
 
@@ -157,10 +155,10 @@ func jReferencesToOCProtoLinks(jrefs []*jaeger.SpanRef) *tracepb.Span_Links {
 			SpanId:  jSpanIDToOCProtoSpanID(jref.SpanId),
 			Type:    linkType,
 		}
-		links.Link = append(links.Link, link)
+		links = append(links, link)
 	}
 
-	return links
+	return &tracepb.Span_Links{Link: links}
 }
 
 func jTraceIDToOCProtoTraceID(high, low int64) []byte {
@@ -176,25 +174,31 @@ func jSpanIDToOCProtoSpanID(id int64) []byte {
 	return spanID
 }
 
-func jtagsToAttributes(tags []*jaeger.Tag) (tracepb.Span_SpanKind, *tracepb.Span_Attributes) {
+func jtagsToAttributes(tags []*jaeger.Tag) (tracepb.Span_SpanKind, *tracepb.Status, *tracepb.Span_Attributes) {
 	if tags == nil {
-		return tracepb.Span_SPAN_KIND_UNSPECIFIED, nil
+		return tracepb.Span_SPAN_KIND_UNSPECIFIED, nil, nil
 	}
 
 	var sKind tracepb.Span_SpanKind
-	sAttribs := &tracepb.Span_Attributes{
-		AttributeMap: make(map[string]*tracepb.AttributeValue, len(tags)),
-	}
+	var sStatus *tracepb.Status
+
+	sAttribs := make(map[string]*tracepb.AttributeValue, len(tags))
 
 	for _, tag := range tags {
 		// Take the opportunity to get the "span.kind" per OpenTracing spec, however, keep it also on the attributes.
 		// TODO: Q: Replace any OpenTracing literals by importing github.com/opentracing/opentracing-go/ext?
-		if tag.Key == "span.kind" {
+		switch tag.Key {
+		case "span.kind":
 			switch tag.GetVStr() {
 			case "client":
 				sKind = tracepb.Span_CLIENT
 			case "server":
 				sKind = tracepb.Span_SERVER
+			}
+		case "http.status_code": // It is expected to be an int
+			sStatus = &tracepb.Status{
+				Code:    int32(tag.GetVLong()),
+				Message: tag.GetVStr(),
 			}
 		}
 
@@ -226,15 +230,13 @@ func jtagsToAttributes(tags []*jaeger.Tag) (tracepb.Span_SpanKind, *tracepb.Span
 			}
 		}
 
-		sAttribs.AttributeMap[tag.Key] = attrib
+		sAttribs[tag.Key] = attrib
 	}
 
-	return sKind, sAttribs
+	return sKind, sStatus, &tracepb.Span_Attributes{AttributeMap: sAttribs}
 }
 
 // epochMicrosecondsAsTime converts microseconds since epoch to time.Time value.
 func epochMicrosecondsAsTime(ts uint64) time.Time {
-	seconds := ts / 1000000
-	nanos := 1000 * (ts % 1000000)
-	return time.Unix(int64(seconds), int64(nanos)).UTC()
+	return time.Unix(0, int64(ts*1e3)).UTC()
 }

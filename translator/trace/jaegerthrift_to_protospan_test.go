@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/census-instrumentation/opencensus-service/internal/testutils"
@@ -30,26 +29,35 @@ func TestJaegerThriftBatchToOCProto(t *testing.T) {
 	const numOfFiles = 2
 	for i := 1; i <= 2; i++ {
 		thriftInFile := fmt.Sprintf("./testdata/thrift_batch_%02d.json", i)
-		jb := loadJaegerThriftBatchFromJSON(t, thriftInFile)
+		jb := &jaeger.Batch{}
+		if err := loadFromJSON(thriftInFile, jb); err != nil {
+			t.Errorf("Failed load Jaeger Thrift from %q. Error: %v", thriftInFile, err)
+			continue
+		}
+
 		octrace, err := JaegerThriftBatchToOCProto(jb)
 		if err != nil {
 			t.Errorf("Failed to handled Jaeger Thrift Batch from %q. Error: %v", thriftInFile, err)
+			continue
 		}
 
-		wantedSpanCount, receivedSpanCount := len(jb.Spans), len(octrace.Spans)
-		if wantedSpanCount != receivedSpanCount {
-			t.Errorf("Different number of spans in the batches on pass #%d (expected %d, got %d)", i, wantedSpanCount, receivedSpanCount)
+		wantSpanCount, gotSpanCount := len(jb.Spans), len(octrace.Spans)
+		if wantSpanCount != gotSpanCount {
+			t.Errorf("Different number of spans in the batches on pass #%d (want %d, got %d)", i, wantSpanCount, gotSpanCount)
+			continue
 		}
 
 		gb, err := json.MarshalIndent(octrace, "", "  ")
 		if err != nil {
 			t.Errorf("Failed to convert received OC proto to json. Error: %v", err)
+			continue
 		}
 
 		protoFile := fmt.Sprintf("./testdata/ocproto_batch_%02d.json", i)
-		wb, err := ioutil.ReadAll(getFile(t, protoFile))
+		wb, err := ioutil.ReadFile(protoFile)
 		if err != nil {
 			t.Errorf("Failed to read file %q with expected OC proto in JSON format. Error: %v", protoFile, err)
+			continue
 		}
 
 		gj, wj := testutils.GenerateNormalizedJSON(string(gb)), testutils.GenerateNormalizedJSON(string(wb))
@@ -59,24 +67,11 @@ func TestJaegerThriftBatchToOCProto(t *testing.T) {
 	}
 }
 
-func loadJaegerThriftBatchFromJSON(t *testing.T, file string) *jaeger.Batch {
-	r := &jaeger.Batch{}
-	loadFromJSON(t, file, &r)
-	return r
-}
-
-func loadFromJSON(t *testing.T, file string, obj interface{}) {
-	jsonReader := getFile(t, file)
-	err := json.NewDecoder(jsonReader).Decode(obj)
-	if err != nil {
-		t.Errorf("Failed to decode json file %q into type %T", file, obj)
+func loadFromJSON(file string, obj interface{}) error {
+	blob, err := ioutil.ReadFile(file)
+	if err == nil {
+		err = json.Unmarshal(blob, obj)
 	}
-}
 
-func getFile(t *testing.T, file string) *os.File {
-	r, err := os.Open(file)
-	if err != nil {
-		t.Errorf("Failed to open file %q", file)
-	}
-	return r
+	return err
 }
