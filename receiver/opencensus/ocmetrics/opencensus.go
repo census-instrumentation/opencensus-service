@@ -38,7 +38,7 @@ type Receiver struct {
 	metricBufferCount  int
 }
 
-// New creates a new opencensus.Receiver reference.
+// New creates a new ocmetrics.Receiver reference.
 func New(sr metricsink.Sink, opts ...Option) (*Receiver, error) {
 	if sr == nil {
 		return nil, errors.New("needs a non-nil metricsink.Sink")

@@ -86,8 +86,10 @@ func (ocr *ocReceiver) StartTraceReception(ctx context.Context, ts spansink.Sink
 
 	ocr.startTraceReceiverOnce.Do(func() {
 		ocr.traceReceiver, err = octrace.New(ts)
-		srv := ocr.grpcServer()
-		agenttracepb.RegisterTraceServiceServer(srv, ocr.traceReceiver)
+		if err == nil {
+			srv := ocr.grpcServer()
+			agenttracepb.RegisterTraceServiceServer(srv, ocr.traceReceiver)
+		}
 	})
 	return err
 }
@@ -97,8 +99,10 @@ func (ocr *ocReceiver) StartMetricsReception(ctx context.Context, ms metricsink.
 
 	ocr.startMetricsReceiverOnce.Do(func() {
 		ocr.metricsReceiver, err = ocmetrics.New(ms)
-		srv := ocr.grpcServer()
-		agentmetricspb.RegisterMetricsServiceServer(srv, ocr.metricsReceiver)
+		if err == nil {
+			srv := ocr.grpcServer()
+			agentmetricspb.RegisterMetricsServiceServer(srv, ocr.metricsReceiver)
+		}
 	})
 	return err
 }
