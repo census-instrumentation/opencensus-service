@@ -51,12 +51,14 @@ func New(sr spansink.Sink, opts ...Option) (*Receiver, error) {
 
 var _ agenttracepb.TraceServiceServer = (*Receiver)(nil)
 
-var errUnimplemented = errors.New("unimplemented")
-
 // Config handles configuration messages.
 func (oci *Receiver) Config(tcs agenttracepb.TraceService_ConfigServer) error {
 	// TODO: Implement when we define the config receiver/sender.
-	return errUnimplemented
+	_, err := tcs.Recv()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type spansAndNode struct {
