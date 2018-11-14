@@ -28,7 +28,10 @@ import (
 	"syscall"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
+	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
+	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
+	"github.com/census-instrumentation/opencensus-service/metricsink"
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus"
 	"github.com/census-instrumentation/opencensus-service/spansink"
 
@@ -76,7 +79,11 @@ func runOCServerWithReceiver(addr string, logger *zap.Logger) (func() error, err
 		return nil, fmt.Errorf("Failed to register ocgrpc.DefaultServerViews: %v", err)
 	}
 
-	sr := &fakeSpanSink{
+	ss := &fakeSpanSink{
+		logger: logger,
+	}
+
+	ms := &fakeMetricSink{
 		logger: logger,
 	}
 
@@ -84,8 +91,11 @@ func runOCServerWithReceiver(addr string, logger *zap.Logger) (func() error, err
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create the OpenCensus receiver: %v", err)
 	}
-	if err := ocr.StartTraceReception(context.Background(), sr); err != nil {
+	if err := ocr.StartTraceReception(context.Background(), ss); err != nil {
 		return nil, fmt.Errorf("Failed to start OpenCensus TraceReceiver : %v", err)
+	}
+	if err := ocr.StartMetricsReception(context.Background(), ms); err != nil {
+		return nil, fmt.Errorf("Failed to start OpenCensus MetricsReceiver : %v", err)
 	}
 	return ocr.Stop, nil
 }
@@ -100,6 +110,20 @@ func (sr *fakeSpanSink) ReceiveSpans(ctx context.Context, node *commonpb.Node, s
 	}
 
 	sr.logger.Info("ReceivedSpans", zap.Uint64("Received spans", ack.SavedSpans))
+
+	return ack, nil
+}
+
+type fakeMetricSink struct {
+	logger *zap.Logger
+}
+
+func (mr *fakeMetricSink) ReceiveMetrics(ctx context.Context, node *commonpb.Node, resource *resourcepb.Resource, metrics ...*metricspb.Metric) (*metricsink.Acknowledgement, error) {
+	ack := &metricsink.Acknowledgement{
+		SavedMetrics: uint64(len(metrics)),
+	}
+
+	mr.logger.Info("ReceivedMetrics", zap.Uint64("Received metrics", ack.SavedMetrics))
 
 	return ack, nil
 }

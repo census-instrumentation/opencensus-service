@@ -32,6 +32,7 @@ import (
 
 	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/internal"
+	"github.com/census-instrumentation/opencensus-service/metricsink"
 	"github.com/census-instrumentation/opencensus-service/receiver/jaeger"
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus"
 	"github.com/census-instrumentation/opencensus-service/receiver/zipkin"
@@ -71,8 +72,10 @@ func runOCAgent() {
 	traceExporters, closeFns := exportersFromYAMLConfig(yamlBlob)
 	commonSpanSink := exporter.MultiTraceExporters(traceExporters...)
 
+	// TODO: create metricsSink after we add metric exporter interface.
+
 	// Add other receivers here as they are implemented
-	ocReceiverDoneFn, err := runOCReceiver(ocReceiverAddr, commonSpanSink)
+	ocReceiverDoneFn, err := runOCReceiver(ocReceiverAddr, commonSpanSink, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -142,7 +145,7 @@ func runZPages(port int) func() error {
 	return srv.Close
 }
 
-func runOCReceiver(addr string, sr spansink.Sink) (doneFn func() error, err error) {
+func runOCReceiver(addr string, sr spansink.Sink, mr metricsink.Sink) (doneFn func() error, err error) {
 	ocr, err := opencensus.New(addr)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create the OpenCensus receiver on address %q: error %v", addr, err)
@@ -158,6 +161,14 @@ func runOCReceiver(addr string, sr spansink.Sink) (doneFn func() error, err erro
 		return nil, fmt.Errorf("Failed to start TraceReceiver: %v", err)
 	}
 	log.Printf("Running OpenCensus Trace receiver as a gRPC service at %q", addr)
+
+	if mr != nil {
+		if err := ocr.StartMetricsReception(context.Background(), mr); err != nil {
+			return nil, fmt.Errorf("Failed to start MetricsReceiver: %v", err)
+		}
+		log.Printf("Running OpenCensus Metrics receiver as a gRPC service at %q", addr)
+	}
+
 	doneFn = ocr.Stop
 	return doneFn, nil
 }
