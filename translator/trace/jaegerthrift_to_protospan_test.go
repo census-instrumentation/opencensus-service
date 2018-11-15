@@ -36,13 +36,13 @@ func TestJaegerThriftBatchToOCProto(t *testing.T) {
 		thriftInFile := fmt.Sprintf("./testdata/thrift_batch_%02d.json", i)
 		jb := &jaeger.Batch{}
 		if err := loadFromJSON(thriftInFile, jb); err != nil {
-			t.Errorf("Failed load Jaeger Thrift from %q: %v", thriftInFile, err)
+			t.Errorf("Failed load Jaeger Thrift from %q. Error: %v", thriftInFile, err)
 			continue
 		}
 
 		octrace, err := JaegerThriftBatchToOCProto(jb)
 		if err != nil {
-			t.Errorf("Failed to handled Jaeger Thrift Batch from %q: %v", thriftInFile, err)
+			t.Errorf("Failed to handled Jaeger Thrift Batch from %q. Error: %v", thriftInFile, err)
 			continue
 		}
 
@@ -54,14 +54,14 @@ func TestJaegerThriftBatchToOCProto(t *testing.T) {
 
 		gb, err := json.MarshalIndent(octrace, "", "  ")
 		if err != nil {
-			t.Errorf("Failed to convert received OC proto to json: %v", err)
+			t.Errorf("Failed to convert received OC proto to json. Error: %v", err)
 			continue
 		}
 
 		protoFile := fmt.Sprintf("./testdata/ocproto_batch_%02d.json", i)
 		wb, err := ioutil.ReadFile(protoFile)
 		if err != nil {
-			t.Errorf("Failed to read file %q with expected OC proto in JSON format: %v", protoFile, err)
+			t.Errorf("Failed to read file %q with expected OC proto in JSON format. Error: %v", protoFile, err)
 			continue
 		}
 
@@ -74,11 +74,11 @@ func TestJaegerThriftBatchToOCProto(t *testing.T) {
 
 func loadFromJSON(file string, obj interface{}) error {
 	blob, err := ioutil.ReadFile(file)
-	if err != nil {
-		return err
+	if err == nil {
+		err = json.Unmarshal(blob, obj)
 	}
 
-	return json.Unmarshal(blob, obj)
+	return err
 }
 
 // This test ensures that we conservatively allocate, only creating memory when necessary.

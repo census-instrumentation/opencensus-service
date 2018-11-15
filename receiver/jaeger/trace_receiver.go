@@ -48,8 +48,8 @@ type jReceiver struct {
 	tchannelPort      int
 	collectorHTTPPort int
 
-	tchannelLn  net.Listener
-	collectorLn net.Listener
+	tchannel        *tchannel.Channel
+	collectorServer *http.Server
 }
 
 const (
@@ -107,14 +107,14 @@ func (jr *jReceiver) StartTraceReception(ctx context.Context, spanSink spansink.
 			return
 		}
 		tch.Serve(tln)
-		jr.tchannelLn = tln
+		jr.tchannel = tch
 
 		// Now the collector that runs over HTTP
 		caddr := jr.collectorAddr()
 		cln, cerr := net.Listen("tcp", caddr)
 		if cerr != nil {
-			// Abort and close tln
-			_ = tln.Close()
+			// Abort and close tch
+			tch.Close()
 			err = fmt.Errorf("Failed to bind to Collector address %q: %v", caddr, cerr)
 			return
 		}
@@ -122,10 +122,10 @@ func (jr *jReceiver) StartTraceReception(ctx context.Context, spanSink spansink.
 		nr := mux.NewRouter()
 		apiHandler := app.NewAPIHandler(jr)
 		apiHandler.RegisterRoutes(nr)
+		jr.collectorServer = &http.Server{Handler: nr}
 		go func() {
-			_ = http.Serve(cln, nr)
+			_ = jr.collectorServer.Serve(cln)
 		}()
-		jr.collectorLn = cln
 
 		// Otherwise no error was encountered,
 		// finally set the spanSink
@@ -142,21 +142,15 @@ func (jr *jReceiver) StopTraceReception(ctx context.Context) error {
 	var err = errAlreadyStopped
 	jr.stopOnce.Do(func() {
 		var errs []error
-		if jr.collectorLn != nil {
-			if cerr := jr.collectorLn.Close(); cerr != nil {
+		if jr.collectorServer != nil {
+			if cerr := jr.collectorServer.Close(); cerr != nil {
 				errs = append(errs, cerr)
 			}
-			jr.collectorLn = nil
+			jr.collectorServer = nil
 		}
-		if jr.tchannelLn != nil && false {
-			// Not invoking jr.tchannelLn.Close() because
-			// the Jaeger listener invokes os.Exit(1) which
-			// cannot be caught and will shut down the entire
-			// program.
-			if terr := jr.tchannelLn.Close(); terr != nil {
-				errs = append(errs, terr)
-			}
-			jr.tchannelLn = nil
+		if jr.tchannel != nil {
+			jr.tchannel.Close()
+			jr.tchannel = nil
 		}
 		if len(errs) == 0 {
 			err = nil
@@ -166,7 +160,7 @@ func (jr *jReceiver) StopTraceReception(ctx context.Context) error {
 		// Otherwise combine all these errors
 		buf := new(bytes.Buffer)
 		for _, err := range errs {
-			fmt.Fprint(buf, err.Error())
+			fmt.Fprintf(buf, "%s\n", err.Error())
 		}
 		err = errors.New(buf.String())
 	})
