@@ -60,8 +60,12 @@ func TestMultiSpanProcessorSomeNotOk(t *testing.T) {
 	m.Failures = wantFailures
 
 	tt := NewMultiSpanProcessor(processors...)
+	spans := make([]*tracepb.Span, wantFailures+3)
+	for i := range spans {
+		spans[i] = &tracepb.Span{}
+	}
 	batch := &agenttracepb.ExportTraceServiceRequest{
-		Spans: make([]*tracepb.Span, wantFailures+3),
+		Spans: spans,
 	}
 
 	var wantSpansCount = 0

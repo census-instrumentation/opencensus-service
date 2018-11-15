@@ -32,10 +32,10 @@ const (
 
 // JaegerReceiverCfg holds configuration for Jaeger receivers.
 type JaegerReceiverCfg struct {
-	// JaegerThriftTChannelPort is the port that the relay receives on for jaeger thrift tchannel requests
-	JaegerThriftTChannelPort int `mapstructure:"thrift-tchannel-port"`
-	// ReceiverJaegerHTTPPort is the port that the relay receives on for jaeger thrift http requests
-	JaegerThriftHTTPPort int `mapstructure:"thrift-http-port"`
+	// ThriftTChannelPort is the port that the relay receives on for jaeger thrift tchannel requests
+	ThriftTChannelPort int `mapstructure:"thrift-tchannel-port"`
+	// ThriftHTTPPort is the port that the relay receives on for jaeger thrift http requests
+	ThriftHTTPPort int `mapstructure:"thrift-http-port"`
 }
 
 // JaegerReceiverEnabled checks if the Jaeger receiver is enabled, via a command-line flag, environment
@@ -44,11 +44,11 @@ func JaegerReceiverEnabled(v *viper.Viper, cmdFlag string) bool {
 	return featureEnabled(v, cmdFlag, receiversRoot, jaegerEntry)
 }
 
-// NewJaegerReceiverCfg returns an instance of JaegerReceiverCfg with default values
-func NewJaegerReceiverCfg() *JaegerReceiverCfg {
+// NewDefaultJaegerReceiverCfg returns an instance of JaegerReceiverCfg with default values
+func NewDefaultJaegerReceiverCfg() *JaegerReceiverCfg {
 	opts := &JaegerReceiverCfg{
-		JaegerThriftTChannelPort: 14267,
-		JaegerThriftHTTPPort:     14268,
+		ThriftTChannelPort: 14267,
+		ThriftHTTPPort:     14268,
 	}
 	return opts
 }
@@ -70,8 +70,8 @@ func OpenCensusReceiverEnabled(v *viper.Viper, cmdFlag string) bool {
 	return featureEnabled(v, cmdFlag, receiversRoot, opencensusEntry)
 }
 
-// NewOpenCensusReceiverCfg returns an instance of OpenCensusReceiverCfg with default values
-func NewOpenCensusReceiverCfg() *OpenCensusReceiverCfg {
+// NewDefaultOpenCensusReceiverCfg returns an instance of OpenCensusReceiverCfg with default values
+func NewDefaultOpenCensusReceiverCfg() *OpenCensusReceiverCfg {
 	opts := &OpenCensusReceiverCfg{
 		Port: 55678,
 	}
@@ -95,8 +95,8 @@ func ZipkinReceiverEnabled(v *viper.Viper, cmdFlag string) bool {
 	return featureEnabled(v, cmdFlag, receiversRoot, zipkinEntry)
 }
 
-// NewZipkinReceiverCfg returns an instance of ZipkinReceiverCfg with default values
-func NewZipkinReceiverCfg() *ZipkinReceiverCfg {
+// NewDefaultZipkinReceiverCfg returns an instance of ZipkinReceiverCfg with default values
+func NewDefaultZipkinReceiverCfg() *ZipkinReceiverCfg {
 	opts := &ZipkinReceiverCfg{
 		Port: 9411,
 	}

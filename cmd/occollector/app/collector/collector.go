@@ -16,12 +16,18 @@
 package collector
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"
 	"github.com/census-instrumentation/opencensus-service/exporter"
@@ -30,17 +36,13 @@ import (
 	"github.com/census-instrumentation/opencensus-service/internal/collector/opencensus"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/zipkin"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 const (
 	configCfg          = "config"
 	logLevelCfg        = "log-level"
 	jaegerReceiverFlg  = "receive-jaeger"
-	ocReceiverFlg      = "receive-oc"
+	ocReceiverFlg      = "receive-oc-trace"
 	zipkinReceiverFlg  = "receive-zipkin"
 	noopProcessorFlg   = "noop-processor"
 	queuedProcessorFlg = "add-queued-processor" // TODO: (@pjanotti) this is temporary flag until it can be read from config.
@@ -77,9 +79,12 @@ func init() {
 
 	// local flags
 	rootCmd.Flags().StringVar(&config, configCfg, "", "Path to the config file")
-	rootCmd.Flags().Bool(jaegerReceiverFlg, false, "Flag to run the Jaeger receiver (i.e.: Jaeger Collector)")
-	rootCmd.Flags().Bool(ocReceiverFlg, false, "Flag to run the OpenCensus receiver")
-	rootCmd.Flags().Bool(zipkinReceiverFlg, false, "Flag to run the Zipkin receiver")
+	rootCmd.Flags().Bool(jaegerReceiverFlg, false,
+		fmt.Sprintf("Flag to run the Jaeger receiver (i.e.: Jaeger Collector), default settings: %+v", *builder.NewDefaultJaegerReceiverCfg()))
+	rootCmd.Flags().Bool(ocReceiverFlg, false,
+		fmt.Sprintf("Flag to run the OpenCensus trace receiver, default settings: %+v", *builder.NewDefaultOpenCensusReceiverCfg()))
+	rootCmd.Flags().Bool(zipkinReceiverFlg, false,
+		fmt.Sprintf("Flag to run the Zipkin receiver, default settings: %+v", *builder.NewDefaultZipkinReceiverCfg()))
 	rootCmd.Flags().Bool(noopProcessorFlg, false, "Flag to add the no-op processor (combine with log level DEBUG to log incoming spans)")
 	rootCmd.Flags().Bool(queuedProcessorFlg, false, "Flag to wrap one processor with the queued processor (flag will be remove soon, dev helper)")
 
@@ -224,9 +229,9 @@ func createExporters() (doneFns []func(), traceExporters []exporter.TraceExporte
 func createReceivers(spanProcessor processor.SpanProcessor) (closeFns []func()) {
 	var someReceiverEnabled bool
 	receivers := []struct {
-		name  string
-		runFn func(*zap.Logger, *viper.Viper, processor.SpanProcessor) (func(), error)
-		ok    bool
+		name    string
+		runFn   func(*zap.Logger, *viper.Viper, processor.SpanProcessor) (func(), error)
+		enabled bool
 	}{
 		{"Jaeger", jaegerreceiver.Run, builder.JaegerReceiverEnabled(v, jaegerReceiverFlg)},
 		{"OpenCensus", ocreceiver.Run, builder.OpenCensusReceiverEnabled(v, ocReceiverFlg)},
@@ -234,9 +239,13 @@ func createReceivers(spanProcessor processor.SpanProcessor) (closeFns []func()) 
 	}
 
 	for _, receiver := range receivers {
-		if receiver.ok {
+		if receiver.enabled {
 			closeSrv, err := receiver.runFn(logger, v, spanProcessor)
 			if err != nil {
+				// TODO: (@pjanotti) better shutdown, for now just try to stop any started receiver before terminating.
+				for _, closeFn := range closeFns {
+					closeFn()
+				}
 				logger.Fatal("Cannot run receiver for "+receiver.name, zap.Error(err))
 			}
 			closeFns = append(closeFns, closeSrv)

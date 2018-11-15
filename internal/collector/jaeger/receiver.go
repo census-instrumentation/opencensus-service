@@ -13,29 +13,35 @@
 // limitations under the License.
 
 // Package jaegerreceiver wraps the functionality to start the end-point that
-// receives data directly in the Jaeger format as jaeger-collector (UDP as
-// jaeger-agent currently is not supported).
+// receives Jaeger data sent by the jaeger-agent in jaeger.thrift format over
+// TChannel and directly from clients in jaeger.thrift format over binary thrift
+// protocol (HTTP transport).
+// Note that the UDP transport is not supported since these protocol/transport
+// are for task->jaeger-agent communication only and the receiver does not try to
+// support jaeger-agent endpoints.
+// TODO: add support for the jaeger proto endpoint released in jaeger 1.8package jaegerreceiver
 package jaegerreceiver
 
 import (
 	"context"
 
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
+
 	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
 	"github.com/census-instrumentation/opencensus-service/receiver/jaeger"
-	"github.com/spf13/viper"
-	"go.uber.org/zap"
 )
 
-// Run starts the OpenCensus receiver endpoint.
+// Run starts the Jaeger receiver endpoint.
 func Run(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor) (func(), error) {
-	rOpts, err := builder.NewJaegerReceiverCfg().InitFromViper(v)
+	rOpts, err := builder.NewDefaultJaegerReceiverCfg().InitFromViper(v)
 	if err != nil {
 		return nil, err
 	}
 
 	ctx := context.Background()
-	jtr, err := jaeger.New(ctx, rOpts.JaegerThriftTChannelPort, rOpts.JaegerThriftHTTPPort)
+	jtr, err := jaeger.New(ctx, rOpts.ThriftTChannelPort, rOpts.ThriftHTTPPort)
 	if err != nil {
 		return nil, err
 	}
@@ -46,8 +52,8 @@ func Run(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor) (
 	}
 
 	logger.Info("Jaeger receiver is running.",
-		zap.Int("thrift-tchannel-port", rOpts.JaegerThriftTChannelPort),
-		zap.Int("thrift-http-port", rOpts.JaegerThriftHTTPPort))
+		zap.Int("thrift-tchannel-port", rOpts.ThriftTChannelPort),
+		zap.Int("thrift-http-port", rOpts.ThriftHTTPPort))
 
 	closeFn := func() {
 		jtr.StopTraceReception(context.Background())

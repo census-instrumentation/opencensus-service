@@ -22,16 +22,17 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
+
 	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
 	zr "github.com/census-instrumentation/opencensus-service/receiver/zipkin"
-	"github.com/spf13/viper"
-	"go.uber.org/zap"
 )
 
 // Run starts the Zipkin receiver endpoint.
 func Run(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor) (func(), error) {
-	rOpts, err := builder.NewZipkinReceiverCfg().InitFromViper(v)
+	rOpts, err := builder.NewDefaultZipkinReceiverCfg().InitFromViper(v)
 	if err != nil {
 		return nil, err
 	}

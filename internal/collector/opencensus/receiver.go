@@ -22,25 +22,26 @@ import (
 	"strconv"
 	"time"
 
-	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
-	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"
-	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
-	"github.com/census-instrumentation/opencensus-service/receiver/opencensus/octrace"
 	"github.com/spf13/viper"
 	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/stats/view"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
+
+	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
+	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"
+	"github.com/census-instrumentation/opencensus-service/internal"
+	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
+	"github.com/census-instrumentation/opencensus-service/receiver/opencensus/octrace"
 )
 
 // Run starts the OpenCensus receiver endpoint.
 func Run(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor) (func(), error) {
-	rOpts, err := builder.NewOpenCensusReceiverCfg().InitFromViper(v)
+	rOpts, err := builder.NewDefaultOpenCensusReceiverCfg().InitFromViper(v)
 	if err != nil {
 		return nil, err
 	}
 
-	grpcSrv := grpc.NewServer()
+	grpcSrv := internal.GRPCServerWithObservabilityEnabled()
 
 	if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
 		return nil, fmt.Errorf("Failed to register ocgrpc.DefaultServerViews: %v", err)

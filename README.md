@@ -319,9 +319,9 @@ Flags:
   -h, --help                   help for occollector
       --log-level string       Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL) (default "INFO")
       --noop-processor         Flag to add the no-op processor (combine with log level DEBUG to log incoming spans)
-      --receive-jaeger         Flag to run the Jaeger receiver (i.e.: Jaeger Collector)
-      --receive-oc             Flag to run the OpenCensus receiver
-      --receive-zipkin         Flag to run the Zipkin receiver
+      --receive-jaeger         Flag to run the Jaeger receiver (i.e.: Jaeger Collector), default settings: {ThriftTChannelPort:14267 ThriftHTTPPort:14268}
+      --receive-oc-trace       Flag to run the OpenCensus trace receiver, default settings: {Port:55678}
+      --receive-zipkin         Flag to run the Zipkin receiver, default settings: {Port:9411}
 ```
 
 [travis-image]: https://travis-ci.org/census-instrumentation/opencensus-service.svg?branch=master
