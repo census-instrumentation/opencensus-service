@@ -17,17 +17,14 @@ package processor
 import (
 	"time"
 
-	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	"github.com/jaegertracing/jaeger/pkg/queue"
 	"go.uber.org/zap"
+
+	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 )
 
 type queuedSpanProcessor struct {
-	queue *queue.BoundedQueue
-	/* TODO: (@pauloja) not doing metrics for now
-	metrics                  *cApp.SpanProcessorMetrics
-	batchMetrics             *processorBatchMetrics
-	*/
+	queue                    *queue.BoundedQueue
 	logger                   *zap.Logger
 	sender                   SpanProcessor
 	numWorkers               int
@@ -114,9 +111,9 @@ func (sp *queuedSpanProcessor) processItemFromQueue(item *queueItem) {
 			sp.logger.Error("Failed to process batch, discarding", zap.Int("batch-size", batchSize))
 			sp.onItemDropped(item)
 		} else {
-			// try to put it back at the end of queue for retry at a later time
-			addedToQueue := sp.queue.Produce(item)
-			if !addedToQueue {
+			// TODO: (@pjanotti) do not put it back on the end of the queue, retry with it directly.
+			// This will have the benefit of keeping the batch closer to related ones in time.
+			if !sp.queue.Produce(item) {
 				sp.logger.Error("Failed to process batch and failed to re-enqueue", zap.Int("batch-size", batchSize))
 				sp.onItemDropped(item)
 			} else {
