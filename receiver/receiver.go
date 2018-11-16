@@ -23,18 +23,6 @@ import (
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 )
 
-// Sink is an interface that receives spans from a Node identifier.
-type TraceReceiverSink interface {
-	ReceiveSpans(ctx context.Context, node *commonpb.Node, spans ...*tracepb.Span) (*TraceReceiverAcknowledgement, error)
-}
-
-// Acknowledgement struct reports the number of saved and dropped spans in a
-// ReceiveSpans call.
-type TraceReceiverAcknowledgement struct {
-	SavedSpans   uint64
-	DroppedSpans uint64
-}
-
 // A TraceReceiver is an "arbitrary data"-to-"trace proto span" converter.
 // Its purpose is to translate data from the wild into trace proto accompanied
 // by a *commonpb.Node to uniquely identify where that data comes from.
@@ -52,16 +40,16 @@ type TraceReceiver interface {
 	StopTraceReception(ctx context.Context) error
 }
 
-// MetricsReceiverSink is an interface that receives metrics from a Node identifier.
-type MetricsReceiverSink interface {
-	ReceiveMetrics(ctx context.Context, node *commonpb.Node, resource *resourcepb.Resource, metrics ...*metricpb.Metric) (*MetricsReceiverAcknowledgement, error)
+// TraceReceiverSink is an interface that receives spans from a Node identifier.
+type TraceReceiverSink interface {
+	ReceiveSpans(ctx context.Context, node *commonpb.Node, spans ...*tracepb.Span) (*TraceReceiverAcknowledgement, error)
 }
 
-// MetricsReceiverAcknowledgement struct reports the number of saved and dropped spans in a
+// TraceReceiverAcknowledgement struct reports the number of saved and dropped spans in a
 // ReceiveSpans call.
-type MetricsReceiverAcknowledgement struct {
-	SavedMetrics   uint64
-	DroppedMetrics uint64
+type TraceReceiverAcknowledgement struct {
+	SavedSpans   uint64
+	DroppedSpans uint64
 }
 
 // A MetricsReceiver is an "arbitrary data"-to-"metric proto" converter.
@@ -74,4 +62,16 @@ type MetricsReceiverAcknowledgement struct {
 type MetricsReceiver interface {
 	StartMetricsReception(ctx context.Context, destination MetricsReceiverSink) error
 	StopMetricsReception(ctx context.Context) error
+}
+
+// MetricsReceiverSink is an interface that receives metrics from a Node identifier.
+type MetricsReceiverSink interface {
+	ReceiveMetrics(ctx context.Context, node *commonpb.Node, resource *resourcepb.Resource, metrics ...*metricpb.Metric) (*MetricsReceiverAcknowledgement, error)
+}
+
+// MetricsReceiverAcknowledgement struct reports the number of saved and dropped spans in a
+// ReceiveSpans call.
+type MetricsReceiverAcknowledgement struct {
+	SavedMetrics   uint64
+	DroppedMetrics uint64
 }
