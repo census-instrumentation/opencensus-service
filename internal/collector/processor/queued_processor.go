@@ -15,6 +15,7 @@
 package processor
 
 import (
+	"sync"
 	"time"
 
 	"github.com/jaegertracing/jaeger/pkg/queue"
@@ -31,6 +32,7 @@ type queuedSpanProcessor struct {
 	retryOnProcessingFailure bool
 	backoffDelay             time.Duration
 	stopCh                   chan struct{}
+	stopOnce                 sync.Once
 }
 
 var _ SpanProcessor = (*queuedSpanProcessor)(nil)
@@ -55,10 +57,7 @@ func NewQueuedSpanProcessor(sender SpanProcessor, opts ...Option) SpanProcessor 
 	return sp
 }
 
-func newQueuedSpanProcessor(
-	sender SpanProcessor,
-	opts ...Option,
-) *queuedSpanProcessor {
+func newQueuedSpanProcessor(sender SpanProcessor, opts ...Option) *queuedSpanProcessor {
 	options := Options.apply(opts...)
 	boundedQueue := queue.NewBoundedQueue(options.queueSize, func(item interface{}) {})
 	return &queuedSpanProcessor{
@@ -72,19 +71,21 @@ func newQueuedSpanProcessor(
 	}
 }
 
-// Stop halts the span processor and all its go-routines.
+// Stop halts the span processor and all its goroutines.
 func (sp *queuedSpanProcessor) Stop() {
-	close(sp.stopCh)
-	sp.queue.Stop()
+	sp.stopOnce.Do(func() {
+		close(sp.stopCh)
+		sp.queue.Stop()
+	})
 }
 
 // ProcessSpans implements the SpanProcessor interface
-func (sp *queuedSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
-	ok := sp.enqueueSpanBatch(batch, spanFormat)
-	if !ok {
-		return uint64(len(batch.Spans)), nil
+func (sp *queuedSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (failures uint64, err error) {
+	allAdded := sp.enqueueSpanBatch(batch, spanFormat)
+	if !allAdded {
+		failures = uint64(len(batch.Spans))
 	}
-	return 0, nil
+	return
 }
 
 func (sp *queuedSpanProcessor) enqueueSpanBatch(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) bool {

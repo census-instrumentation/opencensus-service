@@ -44,7 +44,7 @@ const (
 	jaegerReceiverFlg  = "receive-jaeger"
 	ocReceiverFlg      = "receive-oc-trace"
 	zipkinReceiverFlg  = "receive-zipkin"
-	noopProcessorFlg   = "noop-processor"
+	debugProcessorFlg  = "debug-processor"
 	queuedProcessorFlg = "add-queued-processor" // TODO: (@pjanotti) this is temporary flag until it can be read from config.
 )
 
@@ -85,7 +85,7 @@ func init() {
 		fmt.Sprintf("Flag to run the OpenCensus trace receiver, default settings: %+v", *builder.NewDefaultOpenCensusReceiverCfg()))
 	rootCmd.Flags().Bool(zipkinReceiverFlg, false,
 		fmt.Sprintf("Flag to run the Zipkin receiver, default settings: %+v", *builder.NewDefaultZipkinReceiverCfg()))
-	rootCmd.Flags().Bool(noopProcessorFlg, false, "Flag to add the no-op processor (combine with log level DEBUG to log incoming spans)")
+	rootCmd.Flags().Bool(debugProcessorFlg, false, "Flag to add a debug processor (combine with log level DEBUG to log incoming spans)")
 	rootCmd.Flags().Bool(queuedProcessorFlg, false, "Flag to wrap one processor with the queued processor (flag will be remove soon, dev helper)")
 
 	// TODO: (@pjanotti) add builder options as flags, before calls bellow. Likely it will require code re-org.
@@ -134,7 +134,7 @@ func execute() {
 		spanProcessors = append(spanProcessors, processor.NewTraceExporterProcessor(exporters...))
 	}
 
-	if v.GetBool(noopProcessorFlg) {
+	if v.GetBool(debugProcessorFlg) {
 		spanProcessors = append(spanProcessors, processor.NewNoopSpanProcessor(logger))
 	}
 

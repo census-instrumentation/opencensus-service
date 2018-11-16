@@ -18,15 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
-)
-
-var (
-	nilNodeReplacement = &commonpb.Node{
-		Identifier:  &commonpb.ProcessIdentifier{HostName: "<unknown-host>"},
-		ServiceInfo: &commonpb.ServiceInfo{Name: "<unknown-service>"},
-	}
 )
 
 // MultiSpanProcessor enables processing on multiple processors.
@@ -45,11 +37,6 @@ func NewMultiSpanProcessor(procs ...SpanProcessor) MultiSpanProcessor {
 
 // ProcessSpans implements the SpanProcessor interface
 func (msp MultiSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
-	// TODO: (@pjanotti) receivers should never pass batches with nil Node but that happens, for now fill with replacement.
-	if batch.Node == nil {
-		batch.Node = nilNodeReplacement
-	}
-
 	var maxFailures uint64
 	var errors []error
 	for _, sp := range msp {

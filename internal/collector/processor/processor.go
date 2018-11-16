@@ -22,26 +22,26 @@ import (
 
 // SpanProcessor handles batches of spans converted to OpenCensus proto format.
 type SpanProcessor interface {
-	// ProcessSpans processes spans and return with either a list of true/false success or an error
+	// ProcessSpans processes spans and return with the number of spans that failed and an error.
 	ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error)
 	// TODO: (@pjanotti) For shutdown improvement, the interface needs a method to attempt that.
 }
 
-// An initial processor that performs no operation.
-type noopSpanProcessor struct{ logger *zap.Logger }
+// An initial processor that does not sends the data to any destination but helps debugging.
+type debugSpanProcessor struct{ logger *zap.Logger }
 
-var _ SpanProcessor = (*noopSpanProcessor)(nil)
+var _ SpanProcessor = (*debugSpanProcessor)(nil)
 
-func (sp *noopSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
+func (sp *debugSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
 	if batch.Node == nil {
 		sp.logger.Warn("Received batch with nil Node", zap.String("format", spanFormat))
 	}
 
-	sp.logger.Debug("noopSpanProcessor", zap.String("originalFormat", spanFormat), zap.Int("#spans", len(batch.Spans)))
+	sp.logger.Debug("debugSpanProcessor", zap.String("originalFormat", spanFormat), zap.Int("#spans", len(batch.Spans)))
 	return 0, nil
 }
 
 // NewNoopSpanProcessor creates an OC SpanProcessor that just drops the received data.
 func NewNoopSpanProcessor(logger *zap.Logger) SpanProcessor {
-	return &noopSpanProcessor{logger: logger}
+	return &debugSpanProcessor{logger: logger}
 }

@@ -43,50 +43,50 @@ type Option func(c *options)
 // Options is a factory for all available Option's
 var Options options
 
-// Logger creates a Option that initializes the logger
-func (options) Logger(logger *zap.Logger) Option {
+// WithLogger creates a Option that initializes the logger
+func (options) WithLogger(logger *zap.Logger) Option {
 	return func(b *options) {
 		b.logger = logger
 	}
 }
 
-// Name creates an Option that initializes the name of the processor
-func (options) Name(name string) Option {
+// WithName creates an Option that initializes the name of the processor
+func (options) WithName(name string) Option {
 	return func(b *options) {
 		b.name = name
 	}
 }
 
-// NumWorkers creates an Option that initializes the number of queue consumers AKA workers
-func (options) NumWorkers(numWorkers int) Option {
+// WithNumWorkers creates an Option that initializes the number of queue consumers AKA workers
+func (options) WithNumWorkers(numWorkers int) Option {
 	return func(b *options) {
 		b.numWorkers = numWorkers
 	}
 }
 
-// QueueSize creates an Option that initializes the queue size
-func (options) QueueSize(queueSize int) Option {
+// WithQueueSize creates an Option that initializes the queue size
+func (options) WithQueueSize(queueSize int) Option {
 	return func(b *options) {
 		b.queueSize = queueSize
 	}
 }
 
-// BackoffDelay creates an Option that initializes the backoff delay
-func (options) BackoffDelay(backoffDelay time.Duration) Option {
+// WithBackoffDelay creates an Option that initializes the backoff delay
+func (options) WithBackoffDelay(backoffDelay time.Duration) Option {
 	return func(b *options) {
 		b.backoffDelay = backoffDelay
 	}
 }
 
-// ExtraFormatTypes creates an Option that initializes the extra list of format types
-func (options) ExtraFormatTypes(extraFormatTypes []string) Option {
+// WithExtraFormatTypes creates an Option that initializes the extra list of format types
+func (options) WithExtraFormatTypes(extraFormatTypes []string) Option {
 	return func(b *options) {
 		b.extraFormatTypes = extraFormatTypes
 	}
 }
 
-// RetryOnProcessingFailures creates an Option that initializes the retryOnProcessingFailure boolean
-func (options) RetryOnProcessingFailures(retryOnProcessingFailure bool) Option {
+// WithRetryOnProcessingFailures creates an Option that initializes the retryOnProcessingFailure boolean
+func (options) WithRetryOnProcessingFailures(retryOnProcessingFailure bool) Option {
 	return func(b *options) {
 		b.retryOnProcessingFailure = retryOnProcessingFailure
 	}
