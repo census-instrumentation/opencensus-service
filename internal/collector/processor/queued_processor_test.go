@@ -24,8 +24,7 @@ import (
 )
 
 func TestQueueProcessorHappyPath(t *testing.T) {
-	wg := &sync.WaitGroup{}
-	mockProc := &mockConcurrentSpanProcessor{waitGroup: wg}
+	mockProc := newMockConcurrentSpanProcessor()
 	qp := NewQueuedSpanProcessor(mockProc)
 	goFn := func(b *agenttracepb.ExportTraceServiceRequest) {
 		qp.ProcessSpans(b, "test")
@@ -33,7 +32,6 @@ func TestQueueProcessorHappyPath(t *testing.T) {
 
 	spans := []*tracepb.Span{{}}
 	wantBatches := 10
-	wg.Add(wantBatches)
 	wantSpans := 0
 	for i := 0; i < wantBatches; i++ {
 		batch := &agenttracepb.ExportTraceServiceRequest{
@@ -41,11 +39,12 @@ func TestQueueProcessorHappyPath(t *testing.T) {
 		}
 		wantSpans += len(spans)
 		spans = append(spans, &tracepb.Span{})
-		go goFn(batch)
+		fn := func() { goFn(batch) }
+		mockProc.runConcurrently(fn)
 	}
 
 	// Wait until all batches received
-	wg.Wait()
+	mockProc.awaitAsyncProcessing()
 
 	if wantBatches != int(mockProc.batchCount) {
 		t.Fatalf("Wanted %d batches, got %d", wantBatches, mockProc.batchCount)
@@ -68,4 +67,16 @@ func (p *mockConcurrentSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTra
 	atomic.AddInt32(&p.spanCount, int32(len(batch.Spans)))
 	p.waitGroup.Done()
 	return 0, nil
+}
+
+func newMockConcurrentSpanProcessor() *mockConcurrentSpanProcessor {
+	return &mockConcurrentSpanProcessor{waitGroup: new(sync.WaitGroup)}
+}
+func (p *mockConcurrentSpanProcessor) runConcurrently(fn func()) {
+	p.waitGroup.Add(1)
+	go fn()
+}
+
+func (p *mockConcurrentSpanProcessor) awaitAsyncProcessing() {
+	p.waitGroup.Wait()
 }
