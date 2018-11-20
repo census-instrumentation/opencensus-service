@@ -43,8 +43,8 @@ type metricsExporters []MetricsExporter
 
 // ExportMetrics exports the metrics to all exporters wrapped by the current one.
 func (mes metricsExporters) ExportMetrics(ctx context.Context, node *commonpb.Node, resource *resourcepb.Resource, metrics ...*metricspb.Metric) error {
-	for _, te := range mes {
-		_ = te.ExportMetrics(ctx, node, resource, metrics...)
+	for _, me := range mes {
+		_ = me.ExportMetrics(ctx, node, resource, metrics...)
 	}
 	return nil
 }
@@ -52,8 +52,8 @@ func (mes metricsExporters) ExportMetrics(ctx context.Context, node *commonpb.No
 // ReceiveMetrics receives the metric data in the protobuf format, translates it, and forwards the transformed
 // metric data to all metrics exporters wrapped by the current one.
 func (mes metricsExporters) ReceiveMetrics(ctx context.Context, node *commonpb.Node, resource *resourcepb.Resource, metrics ...*metricspb.Metric) (*receiver.MetricsReceiverAcknowledgement, error) {
-	for _, te := range mes {
-		_ = te.ExportMetrics(ctx, node, resource, metrics...)
+	for _, me := range mes {
+		_ = me.ExportMetrics(ctx, node, resource, metrics...)
 	}
 
 	ack := &receiver.MetricsReceiverAcknowledgement{
