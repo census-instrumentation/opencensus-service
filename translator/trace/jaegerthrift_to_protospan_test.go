@@ -22,12 +22,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/census-instrumentation/opencensus-service/internal/testutils"
+	"github.com/jaegertracing/jaeger/thrift-gen/jaeger"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
-	"github.com/jaegertracing/jaeger/thrift-gen/jaeger"
+	"github.com/census-instrumentation/opencensus-service/internal/testutils"
 )
 
 func TestJaegerThriftBatchToOCProto(t *testing.T) {
@@ -208,6 +208,20 @@ func TestConservativeConversions(t *testing.T) {
 						Code:    5,
 						Message: "cache miss",
 					},
+					Attributes: &tracepb.Span_Attributes{
+						AttributeMap: map[string]*tracepb.AttributeValue{
+							"http.status_code": {
+								Value: &tracepb.AttributeValue_IntValue{
+									IntValue: 5,
+								},
+							},
+							"http.status_message": {
+								Value: &tracepb.AttributeValue_StringValue{
+									StringValue: &tracepb.TruncatableString{Value: "cache miss"},
+								},
+							},
+						},
+					},
 				},
 				{
 					Name:    &tracepb.TruncatableString{Value: "RPC call"},
@@ -216,6 +230,20 @@ func TestConservativeConversions(t *testing.T) {
 					Status: &tracepb.Status{
 						Code:    13,
 						Message: "proxy crashed",
+					},
+					Attributes: &tracepb.Span_Attributes{
+						AttributeMap: map[string]*tracepb.AttributeValue{
+							"status.code": {
+								Value: &tracepb.AttributeValue_IntValue{
+									IntValue: 13,
+								},
+							},
+							"status.message": {
+								Value: &tracepb.AttributeValue_StringValue{
+									StringValue: &tracepb.TruncatableString{Value: "proxy crashed"},
+								},
+							},
+						},
 					},
 				},
 			},
