@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package common
+package data
 
 import (
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
