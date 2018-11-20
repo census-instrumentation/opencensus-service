@@ -17,47 +17,31 @@ package exporter
 import (
 	"context"
 
-	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
-	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
-	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
-	"github.com/census-instrumentation/opencensus-service/receiver"
+	"github.com/census-instrumentation/opencensus-service/data"
 )
 
-// MetricsExporter is a interface that receives OpenCensus metrics, converts it as needed, and
+// MetricsExporter is an interface that receives data.MetricsData, converts it as needed, and
 // sends it to different destinations.
 //
-// ExportMetrics receives OpenCensus proto metrics for processing by the exporter.
+// ExportMetricsData receives data.MetricsData for processing by the exporter.
 type MetricsExporter interface {
-	ExportMetrics(ctx context.Context, node *commonpb.Node, resource *resourcepb.Resource, metrics ...*metricspb.Metric) error
+	ExportMetricsData(ctx context.Context, md data.MetricsData) error
 }
 
-// MetricsExporterSink is an interface connecting a MetricsReceiverSink and
-// an exporter.MetricsExporter. The sink gets data in different serialization formats,
-// transforms it to OpenCensus in memory data and sends it to the exporter.
-type MetricsExporterSink interface {
-	MetricsExporter
-	receiver.MetricsReceiverSink
+// MultiMetricsExporters wraps multiple metrics exporters in a single one.
+func MultiMetricsExporters(mes ...MetricsExporter) MetricsExporter {
+	return metricsExporters(mes)
 }
 
 type metricsExporters []MetricsExporter
 
-// ExportMetrics exports the metrics to all exporters wrapped by the current one.
-func (mes metricsExporters) ExportMetrics(ctx context.Context, node *commonpb.Node, resource *resourcepb.Resource, metrics ...*metricspb.Metric) error {
+// ExportMetricsData exports the MetricsData to all exporters wrapped by the current one.
+func (mes metricsExporters) ExportMetricsData(ctx context.Context, md data.MetricsData) error {
 	for _, me := range mes {
-		_ = me.ExportMetrics(ctx, node, resource, metrics...)
+		_ = me.ExportMetricsData(ctx, md)
 	}
 	return nil
 }
 
-// ReceiveMetrics receives the metric data in the protobuf format, translates it, and forwards the transformed
-// metric data to all metrics exporters wrapped by the current one.
-func (mes metricsExporters) ReceiveMetrics(ctx context.Context, node *commonpb.Node, resource *resourcepb.Resource, metrics ...*metricspb.Metric) (*receiver.MetricsReceiverAcknowledgement, error) {
-	for _, me := range mes {
-		_ = me.ExportMetrics(ctx, node, resource, metrics...)
-	}
-
-	ack := &receiver.MetricsReceiverAcknowledgement{
-		SavedMetrics: uint64(len(metrics)),
-	}
-	return ack, nil
-}
+// TODO: add another struct that that implements ReceiveMetricsData and forwards the MetricsData to the MultiMetricsExporters.
+// See https://github.com/census-instrumentation/opencensus-service/issues/209.
