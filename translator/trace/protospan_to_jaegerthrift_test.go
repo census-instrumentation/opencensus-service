@@ -15,10 +15,8 @@
 package tracetranslator
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 	"sort"
 	"testing"
 
@@ -30,18 +28,24 @@ import (
 	"github.com/jaegertracing/jaeger/thrift-gen/jaeger"
 )
 
-func TestTraceIDRoundTripJaegerOCProtoJaeger(t *testing.T) {
+func TestJaegerFromOCProtoTraceIDRoundTrip(t *testing.T) {
 	wl := int64(0x0001020304050607)
 	wh := int64(0x70605040302010FF)
-	gl, gh := traceIDBytesToLowAndHigh(jTraceIDToOCProtoTraceID(wh, wl))
+	gl, gh, err := traceIDBytesToLowAndHigh(jTraceIDToOCProtoTraceID(wh, wl))
+	if err != nil {
+		t.Errorf("Error converting from OC trace id: %v", err)
+	}
 	if gl != wl || gh != wh {
 		t.Errorf("Round trip of trace Id failed want: (0x%0x, 0x%0x) got: (0x%0x, 0x%0x)", wl, wh, gl, gh)
 	}
 }
 
-func TestSpanIDRoundTripJaegerOCProtoJaeger(t *testing.T) {
+func TestJaegerFromOCProtoSpanIDRoundTrip(t *testing.T) {
 	w := int64(0x0001020304050607)
-	g := ocIDBytesToJaegerID(jSpanIDToOCProtoSpanID(w))
+	g, err := ocIDBytesToJaegerID(jSpanIDToOCProtoSpanID(w))
+	if err != nil {
+		t.Errorf("Error converting from OC span id: %v", err)
+	}
 	if g != w {
 		t.Errorf("Round trip of span Id failed want: 0x%0x got: 0x%0x", w, g)
 	}
@@ -121,9 +125,9 @@ var ocBatches = []*agenttracepb.ExportTraceServiceRequest{
 		},
 		Spans: []*tracepb.Span{
 			{
-				TraceId:      base64ToBytes("AAAAAAAAAABSlpqJVVcaPw=="),
-				SpanId:       base64ToBytes("AAAAAABkfZg="),
-				ParentSpanId: base64ToBytes("AAAAAABoxOM="),
+				TraceId:      []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x52, 0x96, 0x9A, 0x89, 0x55, 0x57, 0x1A, 0x3F},
+				SpanId:       []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x7D, 0x98},
+				ParentSpanId: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0xC4, 0xE3},
 				Name:         &tracepb.TruncatableString{Value: "get"},
 				Kind:         tracepb.Span_SERVER,
 				StartTime:    &timestamp.Timestamp{Seconds: 1485467191, Nanos: 639875000},
@@ -191,9 +195,9 @@ var ocBatches = []*agenttracepb.ExportTraceServiceRequest{
 		},
 		Spans: []*tracepb.Span{
 			{
-				TraceId:      base64ToBytes("AAAAAAAAAABSlpqJVVcaPw=="),
-				SpanId:       base64ToBytes("AAAAAABkfZg="),
-				ParentSpanId: base64ToBytes("AAAAAABoxOM="),
+				TraceId:      []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x52, 0x96, 0x9A, 0x89, 0x55, 0x57, 0x1A, 0x3F},
+				SpanId:       []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x7D, 0x98},
+				ParentSpanId: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0xC4, 0xE3},
 				Name:         &tracepb.TruncatableString{Value: "get"},
 				Kind:         tracepb.Span_SERVER,
 				StartTime:    &timestamp.Timestamp{Seconds: 1485467191, Nanos: 639875000},
@@ -207,9 +211,9 @@ var ocBatches = []*agenttracepb.ExportTraceServiceRequest{
 				},
 			},
 			{
-				TraceId:      base64ToBytes("AAAAAAAAAABSlpqJVVcaPw=="),
-				SpanId:       base64ToBytes("AAAAAABkfZk="),
-				ParentSpanId: base64ToBytes("AAAAAABoxOM="),
+				TraceId:      []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x52, 0x96, 0x9A, 0x89, 0x55, 0x57, 0x1A, 0x3F},
+				SpanId:       []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x7D, 0x99},
+				ParentSpanId: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0xC4, 0xE3},
 				Name:         &tracepb.TruncatableString{Value: "get"},
 				Kind:         tracepb.Span_SERVER,
 				StartTime:    &timestamp.Timestamp{Seconds: 1485467191, Nanos: 639875000},
@@ -217,29 +221,17 @@ var ocBatches = []*agenttracepb.ExportTraceServiceRequest{
 				Links: &tracepb.Span_Links{
 					Link: []*tracepb.Span_Link{
 						{
-							TraceId: base64ToBytes("AAAAAAAAAABSlpqJVVcaPw=="),
-							SpanId:  base64ToBytes("AAAAAABkfZg="),
+							TraceId: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x52, 0x96, 0x9A, 0x89, 0x55, 0x57, 0x1A, 0x3F},
+							SpanId:  []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x7D, 0x98},
 							Type:    tracepb.Span_Link_PARENT_LINKED_SPAN,
 						},
 						{
-							TraceId: base64ToBytes("AAAAAAAAAABSlpqJVVcaPw=="),
-							SpanId:  base64ToBytes("AAAAAABoxOM="),
+							TraceId: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x52, 0x96, 0x9A, 0x89, 0x55, 0x57, 0x1A, 0x3F},
+							SpanId:  []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0xC4, 0xE3},
 						},
 					},
 				},
 			},
 		},
 	},
-}
-
-func base64ToBytes(s string) []byte {
-	if s == "" {
-		return nil
-	}
-	blob, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		// Ok, shutdown the whole thing: considering it a build error.
-		log.Fatalf("Error setting up tests: %v", err)
-	}
-	return blob
 }
