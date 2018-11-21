@@ -42,6 +42,3 @@ func (mes metricsExporters) ExportMetricsData(ctx context.Context, md data.Metri
 	}
 	return nil
 }
-
-// TODO: add another struct that that implements ReceiveMetricsData and forwards the MetricsData to the MultiMetricsExporters.
-// See https://github.com/census-instrumentation/opencensus-service/issues/209.
