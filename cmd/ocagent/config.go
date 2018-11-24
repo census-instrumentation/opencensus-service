@@ -183,10 +183,17 @@ func (c *config) checkLogicalConflicts(blob []byte) error {
 			zExporterHostPort, zReceiverHostPort)
 	}
 	zExpHost, zExpPort, _ := net.SplitHostPort(zExporterHostPort)
-	zReceiverHost, zReceiverPort, _ := net.SplitHostPort(zExporterHostPort)
+	zReceiverHost, zReceiverPort, _ := net.SplitHostPort(zReceiverHostPort)
 	if eqHosts(zExpHost, zReceiverHost) && zExpPort == zReceiverPort {
 		return fmt.Errorf("ZipkinExporter address (%q) aka (%s on port %s)\nis the same as the receiver address (%q) aka (%s on port %s)",
 			zExporterHostPort, zExpHost, zExpPort, zReceiverHostPort, zReceiverHost, zReceiverPort)
+	}
+
+	// If exporter and receiver hosts are both "localhost" assume that this is some test
+	// and allow them to proceed, since it was already checked that they aren't on the
+	// same port.
+	if zExpHost == zReceiverHost && zExpHost == "localhost" {
+		return nil
 	}
 
 	// Otherwise, now let's resolve the IPs and ensure that they aren't the same

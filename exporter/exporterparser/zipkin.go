@@ -18,13 +18,13 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"net"
 	"strconv"
 	"sync"
 	"time"
 
 	"go.opencensus.io/trace"
 
-	openzipkin "github.com/openzipkin/zipkin-go"
 	zipkinmodel "github.com/openzipkin/zipkin-go/model"
 	zipkinreporter "github.com/openzipkin/zipkin-go/reporter"
 	zipkinhttp "github.com/openzipkin/zipkin-go/reporter/http"
@@ -40,6 +40,7 @@ type ZipkinConfig struct {
 	ServiceName      string         `yaml:"service_name,omitempty"`
 	Endpoint         string         `yaml:"endpoint,omitempty"`
 	LocalEndpointURI string         `yaml:"local_endpoint,omitempty"`
+	BatchSize        int            `yaml:"batch_size,omitempty"`
 	UploadPeriod     *time.Duration `yaml:"upload_period,omitempty"`
 }
 
@@ -108,7 +109,7 @@ func ZipkinExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneF
 	if zc.UploadPeriod != nil && *zc.UploadPeriod > 0 {
 		uploadPeriod = *zc.UploadPeriod
 	}
-	zle, err := newZipkinExporter(endpoint, serviceName, localEndpointURI, uploadPeriod)
+	zle, err := newZipkinExporter(endpoint, serviceName, localEndpointURI, uploadPeriod, zc.BatchSize)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Cannot configure Zipkin exporter: %v", err)
 	}
@@ -117,10 +118,13 @@ func ZipkinExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneF
 	return
 }
 
-func newZipkinExporter(finalEndpointURI, defaultServiceName, defaultLocalEndpointURI string, uploadPeriod time.Duration) (*zipkinExporter, error) {
+func newZipkinExporter(finalEndpointURI, defaultServiceName, defaultLocalEndpointURI string, uploadPeriod time.Duration, batchSize int) (*zipkinExporter, error) {
 	var opts []zipkinhttp.ReporterOption
 	if uploadPeriod > 0 {
 		opts = append(opts, zipkinhttp.BatchInterval(uploadPeriod))
+	}
+	if batchSize > 0 {
+		opts = append(opts, zipkinhttp.BatchSize(batchSize))
 	}
 	reporter := zipkinhttp.NewReporter(finalEndpointURI, opts...)
 	zle := &zipkinExporter{
@@ -159,26 +163,33 @@ func zipkinEndpointFromNode(node *commonpb.Node, serviceName string, endpointTyp
 		ipv4Key, ipv6Key, portKey = "zipkin.remoteEndpoint.ipv4", "zipkin.remoteEndpoint.ipv6", "zipkin.remoteEndpoint.port"
 	}
 
-	var endpointURI string
-
+	var ip net.IP
 	ipv6Selected := false
 	if ipv4 := attributes[ipv4Key]; ipv4 != "" {
-		endpointURI = ipv4
+		ip = net.ParseIP(ipv4)
 	} else if ipv6 := attributes[ipv6Key]; ipv6 != "" {
-		// In this case for ipv6 address when combining with a port,
-		// we need them enclosed in square brackets as per
-		//    https://golang.org/pkg/net/#SplitHostPort
-		endpointURI = fmt.Sprintf("[%s]", ipv6)
+		ip = net.ParseIP(ipv6)
 		ipv6Selected = true
 	}
 
-	port := attributes[portKey]
-	if port != "" {
-		endpointURI += ":" + port
-	} else if ipv6Selected { // net.SplitHostPort requires a port of ipv6 values
-		endpointURI += ":" + "0"
+	port, _ := strconv.ParseUint(attributes[portKey], 10, 16)
+	if serviceName == "" && len(ip) == 0 && port == 0 {
+		// Nothing to put on the endpoint
+		return nil, nil
 	}
-	return openzipkin.NewEndpoint(serviceName, endpointURI)
+
+	zEndpoint := &zipkinmodel.Endpoint{
+		ServiceName: serviceName,
+		Port:        uint16(port),
+	}
+
+	if ipv6Selected {
+		zEndpoint.IPv6 = ip
+	} else {
+		zEndpoint.IPv4 = ip
+	}
+
+	return zEndpoint, nil
 }
 
 func (ze *zipkinExporter) stop() error {
@@ -195,13 +206,14 @@ func (ze *zipkinExporter) ExportSpans(ctx context.Context, td data.TraceData) er
 			return err
 		}
 		zs, err := ze.zipkinSpan(td.Node, sd)
-		if err == nil {
-			// ze.reporter can get closed in the midst of a Send
-			// so avoid a read/write during that mutation.
-			ze.mu.Lock()
-			ze.reporter.Send(zs)
-			ze.mu.Unlock()
+		if err != nil {
+			return err
 		}
+		// ze.reporter can get closed in the midst of a Send
+		// so avoid a read/write during that mutation.
+		ze.mu.Lock()
+		ze.reporter.Send(zs)
+		ze.mu.Unlock()
 	}
 	return nil
 }
