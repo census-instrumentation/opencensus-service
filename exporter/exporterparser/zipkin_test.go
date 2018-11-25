@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package exporterparser_test
+package exporterparser
 
 import (
 	"bytes"
@@ -20,17 +20,129 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
+
+	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
+	zipkinmodel "github.com/openzipkin/zipkin-go/model"
+	zipkinhttp "github.com/openzipkin/zipkin-go/reporter/http"
+	"go.opencensus.io/trace"
 
 	"github.com/census-instrumentation/opencensus-service/exporter"
-	"github.com/census-instrumentation/opencensus-service/exporter/exporterparser"
 	"github.com/census-instrumentation/opencensus-service/internal/testutils"
 	"github.com/census-instrumentation/opencensus-service/receiver/zipkin"
 )
+
+func TestZipkinExporterCorrectlyHandlesNilNode(t *testing.T) {
+	span := &trace.SpanData{
+		SpanContext: trace.SpanContext{
+			TraceID: trace.TraceID{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+			SpanID:  trace.SpanID{0, 1, 2, 3, 4, 5, 6, 7},
+		},
+		ParentSpanID: trace.SpanID{8, 9, 10, 11, 12, 13, 14, 15},
+		Name:         "minimal",
+		SpanKind:     trace.SpanKindServer,
+		StartTime:    time.Unix(0, 0).UTC(),
+		EndTime:      time.Unix(1, 0).UTC(),
+		Status: trace.Status{
+			Code:    2,
+			Message: "unknown",
+		},
+	}
+	zr := zipkinhttp.NewReporter("http://to-fail:123/fail", zipkinhttp.BatchSize(2), zipkinhttp.Timeout(1*time.Millisecond))
+	defer zr.Close()
+	ze := &zipkinExporter{
+		reporter: zr,
+	}
+	gotZc, err := ze.zipkinSpan(nil, span)
+	if err != nil {
+		t.Errorf("Zipkin exporter error on nil node:%v", err)
+	}
+	notWantZs := zipkinmodel.SpanModel{}
+	if reflect.DeepEqual(gotZc, notWantZs) {
+		t.Errorf("Zipkin exporter returned the uninitialized span when a nil node as passed.")
+	}
+}
+
+func TestZipkinEndpointFromNode(t *testing.T) {
+	type args struct {
+		node         *commonpb.Node
+		serviceName  string
+		endpointType zipkinDirection
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *zipkinmodel.Endpoint
+		wantErr bool
+	}{
+		{name: "Nil Node", args: args{node: nil, serviceName: "", endpointType: isLocalEndpoint}, want: nil, wantErr: false},
+		{name: "Only svc name", args: args{node: &commonpb.Node{}, serviceName: "test", endpointType: isLocalEndpoint}, want: &zipkinmodel.Endpoint{ServiceName: "test"}, wantErr: false},
+		{name: "Only ipv4",
+			args: args{
+				node: &commonpb.Node{
+					Attributes: map[string]string{"ipv4": "1.2.3.4"},
+				},
+				serviceName:  "",
+				endpointType: isLocalEndpoint,
+			},
+			want:    &zipkinmodel.Endpoint{IPv4: net.ParseIP("1.2.3.4")},
+			wantErr: false,
+		},
+		{name: "Only ipv6 remote",
+			args: args{
+				node: &commonpb.Node{
+					Attributes: map[string]string{"zipkin.remoteEndpoint.ipv6": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+				},
+				serviceName:  "",
+				endpointType: isRemoteEndpoint,
+			},
+			want:    &zipkinmodel.Endpoint{IPv6: net.ParseIP("2001:0db8:85a3:0000:0000:8a2e:0370:7334")},
+			wantErr: false,
+		},
+		{name: "Only port",
+			args: args{
+				node: &commonpb.Node{
+					Attributes: map[string]string{"port": "42"},
+				},
+				serviceName:  "",
+				endpointType: isLocalEndpoint,
+			},
+			want:    &zipkinmodel.Endpoint{Port: 42},
+			wantErr: false,
+		},
+		{name: "Only port",
+			args: args{
+				node: &commonpb.Node{
+					Attributes: map[string]string{"ipv4": "4.3.2.1", "port": "2"},
+				},
+				serviceName:  "test-svc",
+				endpointType: isLocalEndpoint,
+			},
+			want:    &zipkinmodel.Endpoint{ServiceName: "test-svc", IPv4: net.ParseIP("4.3.2.1"), Port: 2},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := zipkinEndpointFromNode(tt.args.node, tt.args.serviceName, tt.args.endpointType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("zipkinEndpointFromNode() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("zipkinEndpointFromNode() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+
+}
 
 // This function tests that Zipkin spans that are received then processed roundtrip
 // back to almost the same JSON with differences:
@@ -63,7 +175,7 @@ exporters:
     batch_size: ` + strconv.FormatInt(spanCount, 10) + ` 
     upload_period: 10s
     endpoint: ` + cst.URL
-	tes, doneFns, err := exporterparser.ZipkinExportersFromYAML([]byte(config))
+	tes, doneFns, err := ZipkinExportersFromYAML([]byte(config))
 	if err != nil {
 		t.Fatalf("Failed to parse out exporters: %v", err)
 	}
