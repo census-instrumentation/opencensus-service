@@ -8,6 +8,16 @@
         "vStr": "api246-sjc1"
       },
       {
+        "key": "pid",
+        "vType": "LONG",
+        "vLong": 13
+      },
+      {
+        "key": "start.time",
+        "vType": "STRING",
+        "vStr": "2017-01-26T21:46:30.639875Z"
+      },
+      {
         "key": "ip",
         "vType": "STRING",
         "vStr": "10.53.69.61"

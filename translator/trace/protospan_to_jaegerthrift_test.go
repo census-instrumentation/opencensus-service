@@ -100,9 +100,6 @@ func TestOCProtoToJaegerThrift(t *testing.T) {
 		wjsonStr := testutils.GenerateNormalizedJSON(string(wjson))
 		if gjsonStr != wjsonStr {
 			t.Errorf("OC Proto to Jaeger Thrift failed.\nGot:\n%s\nWant:\n%s\n", gjsonStr, wjsonStr)
-			t.Errorf("Saving formated jsons at ./testdata/ to help with further investigation")
-			testutils.SaveAsFormattedJSON(fmt.Sprintf("./testdata/failure_oc_to_jaeger_got_%02d.json", i), gotJBatch)
-			testutils.SaveAsFormattedJSON(fmt.Sprintf("./testdata/failure_oc_to_jaeger_want_%02d.json", i), wantJBatch)
 		}
 	}
 }
@@ -112,7 +109,11 @@ func TestOCProtoToJaegerThrift(t *testing.T) {
 var ocBatches = []*agenttracepb.ExportTraceServiceRequest{
 	{
 		Node: &commonpb.Node{
-			Identifier:  &commonpb.ProcessIdentifier{HostName: "api246-sjc1"},
+			Identifier: &commonpb.ProcessIdentifier{
+				HostName:       "api246-sjc1",
+				Pid:            13,
+				StartTimestamp: &timestamp.Timestamp{Seconds: 1485467190, Nanos: 639875000},
+			},
 			LibraryInfo: &commonpb.LibraryInfo{ExporterVersion: "someVersion"},
 			ServiceInfo: &commonpb.ServiceInfo{Name: "api"},
 			Attributes: map[string]string{

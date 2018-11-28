@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/jaegertracing/jaeger/thrift-gen/jaeger"
 
@@ -65,13 +66,33 @@ func ocNodeToJaegerProcess(node *commonpb.Node) *jaeger.Process {
 		}
 	}
 
-	if node.Identifier != nil && node.Identifier.HostName != "" {
-		hostTag := &jaeger.Tag{
-			Key:   "hostname",
-			VType: jaeger.TagType_STRING,
-			VStr:  &node.Identifier.HostName,
+	if node.Identifier != nil {
+		if node.Identifier.HostName != "" {
+			hostTag := &jaeger.Tag{
+				Key:   "hostname",
+				VType: jaeger.TagType_STRING,
+				VStr:  &node.Identifier.HostName,
+			}
+			jTags = append(jTags, hostTag)
 		}
-		jTags = append(jTags, hostTag)
+		if node.Identifier.Pid != 0 {
+			pid := int64(node.Identifier.Pid)
+			hostTag := &jaeger.Tag{
+				Key:   "pid",
+				VType: jaeger.TagType_LONG,
+				VLong: &pid,
+			}
+			jTags = append(jTags, hostTag)
+		}
+		if node.Identifier.StartTimestamp != nil && node.Identifier.StartTimestamp.Seconds != 0 {
+			startTimeStr := ptypes.TimestampString(node.Identifier.StartTimestamp)
+			hostTag := &jaeger.Tag{
+				Key:   "start.time",
+				VType: jaeger.TagType_STRING,
+				VStr:  &startTimeStr,
+			}
+			jTags = append(jTags, hostTag)
+		}
 	}
 
 	// Add OpenCensus library information as tags if available
