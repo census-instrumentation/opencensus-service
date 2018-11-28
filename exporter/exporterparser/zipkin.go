@@ -40,7 +40,6 @@ type ZipkinConfig struct {
 	ServiceName      string         `yaml:"service_name,omitempty"`
 	Endpoint         string         `yaml:"endpoint,omitempty"`
 	LocalEndpointURI string         `yaml:"local_endpoint,omitempty"`
-	BatchSize        int            `yaml:"batch_size,omitempty"`
 	UploadPeriod     *time.Duration `yaml:"upload_period,omitempty"`
 }
 
@@ -109,7 +108,7 @@ func ZipkinExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneF
 	if zc.UploadPeriod != nil && *zc.UploadPeriod > 0 {
 		uploadPeriod = *zc.UploadPeriod
 	}
-	zle, err := newZipkinExporter(endpoint, serviceName, localEndpointURI, uploadPeriod, zc.BatchSize)
+	zle, err := newZipkinExporter(endpoint, serviceName, localEndpointURI, uploadPeriod)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Cannot configure Zipkin exporter: %v", err)
 	}
@@ -118,13 +117,10 @@ func ZipkinExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneF
 	return
 }
 
-func newZipkinExporter(finalEndpointURI, defaultServiceName, defaultLocalEndpointURI string, uploadPeriod time.Duration, batchSize int) (*zipkinExporter, error) {
+func newZipkinExporter(finalEndpointURI, defaultServiceName, defaultLocalEndpointURI string, uploadPeriod time.Duration) (*zipkinExporter, error) {
 	var opts []zipkinhttp.ReporterOption
 	if uploadPeriod > 0 {
 		opts = append(opts, zipkinhttp.BatchInterval(uploadPeriod))
-	}
-	if batchSize > 0 {
-		opts = append(opts, zipkinhttp.BatchSize(batchSize))
 	}
 	reporter := zipkinhttp.NewReporter(finalEndpointURI, opts...)
 	zle := &zipkinExporter{
@@ -206,14 +202,13 @@ func (ze *zipkinExporter) ExportSpans(ctx context.Context, td data.TraceData) er
 			return err
 		}
 		zs, err := ze.zipkinSpan(td.Node, sd)
-		if err != nil {
-			return err
+		if err == nil {
+			// ze.reporter can get closed in the midst of a Send
+			// so avoid a read/write during that mutation.
+			ze.mu.Lock()
+			ze.reporter.Send(zs)
+			ze.mu.Unlock()
 		}
-		// ze.reporter can get closed in the midst of a Send
-		// so avoid a read/write during that mutation.
-		ze.mu.Lock()
-		ze.reporter.Send(zs)
-		ze.mu.Unlock()
 	}
 	return nil
 }

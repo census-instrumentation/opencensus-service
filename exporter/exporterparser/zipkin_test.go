@@ -17,58 +17,22 @@ package exporterparser
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	zipkinmodel "github.com/openzipkin/zipkin-go/model"
-	zipkinhttp "github.com/openzipkin/zipkin-go/reporter/http"
-	"go.opencensus.io/trace"
 
 	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/internal/testutils"
 	"github.com/census-instrumentation/opencensus-service/receiver/zipkin"
 )
-
-func TestZipkinExporterCorrectlyHandlesNilNode(t *testing.T) {
-	span := &trace.SpanData{
-		SpanContext: trace.SpanContext{
-			TraceID: trace.TraceID{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-			SpanID:  trace.SpanID{0, 1, 2, 3, 4, 5, 6, 7},
-		},
-		ParentSpanID: trace.SpanID{8, 9, 10, 11, 12, 13, 14, 15},
-		Name:         "minimal",
-		SpanKind:     trace.SpanKindServer,
-		StartTime:    time.Unix(0, 0).UTC(),
-		EndTime:      time.Unix(1, 0).UTC(),
-		Status: trace.Status{
-			Code:    2,
-			Message: "unknown",
-		},
-	}
-	zr := zipkinhttp.NewReporter("http://to-fail:123/fail", zipkinhttp.BatchSize(2), zipkinhttp.Timeout(1*time.Millisecond))
-	defer zr.Close()
-	ze := &zipkinExporter{
-		reporter: zr,
-	}
-	gotZc, err := ze.zipkinSpan(nil, span)
-	if err != nil {
-		t.Errorf("Zipkin exporter error on nil node:%v", err)
-	}
-	notWantZs := zipkinmodel.SpanModel{}
-	if reflect.DeepEqual(gotZc, notWantZs) {
-		t.Errorf("Zipkin exporter returned the uninitialized span when a nil node as passed.")
-	}
-}
 
 func TestZipkinEndpointFromNode(t *testing.T) {
 	type args struct {
@@ -82,9 +46,20 @@ func TestZipkinEndpointFromNode(t *testing.T) {
 		want    *zipkinmodel.Endpoint
 		wantErr bool
 	}{
-		{name: "Nil Node", args: args{node: nil, serviceName: "", endpointType: isLocalEndpoint}, want: nil, wantErr: false},
-		{name: "Only svc name", args: args{node: &commonpb.Node{}, serviceName: "test", endpointType: isLocalEndpoint}, want: &zipkinmodel.Endpoint{ServiceName: "test"}, wantErr: false},
-		{name: "Only ipv4",
+		{
+			name:    "Nil Node",
+			args:    args{node: nil, serviceName: "", endpointType: isLocalEndpoint},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name:    "Only svc name",
+			args:    args{node: &commonpb.Node{}, serviceName: "test", endpointType: isLocalEndpoint},
+			want:    &zipkinmodel.Endpoint{ServiceName: "test"},
+			wantErr: false,
+		},
+		{
+			name: "Only ipv4",
 			args: args{
 				node: &commonpb.Node{
 					Attributes: map[string]string{"ipv4": "1.2.3.4"},
@@ -95,7 +70,8 @@ func TestZipkinEndpointFromNode(t *testing.T) {
 			want:    &zipkinmodel.Endpoint{IPv4: net.ParseIP("1.2.3.4")},
 			wantErr: false,
 		},
-		{name: "Only ipv6 remote",
+		{
+			name: "Only ipv6 remote",
 			args: args{
 				node: &commonpb.Node{
 					Attributes: map[string]string{"zipkin.remoteEndpoint.ipv6": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
@@ -106,7 +82,8 @@ func TestZipkinEndpointFromNode(t *testing.T) {
 			want:    &zipkinmodel.Endpoint{IPv6: net.ParseIP("2001:0db8:85a3:0000:0000:8a2e:0370:7334")},
 			wantErr: false,
 		},
-		{name: "Only port",
+		{
+			name: "Only port",
 			args: args{
 				node: &commonpb.Node{
 					Attributes: map[string]string{"port": "42"},
@@ -117,7 +94,8 @@ func TestZipkinEndpointFromNode(t *testing.T) {
 			want:    &zipkinmodel.Endpoint{Port: 42},
 			wantErr: false,
 		},
-		{name: "Only port",
+		{
+			name: "Only port",
 			args: args{
 				node: &commonpb.Node{
 					Attributes: map[string]string{"ipv4": "4.3.2.1", "port": "2"},
@@ -129,6 +107,7 @@ func TestZipkinEndpointFromNode(t *testing.T) {
 			wantErr: false,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := zipkinEndpointFromNode(tt.args.node, tt.args.serviceName, tt.args.endpointType)
@@ -141,7 +120,6 @@ func TestZipkinEndpointFromNode(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 // This function tests that Zipkin spans that are received then processed roundtrip
@@ -163,18 +141,11 @@ func TestZipkinExportersFromYAML_roundtripJSON(t *testing.T) {
 	}))
 	defer cst.Close()
 
-	var spans []interface{}
-	if err := json.Unmarshal([]byte(wantZipkinSpans), &spans); err != nil {
-		t.Fatalf("Fail to unmarshal want Zipkin spans: %v", err)
-	}
-	spanCount := int64(len(spans))
-
 	config := `
 exporters:
-  zipkin:
-    batch_size: ` + strconv.FormatInt(spanCount, 10) + ` 
-    upload_period: 10s
-    endpoint: ` + cst.URL
+    zipkin:
+      upload_period: 1ms
+      endpoint: ` + cst.URL
 	tes, doneFns, err := ZipkinExportersFromYAML([]byte(config))
 	if err != nil {
 		t.Fatalf("Failed to parse out exporters: %v", err)
@@ -208,43 +179,42 @@ exporters:
 	// Wait for the server to write the response.
 	<-responseReady
 
-	const wantZipkinSpans = `
-  [{
-    "traceId": "4d1e00c0db9010db86154a4ba6e91385","parentId": "86154a4ba6e91385","id": "4d1e00c0db9010db",
-    "kind": "CLIENT","name": "get",
-    "timestamp": 1472470996199000,"duration": 207000,
-    "localEndpoint": {"serviceName": "frontend","ipv6": "7::80:807f"},
-    "remoteEndpoint": {"serviceName": "backend","ipv4": "192.168.99.101","port": 9000},
-    "annotations": [
-      {"timestamp": 1472470996238000,"value": "foo"},
-      {"timestamp": 1472470996403000,"value": "bar"}
-    ],
-    "tags": {"http.path": "/api","clnt/finagle.version": "6.45.0"}
-  },
-  {
-    "traceId": "4d1e00c0db9010db86154a4ba6e91385","parentId": "86154a4ba6e91386","id": "4d1e00c0db9010db",
-    "kind": "SERVER","name": "put",
-    "timestamp": 1472470996199000,"duration": 207000,
-    "localEndpoint": {"serviceName": "frontend","ipv6": "7::80:807f"},
-    "remoteEndpoint": {"serviceName": "frontend", "ipv4": "192.168.99.101","port": 9000},
-    "annotations": [
-      {"timestamp": 1472470996238000,"value": "foo"},
-      {"timestamp": 1472470996403000,"value": "bar"}
-    ],
-    "tags": {"http.path": "/api","clnt/finagle.version": "6.45.0"}
-  },
-  {
-    "traceId": "4d1e00c0db9010db86154a4ba6e91385",
-    "parentId": "86154a4ba6e91386",
-    "id": "4d1e00c0db9010db",
-    "kind": "SERVER",
-    "name": "put",
-    "timestamp": 1472470996199000,
-    "duration": 207000
-  }]`
-
 	// We expect back the exact JSON that was received
-	want := testutils.GenerateNormalizedJSON(wantZipkinSpans)
+	want := testutils.GenerateNormalizedJSON(`
+[{
+  "traceId": "4d1e00c0db9010db86154a4ba6e91385","parentId": "86154a4ba6e91385","id": "4d1e00c0db9010db",
+  "kind": "CLIENT","name": "get",
+  "timestamp": 1472470996199000,"duration": 207000,
+  "localEndpoint": {"serviceName": "frontend","ipv6": "7::80:807f"},
+  "remoteEndpoint": {"serviceName": "backend","ipv4": "192.168.99.101","port": 9000},
+  "annotations": [
+    {"timestamp": 1472470996238000,"value": "foo"},
+    {"timestamp": 1472470996403000,"value": "bar"}
+  ],
+  "tags": {"http.path": "/api","clnt/finagle.version": "6.45.0"}
+},
+{
+  "traceId": "4d1e00c0db9010db86154a4ba6e91385","parentId": "86154a4ba6e91386","id": "4d1e00c0db9010db",
+  "kind": "SERVER","name": "put",
+  "timestamp": 1472470996199000,"duration": 207000,
+  "localEndpoint": {"serviceName": "frontend","ipv6": "7::80:807f"},
+  "remoteEndpoint": {"serviceName": "frontend", "ipv4": "192.168.99.101","port": 9000},
+  "annotations": [
+    {"timestamp": 1472470996238000,"value": "foo"},
+    {"timestamp": 1472470996403000,"value": "bar"}
+  ],
+  "tags": {"http.path": "/api","clnt/finagle.version": "6.45.0"}
+},
+{
+  "traceId": "4d1e00c0db9010db86154a4ba6e91385",
+  "parentId": "86154a4ba6e91386",
+  "id": "4d1e00c0db9010db",
+  "kind": "SERVER",
+  "name": "put",
+  "timestamp": 1472470996199000,
+  "duration": 207000
+}]`)
+
 	// Finally we need to inspect the output
 	gotBytes, _ := ioutil.ReadAll(buf)
 	got := testutils.GenerateNormalizedJSON(string(gotBytes))
