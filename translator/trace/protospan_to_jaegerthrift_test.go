@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
@@ -48,6 +49,66 @@ func TestJaegerFromOCProtoSpanIDRoundTrip(t *testing.T) {
 	}
 	if g != w {
 		t.Errorf("Round trip of span Id failed want: 0x%0x got: 0x%0x", w, g)
+	}
+}
+
+func TestInvalidOCProtoIDs(t *testing.T) {
+	fakeTraceID := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	tests := []struct {
+		name         string
+		ocSpans      []*tracepb.Span
+		wantErr      error // nil means that we check for the message of the wrapped error
+		wrappedError error // when wantErr is nil we expect this error to have been wrapped by the one received
+	}{
+		{
+			name:         "nil TraceID",
+			ocSpans:      []*tracepb.Span{{}},
+			wantErr:      nil,
+			wrappedError: errNilTraceID,
+		},
+		{
+			name:         "empty TraceID",
+			ocSpans:      []*tracepb.Span{{TraceId: []byte{}}},
+			wantErr:      nil,
+			wrappedError: errWrongLenTraceID,
+		},
+		{
+			name:    "zero TraceID",
+			ocSpans: []*tracepb.Span{{TraceId: []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}},
+			wantErr: errZeroTraceID,
+		},
+		{
+			name:         "nil SpanID",
+			ocSpans:      []*tracepb.Span{{TraceId: fakeTraceID}},
+			wantErr:      nil,
+			wrappedError: errNilID,
+		},
+		{
+			name:         "empty SpanID",
+			ocSpans:      []*tracepb.Span{{TraceId: fakeTraceID, SpanId: []byte{}}},
+			wantErr:      nil,
+			wrappedError: errWrongLenID,
+		},
+		{
+			name:    "zero SpanID",
+			ocSpans: []*tracepb.Span{{TraceId: fakeTraceID, SpanId: []byte{0, 0, 0, 0, 0, 0, 0, 0}}},
+			wantErr: errZeroSpanID,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ocSpansToJaegerSpans(tt.ocSpans)
+			if err == nil {
+				t.Error("ocSpansToJaegerSpans() no error, want error")
+				return
+			}
+			if tt.wantErr != nil && err != tt.wantErr {
+				t.Errorf("ocSpansToJaegerSpans() = %v, want %v", err, tt.wantErr)
+			}
+			if tt.wrappedError != nil && !strings.Contains(err.Error(), tt.wrappedError.Error()) {
+				t.Errorf("ocSpansToJaegerSpans() = %v, want it to wrap error %v", err, tt.wrappedError)
+			}
+		})
 	}
 }
 
@@ -198,7 +259,7 @@ var ocBatches = []*agenttracepb.ExportTraceServiceRequest{
 			{
 				TraceId:      []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x52, 0x96, 0x9A, 0x89, 0x55, 0x57, 0x1A, 0x3F},
 				SpanId:       []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x7D, 0x98},
-				ParentSpanId: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0xC4, 0xE3},
+				ParentSpanId: nil,
 				Name:         &tracepb.TruncatableString{Value: "get"},
 				Kind:         tracepb.Span_SERVER,
 				StartTime:    &timestamp.Timestamp{Seconds: 1485467191, Nanos: 639875000},
@@ -214,7 +275,7 @@ var ocBatches = []*agenttracepb.ExportTraceServiceRequest{
 			{
 				TraceId:      []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x52, 0x96, 0x9A, 0x89, 0x55, 0x57, 0x1A, 0x3F},
 				SpanId:       []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x7D, 0x99},
-				ParentSpanId: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0xC4, 0xE3},
+				ParentSpanId: []byte{},
 				Name:         &tracepb.TruncatableString{Value: "get"},
 				Kind:         tracepb.Span_SERVER,
 				StartTime:    &timestamp.Timestamp{Seconds: 1485467191, Nanos: 639875000},
@@ -232,6 +293,14 @@ var ocBatches = []*agenttracepb.ExportTraceServiceRequest{
 						},
 					},
 				},
+			},
+			{
+				TraceId:      []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x52, 0x96, 0x9A, 0x89, 0x55, 0x57, 0x1A, 0x3F},
+				SpanId:       []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x7D, 0x98},
+				ParentSpanId: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+				Name:         &tracepb.TruncatableString{Value: "get2"},
+				StartTime:    &timestamp.Timestamp{Seconds: 1485467192, Nanos: 639875000},
+				EndTime:      &timestamp.Timestamp{Seconds: 1485467192, Nanos: 662813000},
 			},
 		},
 	},

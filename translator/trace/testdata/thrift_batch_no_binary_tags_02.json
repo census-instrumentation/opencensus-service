@@ -7,7 +7,7 @@
       {
         "traceIdLow": 5951113872249657919,
         "spanId": 6585752,
-        "parentSpanId": 6866147,
+        "parentSpanId": 0,
         "operationName": "get",
         "startTime": 1485467191639875,
         "duration": 22938,
@@ -27,7 +27,7 @@
       {
           "traceIdLow": 5951113872249657919,
           "spanId": 6585753,
-          "parentSpanId": 6866147,
+          "parentSpanId": 0,
           "operationName": "get",
           "references": [
             {
@@ -50,7 +50,15 @@
               "vStr": "server"
             }
           ]
-        }
-      ]
+        },
+        {
+            "traceIdLow": 5951113872249657919,
+            "spanId": 6585752,
+            "parentSpanId": 0,
+            "operationName": "get2",
+            "startTime": 1485467192639875,
+            "duration": 22938
+          }
+        ]
   }
   
