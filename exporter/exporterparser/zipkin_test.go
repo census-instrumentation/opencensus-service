@@ -95,7 +95,7 @@ func TestZipkinEndpointFromNode(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Only port",
+			name: "Service name, ipv4, and port",
 			args: args{
 				node: &commonpb.Node{
 					Attributes: map[string]string{"ipv4": "4.3.2.1", "port": "2"},
