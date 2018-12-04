@@ -104,6 +104,12 @@ First, install ocagent if you haven't.
 $ go get github.com/census-instrumentation/opencensus-service/cmd/ocagent
 ```
 
+Alternatively you can build ocagent from binary (from the root of your repo):
+
+```shell
+$ export GO111MODULE=on && make agent
+```
+
 ### <a name="agent-configuration-file"></a>Configuration file
 
 Create a config.yaml file in the current directory and modify
@@ -297,10 +303,10 @@ $ go run github.com/census-instrumentation/opencensus-service/cmd/occollector
 ```
 2. Run from binary (from the root of your repo):
 ```shell
-$ make collector
+$ export GO111MODULE=on && make collector
 $ ./bin/occollector_$($GOOS)
 ```
-3. Build a Docker scratch image and use the appropria Docker command for your scenario:
+3. Build a Docker scratch image and use the appropriate Docker command for your scenario:
 ```shell
 $ make docker-collector
 $ docker run --rm -it -p 55678:55678 occollector
