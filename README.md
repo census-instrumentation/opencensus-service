@@ -98,6 +98,8 @@ Architecture amd64
 
 ### <a name="agent-usage"></a>Usage
 
+The minimum Go version required for this project is Go1.11.
+
 First, install ocagent if you haven't.
 
 ```shell
@@ -296,6 +298,8 @@ agent/client health information/inventory metadata to downstream exporters.
 
 The collector is in its initial development stages. It can be run directly
 from sources, binary, or a Docker image.
+
+The minimum Go version required for this project is Go1.11.
 
 1. Run from sources:
 ```shell
