@@ -103,7 +103,7 @@ The minimum Go version required for this project is Go1.11.
 First, install ocagent if you haven't.
 
 ```shell
-$ go get github.com/census-instrumentation/opencensus-service/cmd/ocagent
+$ GO111MODULE=on go get github.com/census-instrumentation/opencensus-service/cmd/ocagent
 ```
 
 Alternatively you can build ocagent from binary (from the root of your repo):
@@ -303,7 +303,7 @@ The minimum Go version required for this project is Go1.11.
 
 1. Run from sources:
 ```shell
-$ go run github.com/census-instrumentation/opencensus-service/cmd/occollector
+$ GO111MODULE=on go run github.com/census-instrumentation/opencensus-service/cmd/occollector
 ```
 2. Run from binary (from the root of your repo):
 ```shell
