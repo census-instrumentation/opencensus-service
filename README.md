@@ -354,7 +354,7 @@ processors:
     # retry-on-failure indicates whether queue processor should retry span batches in case of processing failure (default is true)
     retry-on-failure: true
 
-    # backoff-delay is the amount of time a worker waits after a failed send before retrying (default is true)
+    # backoff-delay is the amount of time a worker waits after a failed send before retrying (default is 5 seconds)
     backoff-delay: 3s
 
     # sender-type is the type of sender used by this processor, the default is an invalid sender so it forces one to be specified
