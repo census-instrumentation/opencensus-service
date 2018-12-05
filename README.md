@@ -13,9 +13,6 @@
     - [Configuration file](#agent-configuration-file)
         - [Exporters](#agent-config-exporters)
         - [Receivers](#agent-config-receivers)
-            - [OpenCensus](#details-receivers-opencensus)
-            - [Zipkin](#details-receivers-zipkin)
-            - [Jaeger](#details-receivers-jaeger)
         - [End-to-end example](#agent-config-end-to-end-example)
     - [Diagnostics](#agent-diagnostics)
         - [zPages](#agent-zpages)
@@ -24,14 +21,14 @@
     - [Usage](#collector-usage)
 
 ## Introduction
-OpenCensus Service is an experimental component that can collect traces
+The OpenCensus Service is an component that can collect traces
 and metrics from processes instrumented by OpenCensus or other
-monitoring/tracing libraries (Jaeger, Prometheus, etc.), do the
+monitoring/tracing libraries (Jaeger, Prometheus, etc.), do
 aggregation and smart sampling, and export traces and metrics
-to monitoring/tracing backends.
+to one or more monitoring/tracing backends.
 
 Some frameworks and ecosystems are now providing out-of-the-box
-instrumentation by using OpenCensus but the user is still expected
+instrumentation by using OpenCensus, but the user is still expected
 to register an exporter in order to export data. This is a problem
 during an incident. Even though our users can benefit from having
 more diagnostics data coming out of services already instrumented
@@ -41,14 +38,14 @@ not an ideal at an incident time. In addition, currently users need
 to decide which service backend they want to export to, before they
 distribute their binary instrumented by OpenCensus.
 
-OpenCensus Service is trying to eliminate these requirements. With
+The OpenCensus Service is trying to eliminate these requirements. With the
 OpenCensus Service, users do not need to redeploy or restart their applications
-as long as it has the OpenCensus Agent exporter. All they need to do is
-just configure and deploy OpenCensus Service separately. OpenCensus Service
-will then automatically collect traces and metrics and export to any
+as long as it has the OpenCensus exporter. All they need to do is
+just configure and deploy the OpenCensus Service separately. The OpenCensus
+Service will then automatically collect traces and metrics and export to any
 backend of users' choice.
 
-Currently OpenCensus Service consists of two components,
+Currently the OpenCensus Service consists of two components,
 [OpenCensus Agent](#opencensus-agent) and [OpenCensus Collector](#opencensus-collector).
 High-level workflow:
 
@@ -58,7 +55,7 @@ For the detailed design specs, please see [DESIGN.md](DESIGN.md).
 
 ## Goals
 
-* Allow enabling of configuring the exporters lazily. After deploying code,
+* Allow enabling/configuring of exporters lazily. After deploying code,
 optionally run a daemon on the host and it will read the
 collected data and upload to the configured backend.
 * Binaries can be instrumented without thinking about the exporting story.
@@ -120,13 +117,14 @@ it with the exporter and receiver configurations.
 
 #### <a name="agent-config-exporters"></a>Exporters
 
-For example, to allow trace exporting to Stackdriver and Zipkin:
+One ore more exporters can be configured. An example of all available exporters is provided below.
+By default, no exporters are configured on an OpenCensus Service component.
 
 ```yaml
 exporters:
     stackdriver:
         project: "your-project-id"
-        enable_traces: true
+        enable_tracing: true
 
     zipkin:
         endpoint: "http://localhost:9411/api/v2/spans"
@@ -141,51 +139,21 @@ exporters:
 ```
 
 #### <a name="agent-config-receivers"></a>Receivers
-Agent provides a couple of receivers that receive spans from instrumentation libraries.
 
-#### <a name="details-receivers-opencensus"></a>OpenCensus
+One ore more receivers can be configured. An example of all available receivers is provided below.
+By default, the opencensus receiver is enabled on the OpenCensus Agent.
 
-This receiver receives spans from OpenCensus instrumented applications and translates them into the internal span types that
-are then sent to the collector/exporters.
-
-Its address can be configured in the YAML configuration file under section "receivers", subsection "opencensus" and field "address".
-
-For example:
 ```yaml
 receivers:
     opencensus:
         address: "127.0.0.1:55678"
-```
 
-By default this receiver is ALWAYS started since it is the point of the "OpenCensus agent"
-
-#### <a name="details-receivers-zipkin"></a>Zipkin
-
-This receiver receives spans from Zipkin "/v2" API HTTP uploads and translates them into the internal span types that are then
-sent to the collector/exporters.
-
-Its address can be configured in the YAML configuration file under section "receivers", subsection "zipkin" and field "address".
-
-For example:
-```yaml
-receivers:
     zipkin:
         address: "localhost:9411"
-```
 
-#### <a name="details-receivers-jaeger"></a>Jaeger
-
-This receiver receives spans from Jaeger collector HTTP and Thrift uploads and translates them into the internal span types that are then
-sent to the collector/exporters.
-
-Its address can be configured in the YAML configuration file under section "receivers", subsection "jaeger" and fields "collector_http_port", "collector_thrift_port".
-
-For example:
-```yaml
-receivers:
-    jaeger
-        collector_http_port: 14268
+    jaeger:
         collector_thrift_port: 14267
+        collector_http_port: 14268
 ```
 
 ### <a name="agent-config-end-to-end-example"></a>Running an end-to-end example/demo
@@ -299,8 +267,7 @@ agent/client health information/inventory metadata to downstream exporters.
 
 ### <a name="collector-usage"></a>Usage
 
-The collector is in its initial development stages. It can be run directly
-from sources, binary, or a Docker image.
+The collector can be run directly from sources, binary, or a Docker image.
 
 The minimum Go version required for this project is Go1.11.
 
@@ -313,7 +280,8 @@ $ GO111MODULE=on go run github.com/census-instrumentation/opencensus-service/cmd
 $ make collector
 $ ./bin/occollector_$($GOOS)
 ```
-3. Build a Docker scratch image and use the appropriate Docker command for your scenario:
+3. Build a Docker scratch image and use the appropriate Docker command for your scenario
+(note: additional ports may be required depending on your receiver configuration):
 ```shell
 $ make docker-collector
 $ docker run --rm -it -p 55678:55678 occollector
