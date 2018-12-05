@@ -105,7 +105,7 @@ func (sp *queuedSpanProcessor) processItemFromQueue(item *queueItem) {
 	_, err := sp.sender.ProcessSpans(item.batch, item.spanFormat)
 	if err != nil {
 		batchSize := len(item.batch.Spans)
-		sp.logger.Warn("Sender failed", zap.Error(err), zap.String("spanFormat", item.spanFormat)) // TODO: this can become to noise in general failure scenarios
+		sp.logger.Warn("Sender failed", zap.Error(err), zap.String("spanFormat", item.spanFormat))
 		if !sp.retryOnProcessingFailure {
 			// throw away the batch
 			sp.logger.Error("Failed to process batch, discarding", zap.Int("batch-size", batchSize))

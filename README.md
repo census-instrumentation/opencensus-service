@@ -344,14 +344,14 @@ receivers:
   opencensus: {} # Runs OpenCensus receiver with default configuration
 
 processors:
-  docker-composer-test: # A friendly name for the processor
+  jaeger-sender-test: # A friendly name for the processor
     num-workers: 2
     queue-size: 100
     retry-on-failure: true
     backoff-delay: 3s
     sender-type: thrift-http
     thrift-http:
-      collector-endpoint: "http://svc-jaeger-collector:4268/api/traces"
+      collector-endpoint: "http://svc-jaeger-collector:14268/api/traces"
       headers: { "x-omnition-api-key": "00000000-0000-0000-0000-000000000001" }
       timeout: 5s
 ```
