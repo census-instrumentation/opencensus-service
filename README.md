@@ -7,20 +7,19 @@
 # Table of contents
 - [Introduction](#introduction)
 - [Goals](#goals)
+- [Configuration](#config-file)
+    - [Receivers](#config-receivers)
+    - [Exporters](#config-exporters)
+    - [Diagnostics](#config-diagnostics)
 - [OpenCensus Agent](#opencensus-agent)
     - [Building binaries](#agent-building-binaries)
     - [Usage](#agent-usage)
-    - [Configuration file](#agent-configuration-file)
-        - [Exporters](#agent-config-exporters)
-        - [Receivers](#agent-config-receivers)
-        - [End-to-end example](#agent-config-end-to-end-example)
-    - [Diagnostics](#agent-diagnostics)
-        - [zPages](#agent-zpages)
-    - [Docker image](#agent-docker-image)
 - [OpenCensus Collector](#opencensus-collector)
     - [Usage](#collector-usage)
+- [End-to-end example](#agent-config-end-to-end-example)
 
 ## Introduction
+
 The OpenCensus Service is an component that can collect traces
 and metrics from processes instrumented by OpenCensus or other
 monitoring/tracing libraries (Jaeger, Prometheus, etc.), do
@@ -65,6 +64,88 @@ to adopt OpenCensus without having to link any exporters into their binary.
 implement support for each backend.
 * Custom daemons containing only the required exporters compiled in can be created.
 
+## <a name="config-file"></a>Configuration
+
+The OpenCensus Service (both the Agent and Collector) is configured via a config.yaml file. In general, you need to
+configure one or more receivers as well as one or more exporters. In addition, diagnostics can also be configured.
+
+### <a name="config-receivers"></a>Receivers
+
+One or more receivers can be configured. By default, the ``opencensus`` receiver is enabled on the OpenCensus Agent
+while no receivers are enabled on the OpenCensus Collector.
+
+A basic example of all available receivers is provided below. For detailed receiver configuration,
+please see the [receiver README.md](receiver/README.md).
+```yaml
+receivers:
+  opencensus:
+    address: "localhost:55678"
+
+  zipkin:
+    address: "localhost:9411"
+
+  jaeger:
+    collector_thrift_port: 14267
+    collector_http_port: 14268
+```
+
+### <a name="config-exporters"></a>Exporters
+
+One or more exporters can be configured. By default, no exporters are configured on the OpenCensus Agent or Collector.
+
+A basic example of all available exporters is provided below. For detailed exporter configuration,
+please see the [exporter README.md](exporter/exporterparser/README.md).
+```yaml
+exporters:
+  ocagent:
+    endpoint: "http://localhost:10001"
+
+  jaeger:
+    collector_endpoint: "http://localhost:14268/api/traces"
+
+  kafka:
+    brokers: ["localhost:9092"]
+    topic: "opencensus-spans"
+
+  stackdriver:
+    project: "your-project-id"
+    enable_tracing: true
+
+  zipkin:
+    endpoint: "http://localhost:9411/api/v2/spans"
+```
+
+### <a name="config-diagnostics"></a>Diagnostics
+
+zPages is provided for monitoring. Today, the OpenCensus Agent is configured with zPages running by default on port ``55679``.
+These routes below contain the various diagnostic resources:
+
+Resource|Route
+---|---
+RPC stats|/debug/rpcz
+Trace information|/debug/tracez
+
+The zPages configuration can be updated in the config.yaml file with fields:
+* `disabled`: if set to true, won't run zPages
+* `port`: by default is 55679, otherwise should be set to a value between 0 an 65535
+
+For example:
+```yaml
+zpages:
+    port: 8888 # To override the port from 55679 to 8888
+```
+
+To disable zPages, you can use `disabled` like this:
+```yaml
+zpages:
+    disabled: true
+```
+
+and for example navigating to http://localhost:55679/debug/tracez to debug the
+OpenCensus receiver's traces in your browser should produce something like this
+
+![zPages](https://user-images.githubusercontent.com/4898263/47132981-892bb500-d25b-11e8-980c-08f0115ba72e.png)
+
 ## OpenCensus Agent
 
 ### <a name="agent-building-binaries"></a>Building binaries
@@ -95,132 +176,24 @@ Architecture amd64
 
 ### <a name="agent-usage"></a>Usage
 
+The ocagent can be run directly from sources, binary, or a Docker image.
+
 The minimum Go version required for this project is Go1.11.
 
-First, install ocagent if you haven't.
+1. Run from sources:
 
 ```shell
 $ GO111MODULE=on go get github.com/census-instrumentation/opencensus-service/cmd/ocagent
 ```
 
-Alternatively you can build ocagent from binary (from the root of your repo):
+2. Run from binary (from the root of your repo):
 
 ```shell
 $ make agent
 ```
 
-### <a name="agent-configuration-file"></a>Configuration file
-
-Create a config.yaml file in the current directory and modify
-it with the exporter and receiver configurations.
-
-
-#### <a name="agent-config-exporters"></a>Exporters
-
-One ore more exporters can be configured. An example of all available exporters is provided below.
-By default, no exporters are configured on an OpenCensus Service component.
-
-```yaml
-exporters:
-    stackdriver:
-        project: "your-project-id"
-        enable_tracing: true
-
-    zipkin:
-        endpoint: "http://localhost:9411/api/v2/spans"
-
-    kafka:
-        brokers:
-            - "127.0.0.1:9092"
-        topic: "opencensus-spans"
-
-    ocagent:
-        endpoint: "http://localhost:10001"
-```
-
-#### <a name="agent-config-receivers"></a>Receivers
-
-One ore more receivers can be configured. An example of all available receivers is provided below.
-By default, the opencensus receiver is enabled on the OpenCensus Agent.
-
-```yaml
-receivers:
-    opencensus:
-        address: "127.0.0.1:55678"
-
-    zipkin:
-        address: "localhost:9411"
-
-    jaeger:
-        collector_thrift_port: 14267
-        collector_http_port: 14268
-```
-
-### <a name="agent-config-end-to-end-example"></a>Running an end-to-end example/demo
-
-Run the example application that collects traces and exports them
-to the daemon.
-
-Create an [Agent configuration file](#agent-configuration-file) as described above.
-
-Build the agent, see [Building binaries](#agent-building-binaries),
-and start it:
-
-```shell
-$ ./bin/ocagent_$(go env GOOS)
-$ 2018/10/08 21:38:00 Running OpenCensus receiver as a gRPC service at "127.0.0.1:55678"
-```
-
-Next run the demo application:
-
-```shell
-$ go run "$(go env GOPATH)/src/github.com/census-instrumentation/opencensus-service/example/main.go"
-```
-
-You should be able to see the traces in Stackdriver and Zipkin.
-If you stop the ocagent, the example application will stop exporting.
-If you run it again, exporting will resume.
-
-### <a name="agent-diagnostics"></a>Diagnostics
-
-To monitor the agent itself, we provide some diagnostic tools like:
-
-#### <a name="agent-zpages"></a>zPages
-
-We provide zPages for information on ocagent's internals, running by default on port `55679`.
-These routes below contain the various diagnostic resources:
-
-Resource|Route
----|---
-RPC stats|/debug/rpcz
-Trace information|/debug/tracez
-
-The zPages configuration can be updated in the config.yaml file with fields:
-* `disabled`: if set to true, won't run zPages
-* `port`: by default is 55679, otherwise should be set to a value between 0 an 65535
-
-For example
-```yaml
-zpages:
-    port: 8888 # To override the port from 55679 to 8888
-```
-
-To disable zPages, you can use `disabled` like this:
-```yaml
-zpages:
-    disabled: true
-```
-
-and for example navigating to http://localhost:55679/debug/tracez to debug the
-OpenCensus receiver's traces in your browser should produce something like this
-
-![zPages](https://user-images.githubusercontent.com/4898263/47132981-892bb500-d25b-11e8-980c-08f0115ba72e.png)
-
-### <a name="agent-docker-image"></a>Docker image
-
-For a Docker image for experimentation (based on Alpine) get your 
-[Agent configuration file](#agent-configuration-file) as described above,
-and run:
+3. Build a Docker scratch image and use the appropriate Docker command for your scenario
+(note: additional ports may be required depending on your receiver configuration):
 
 ```shell
 ./build_binaries.sh docker <image_version>
@@ -287,7 +260,7 @@ $ make docker-collector
 $ docker run --rm -it -p 55678:55678 occollector
 ```
 
-4. It can be configured via command-line or config file:
+It can be configured via command-line or config file:
 ```shell
 OpenCensus Collector
 
@@ -295,15 +268,45 @@ Usage:
   occollector [flags]
 
 Flags:
-      --add-queued-processor   Flag to wrap one processor with the queued processor (flag will be remove soon, dev helper)
-      --config string          Path to the config file
-  -h, --help                   help for occollector
-      --log-level string       Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL) (default "INFO")
-      --noop-processor         Flag to add the no-op processor (combine with log level DEBUG to log incoming spans)
-      --receive-jaeger         Flag to run the Jaeger receiver (i.e.: Jaeger Collector), default settings: {ThriftTChannelPort:14267 ThriftHTTPPort:14268}
-      --receive-oc-trace       Flag to run the OpenCensus trace receiver, default settings: {Port:55678}
-      --receive-zipkin         Flag to run the Zipkin receiver, default settings: {Port:9411}
+      --config string      Path to the config file
+      --debug-processor    Flag to add a debug processor (combine with log level DEBUG to log incoming spans)
+  -h, --help               help for occollector
+      --log-level string   Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL) (default "INFO")
+      --receive-jaeger     Flag to run the Jaeger receiver (i.e.: Jaeger Collector), default settings: {ThriftTChannelPort:14267 ThriftHTTPPort:14268}
+      --receive-oc-trace   Flag to run the OpenCensus trace receiver, default settings: {Port:55678}
+      --receive-zipkin     Flag to run the Zipkin receiver, default settings: {Port:9411}
 ```
+
+### <a name="agent-config-end-to-end-example"></a>Running an end-to-end example/demo
+
+Create an Agent [configuration file](#configuration-file) as described above.
+
+Build the Agent, see [Building binaries](#agent-building-binaries),
+and start it:
+
+```shell
+$ ./bin/ocagent_$(go env GOOS)
+$ 2018/10/08 21:38:00 Running OpenCensus receiver as a gRPC service at "127.0.0.1:55678"
+```
+
+Create a Collector [configuration file](#configuration-file) as described above.
+
+Build the Collector and start it:
+
+```shell
+$ make collector
+$ ./bin/occollector_$($GOOS)
+```
+
+Run the demo application:
+
+```shell
+$ go run "$(go env GOPATH)/src/github.com/census-instrumentation/opencensus-service/example/main.go"
+```
+
+You should be able to see the traces in your exporter(s) of choice.
+If you stop the ocagent, the example application will stop exporting.
+If you run it again, exporting will resume.
 
 [travis-image]: https://travis-ci.org/census-instrumentation/opencensus-service.svg?branch=master
 [travis-url]: https://travis-ci.org/census-instrumentation/opencensus-service
