@@ -277,7 +277,7 @@ Flags:
       --receive-zipkin     Flag to run the Zipkin receiver, default settings: {Port:9411}
 ```
 
-### <a name="agent-config-end-to-end-example"></a>Running an end-to-end example/demo
+## <a name="agent-config-end-to-end-example"></a>Running an end-to-end example/demo
 
 Create an Agent [configuration file](#configuration-file) as described above.
 
