@@ -71,8 +71,8 @@ configure one or more receivers as well as one or more exporters. In addition, d
 
 ### <a name="config-receivers"></a>Receivers
 
-One or more receivers can be configured. By default, the ``opencensus`` receiver is enabled on the OpenCensus Agent
-while no receivers are enabled on the OpenCensus Collector.
+A receiver is how you get data into the OpenCensus Service. One or more receivers can be configured. By default,
+the ``opencensus`` receiver is enabled on the OpenCensus Agent while no receivers are enabled on the OpenCensus Collector.
 
 A basic example of all available receivers is provided below. For detailed receiver configuration,
 please see the [receiver README.md](receiver/README.md).
@@ -91,7 +91,8 @@ receivers:
 
 ### <a name="config-exporters"></a>Exporters
 
-One or more exporters can be configured. By default, no exporters are configured on the OpenCensus Agent or Collector.
+An exporter is how you send data to one or more backends/destinations. One or more exporters can be configured.
+By default, no exporters are configured on the OpenCensus Agent or Collector.
 
 A basic example of all available exporters is provided below. For detailed exporter configuration,
 please see the [exporter README.md](exporter/exporterparser/README.md).
@@ -149,6 +150,10 @@ OpenCensus receiver's traces in your browser should produce something like this
 ## OpenCensus Agent
 
 ### <a name="agent-building-binaries"></a>Building binaries
+
+<aside class="notice">
+It is recommended that you use the latest [release](https://github.com/census-instrumentation/opencensus-service/releases).
+</aside>
 
 Please run file `build_binaries.sh` in the root of this repository, with argument `binaries` or any of:
 * linux
@@ -239,6 +244,10 @@ them updated configuration (e.g. trace sampling policies), and reporting
 agent/client health information/inventory metadata to downstream exporters.
 
 ### <a name="collector-usage"></a>Usage
+
+<aside class="notice">
+It is recommended that you use the latest [release](https://github.com/census-instrumentation/opencensus-service/releases).
+</aside>
 
 The collector can be run directly from sources, binary, or a Docker image.
 
