@@ -151,9 +151,7 @@ OpenCensus receiver's traces in your browser should produce something like this
 
 ### <a name="agent-building-binaries"></a>Building binaries
 
-<aside class="notice">
-It is recommended that you use the latest [release](https://github.com/census-instrumentation/opencensus-service/releases).
-</aside>
+> It is recommended that you use the latest [release](https://github.com/census-instrumentation/opencensus-service/releases).
 
 Please run file `build_binaries.sh` in the root of this repository, with argument `binaries` or any of:
 * linux
@@ -245,9 +243,7 @@ agent/client health information/inventory metadata to downstream exporters.
 
 ### <a name="collector-usage"></a>Usage
 
-<aside class="notice">
-It is recommended that you use the latest [release](https://github.com/census-instrumentation/opencensus-service/releases).
-</aside>
+> It is recommended that you use the latest [release](https://github.com/census-instrumentation/opencensus-service/releases).
 
 The collector can be run directly from sources, binary, or a Docker image.
 
