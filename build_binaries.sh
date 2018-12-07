@@ -37,7 +37,7 @@ fi
 VERSION="$2"
 if [[ "$VERSION" == "" ]]
 then
-    VERSION="undefined"
+    VERSION="latest"
 fi
 
 function build() {

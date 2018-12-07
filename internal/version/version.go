@@ -21,7 +21,7 @@ import (
 )
 
 // version variable will be replaced at link time after `make` has been run.
-var version = "undefined"
+var version = "latest"
 
 // GitHash variable will be replaced at link time after `make` has been run.
 var GitHash = "<NOT PROPERLY GENERATED>"
