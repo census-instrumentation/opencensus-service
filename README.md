@@ -7,6 +7,9 @@
 # Table of contents
 - [Introduction](#introduction)
 - [Goals](#goals)
+- [Deployment](#deploy-example)
+    - [Kubernetes](#deploy-k8s)
+    - [Standalone](#deploy-standalone)
 - [Configuration](#config-file)
     - [Receivers](#config-receivers)
     - [Exporters](#config-exporters)
@@ -16,7 +19,6 @@
     - [Usage](#agent-usage)
 - [OpenCensus Collector](#opencensus-collector)
     - [Usage](#collector-usage)
-- [End-to-end example](#agent-config-end-to-end-example)
 
 ## Introduction
 
@@ -63,6 +65,48 @@ to adopt OpenCensus without having to link any exporters into their binary.
 * Easier to scale the exporter development. Not every language has to
 implement support for each backend.
 * Custom daemons containing only the required exporters compiled in can be created.
+
+## <a name="deploy-example"></a>Deployment
+
+The OpenCensus Service can be deployed in a variety of different ways. The OpenCensus
+Agent can be deployed with the application either as a separate process, as a sidecar,
+or via a Kubernetes daemonset. Typically, the OpenCensus Collector is deployed
+separately as either a Docker container, VM, or Kubernetes pod.
+
+![deployment-models](images/opencensus-service-deployment-models.png)
+
+### <a name="deploy-k8s"></a>Kubernetes
+
+### <a name="deploy-standalone"></a>Standalone
+
+Create an Agent [configuration file](#configuration-file) as described above.
+
+Build the Agent, see [Building binaries](#agent-building-binaries),
+and start it:
+
+```shell
+$ ./bin/ocagent_$(go env GOOS)
+$ 2018/10/08 21:38:00 Running OpenCensus receiver as a gRPC service at "127.0.0.1:55678"
+```
+
+Create a Collector [configuration file](#configuration-file) as described above.
+
+Build the Collector and start it:
+
+```shell
+$ make collector
+$ ./bin/occollector_$($GOOS)
+```
+
+Run the demo application:
+
+```shell
+$ go run "$(go env GOPATH)/src/github.com/census-instrumentation/opencensus-service/example/main.go"
+```
+
+You should be able to see the traces in your exporter(s) of choice.
+If you stop the ocagent, the example application will stop exporting.
+If you run it again, exporting will resume.
 
 ## <a name="config-file"></a>Configuration
 
@@ -281,37 +325,6 @@ Flags:
       --receive-oc-trace   Flag to run the OpenCensus trace receiver, default settings: {Port:55678}
       --receive-zipkin     Flag to run the Zipkin receiver, default settings: {Port:9411}
 ```
-
-## <a name="agent-config-end-to-end-example"></a>Running an end-to-end example/demo
-
-Create an Agent [configuration file](#configuration-file) as described above.
-
-Build the Agent, see [Building binaries](#agent-building-binaries),
-and start it:
-
-```shell
-$ ./bin/ocagent_$(go env GOOS)
-$ 2018/10/08 21:38:00 Running OpenCensus receiver as a gRPC service at "127.0.0.1:55678"
-```
-
-Create a Collector [configuration file](#configuration-file) as described above.
-
-Build the Collector and start it:
-
-```shell
-$ make collector
-$ ./bin/occollector_$($GOOS)
-```
-
-Run the demo application:
-
-```shell
-$ go run "$(go env GOPATH)/src/github.com/census-instrumentation/opencensus-service/example/main.go"
-```
-
-You should be able to see the traces in your exporter(s) of choice.
-If you stop the ocagent, the example application will stop exporting.
-If you run it again, exporting will resume.
 
 [travis-image]: https://travis-ci.org/census-instrumentation/opencensus-service.svg?branch=master
 [travis-url]: https://travis-ci.org/census-instrumentation/opencensus-service
