@@ -98,7 +98,7 @@ A basic example of all available exporters is provided below. For detailed expor
 please see the [exporter README.md](exporter/exporterparser/README.md).
 ```yaml
 exporters:
-  ocagent:
+  opencensus:
     endpoint: "http://localhost:10001"
 
   jaeger:
