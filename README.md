@@ -77,6 +77,8 @@ separately as either a Docker container, VM, or Kubernetes pod.
 
 ### <a name="deploy-k8s"></a>Kubernetes
 
+Coming soon!
+
 ### <a name="deploy-standalone"></a>Standalone
 
 Create an Agent [configuration file](#configuration-file) as described above.
@@ -319,7 +321,7 @@ Usage:
 Flags:
       --config string      Path to the config file
       --debug-processor    Flag to add a debug processor (combine with log level DEBUG to log incoming spans)
-  -h, --help               help for occollector
+  -h, --help               Help for occollector
       --log-level string   Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL) (default "INFO")
       --receive-jaeger     Flag to run the Jaeger receiver (i.e.: Jaeger Collector), default settings: {ThriftTChannelPort:14267 ThriftHTTPPort:14268}
       --receive-oc-trace   Flag to run the OpenCensus trace receiver, default settings: {Port:55678}

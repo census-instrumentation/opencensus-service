@@ -19,7 +19,7 @@ require (
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/jaegertracing/jaeger v1.7.0
+	github.com/jaegertracing/jaeger v1.8.2
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
@@ -44,6 +44,7 @@ require (
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
+	golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3 // indirect
 	golang.org/x/net v0.0.0-20181102091132-c10e9556a7bc // indirect
 	golang.org/x/oauth2 v0.0.0-20181102170140-232e45548389 // indirect
 	golang.org/x/sys v0.0.0-20181031143558-9b800f95dbbc // indirect
