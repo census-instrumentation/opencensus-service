@@ -69,7 +69,7 @@ func TestReception(t *testing.T) {
 				jaeger.Int64Tag("int64", 1e7),
 			},
 		},
-		CollectorEndpoint: fmt.Sprintf("http://localhost:%d/api/traces", collectorHTTPPort),
+		Endpoint: fmt.Sprintf("http://localhost:%d/api/traces", collectorHTTPPort),
 	})
 	if err != nil {
 		t.Fatalf("Failed to create the Jaeger OpenCensus exporter for the live application: %v", err)

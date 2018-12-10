@@ -148,7 +148,7 @@ exporters:
     endpoint: "http://localhost:10001"
 
   jaeger:
-    collector_endpoint: "http://localhost:14268/api/traces"
+    endpoint: "http://localhost:14268/api/traces"
 
   kafka:
     brokers: ["localhost:9092"]

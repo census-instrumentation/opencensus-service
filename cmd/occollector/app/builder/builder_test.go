@@ -92,9 +92,9 @@ func TestMultiAndQueuedSpanProcessorConfig(t *testing.T) {
 	snd.BackoffDelay = 3 * time.Second
 	snd.SenderType = ThriftHTTPSenderType
 	snd.SenderConfig = &JaegerThriftHTTPSenderCfg{
-		CollectorEndpoint: "https://somedomain.com/api/traces",
-		Headers:           map[string]string{"x-header-key": "00000000-0000-0000-0000-000000000001"},
-		Timeout:           time.Second * 5,
+		Endpoint: "https://somedomain.com/api/traces",
+		Headers:  map[string]string{"x-header-key": "00000000-0000-0000-0000-000000000001"},
+		Timeout:  time.Second * 5,
 	}
 
 	wCfg := &MultiSpanProcessorCfg{

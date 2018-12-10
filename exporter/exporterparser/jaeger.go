@@ -24,10 +24,10 @@ import (
 
 // Slight modified version of go/src/go.opencensus.io/exporter/jaeger/jaeger.go
 type jaegerConfig struct {
-	CollectorEndpoint string `yaml:"collector_endpoint,omitempty"`
-	Username          string `yaml:"username,omitempty"`
-	Password          string `yaml:"password,omitempty"`
-	ServiceName       string `yaml:"service_name,omitempty"`
+	Endpoint    string `yaml:"endpoint,omitempty"`
+	Username    string `yaml:"username,omitempty"`
+	Password    string `yaml:"password,omitempty"`
+	ServiceName string `yaml:"service_name,omitempty"`
 }
 
 type jaegerExporter struct {
@@ -55,9 +55,9 @@ func JaegerExportersFromYAML(config []byte) (tes []exporter.TraceExporter, doneF
 
 	// jaeger.NewExporter performs configurqtion validation
 	je, err := jaeger.NewExporter(jaeger.Options{
-		CollectorEndpoint: jc.CollectorEndpoint,
-		Username:          jc.Username,
-		Password:          jc.Password,
+		Endpoint: jc.Endpoint,
+		Username: jc.Username,
+		Password: jc.Password,
 		Process: jaeger.Process{
 			ServiceName: jc.ServiceName,
 		},

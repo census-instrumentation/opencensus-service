@@ -19,11 +19,11 @@ processors:
     # sender-type is the type of sender used by this processor, the default is an invalid sender so it forces one to be specified
     sender-type: thrift-http
     # configuration of the selected sender-type, in this example Jaeger thrift-http. Which supports 3 settings:
-    # collector-endpoint: address of Jaeger collector thrift-http endpoint
+    # endpoint: address of Jaeger collector thrift-http endpoint
     # headers: a map of any additional headers to be sent with each batch (e.g.: api keys, etc)
     # timeout: the timeout for the sender to consider the operation as failed
     thrift-http:
-      collector-endpoint: "https://ingest.omnition.io"
+      endpoint: "https://ingest.omnition.io"
       headers: { "x-omnition-api-key": "00000000-0000-0000-0000-000000000001" }
       timeout: 5s
   jaeger: # A second processor with its own configuration options
@@ -33,6 +33,6 @@ processors:
     backoff-delay: 3s
     sender-type: thrift-http
     thrift-http:
-      collector-endpoint: "http://jaeger.local:14268/api/traces"
+      endpoint: "http://jaeger.local:14268/api/traces"
       timeout: 5s
 ```

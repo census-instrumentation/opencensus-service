@@ -255,9 +255,9 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 	case builder.ThriftHTTPSenderType:
 		thriftHTTPSenderOpts := opts.SenderConfig.(*builder.JaegerThriftHTTPSenderCfg)
 		logger.Info("Initializing thrift-HTTP sender",
-			zap.String("url", thriftHTTPSenderOpts.CollectorEndpoint))
+			zap.String("url", thriftHTTPSenderOpts.Endpoint))
 		spanSender = sender.NewJaegerThriftHTTPSender(
-			thriftHTTPSenderOpts.CollectorEndpoint,
+			thriftHTTPSenderOpts.Endpoint,
 			thriftHTTPSenderOpts.Headers,
 			logger,
 			sender.HTTPTimeout(thriftHTTPSenderOpts.Timeout),

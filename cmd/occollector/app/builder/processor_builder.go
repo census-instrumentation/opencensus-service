@@ -50,9 +50,9 @@ func NewJaegerThriftTChannelSenderCfg() *JaegerThriftTChannelSenderCfg {
 
 // JaegerThriftHTTPSenderCfg holds configuration for Jaeger Thrift HTTP sender
 type JaegerThriftHTTPSenderCfg struct {
-	CollectorEndpoint string            `mapstructure:"collector-endpoint"`
-	Timeout           time.Duration     `mapstructure:"timeout"`
-	Headers           map[string]string `mapstructure:"headers"`
+	Endpoint string            `mapstructure:"endpoint"`
+	Timeout  time.Duration     `mapstructure:"timeout"`
+	Headers  map[string]string `mapstructure:"headers"`
 }
 
 // NewJaegerThriftHTTPSenderCfg returns an instance of JaegerThriftHTTPSenderCfg with default values
