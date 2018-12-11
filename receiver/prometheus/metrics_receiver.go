@@ -42,8 +42,8 @@ func New(ms receiver.MetricsReceiverSink, opts ...Option) (*Receiver, error) {
 
 const receiverName = "prometheus"
 
-// Export is the gRPC method that receives streamed metrics from
-// OpenCensus-metricproto compatible libraries/applications.
+// Export is the gRPC method that exports streamed metrics from
+// OpenCensus-metricproto compatible libraries/applications to MetricSink.
 func (pr *Receiver) Export() error {
 	// TODO: scrape metrics from Prometheus endpoint and convert to OC metrics.
 	return nil
