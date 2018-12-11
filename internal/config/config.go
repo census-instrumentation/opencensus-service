@@ -46,8 +46,9 @@ import (
 //      port: 55679
 
 const (
-	defaultOCReceiverAddress = ":55678"
-	defaultZPagesPort        = 55679
+	defaultOCReceiverAddress  = ":55678"
+	defaultZPagesPort         = 55679
+	defaultOCReceiverHTTPPort = 55681
 )
 
 // Config denotes the configuration for the various elements of an agent, that is:
@@ -111,6 +112,21 @@ func (c *Config) OpenCensusReceiverAddress() string {
 		return defaultOCReceiverAddress
 	}
 	return inCfg.OpenCensus.Address
+}
+
+// OpenCensusReceiverHttpAddress is a helper to safely retrieve the port
+// that the OpenCensus receiver grpc-gateway will be bound to.
+// If Config is nil or the OpenCensus receiver's configuration is nil, it
+// will be set to the default value of 55680.
+func (c *Config) OpenCensusReceiverHTTPPort() int {
+	if c == nil || c.Receivers == nil {
+		return defaultOCReceiverHTTPPort
+	}
+	inCfg := c.Receivers
+	if inCfg.OpenCensus == nil || inCfg.OpenCensus.CollectorHTTPPort <= 0 {
+		return defaultOCReceiverHTTPPort
+	}
+	return inCfg.OpenCensus.CollectorHTTPPort
 }
 
 // CanRunOpenCensusTraceReceiver returns true if the configuration
