@@ -114,7 +114,7 @@ func (c *Config) OpenCensusReceiverAddress() string {
 	return inCfg.OpenCensus.Address
 }
 
-// OpenCensusReceiverHttpAddress is a helper to safely retrieve the port
+// OpenCensusReceiverHTTPPort is a helper to safely retrieve the port
 // that the OpenCensus receiver grpc-gateway will be bound to.
 // If Config is nil or the OpenCensus receiver's configuration is nil, it
 // will be set to the default value of 55680.
