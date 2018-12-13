@@ -32,7 +32,7 @@ func Example_endToEnd() {
 	// This is what the cmd/ocagent code would look like this.
 	// A trace receiver as per the trace receiver
 	// configs that have been parsed.
-	tr, err := opencensus.New("localhost:55678")
+	tr, err := opencensus.New("localhost:55678", 55681)
 	if err != nil {
 		log.Fatalf("Failed to create trace receiver: %v", err)
 	}

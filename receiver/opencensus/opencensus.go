@@ -43,6 +43,9 @@ type Receiver struct {
 	serverGRPC *grpc.Server
 	serverHTTP *http.Server
 
+	traceReceiverOpts   []octrace.Option
+	metricsReceiverOpts []ocmetrics.Option
+
 	traceReceiver   *octrace.Receiver
 	metricsReceiver *ocmetrics.Receiver
 
@@ -58,12 +61,10 @@ var (
 	errAlreadyStopped = errors.New("already stopped")
 )
 
-const defaultOCReceiverPort = 55678
-
 // New just creates the OpenCensus receiver services. It is the caller's
 // responsibility to invoke the respective Start*Reception methods as well
 // as the various Stop*Reception methods or simply Stop to end it.
-func New(grpcAddr string, httpPort int) (*Receiver, error) {
+func New(grpcAddr string, httpPort int, opts ...Option) (*Receiver, error) {
 	// TODO: (@odeke-em) use options to enable address binding changes.
 	grpcLn, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
@@ -78,6 +79,10 @@ func New(grpcAddr string, httpPort int) (*Receiver, error) {
 
 	ocr := &Receiver{grpcLn: grpcLn, httpLn: httpLn}
 
+	for _, opt := range opts {
+		opt.WithReceiver(ocr)
+	}
+
 	return ocr, nil
 }
 
@@ -88,17 +93,14 @@ func (ocr *Receiver) StartTraceReception(ctx context.Context, ts receiver.TraceR
 	if err != nil && err != errAlreadyStarted {
 		return err
 	}
-	if err := ocr.startGRPCServer(); err != nil {
-		return err
-	}
-	return ocr.startHTTPServer()
+	return ocr.startServers()
 }
 
 func (ocr *Receiver) registerTraceReceiver(ts receiver.TraceReceiverSink) error {
 	var err = errAlreadyStarted
 
 	ocr.startTraceReceiverOnce.Do(func() {
-		ocr.traceReceiver, err = octrace.New(ts)
+		ocr.traceReceiver, err = octrace.New(ts, ocr.traceReceiverOpts...)
 		if err == nil {
 			srv := ocr.grpcServer()
 			agenttracepb.RegisterTraceServiceServer(srv, ocr.traceReceiver)
@@ -122,7 +124,7 @@ func (ocr *Receiver) registerMetricsReceiver(ms receiver.MetricsReceiverSink) er
 	var err = errAlreadyStarted
 
 	ocr.startMetricsReceiverOnce.Do(func() {
-		ocr.metricsReceiver, err = ocmetrics.New(ms)
+		ocr.metricsReceiver, err = ocmetrics.New(ms, ocr.metricsReceiverOpts...)
 		if err == nil {
 			srv := ocr.grpcServer()
 			agentmetricspb.RegisterMetricsServiceServer(srv, ocr.metricsReceiver)
@@ -182,11 +184,7 @@ func (ocr *Receiver) Start(ctx context.Context, ts receiver.TraceReceiverSink, m
 		return err
 	}
 
-	if err := ocr.startGRPCServer(); err != nil && err != errAlreadyStarted {
-		return err
-	}
-
-	if err := ocr.startHTTPServer(); err != nil && err != errAlreadyStarted {
+	if err := ocr.startServers(); err != nil && err != errAlreadyStarted {
 		return err
 	}
 
@@ -209,6 +207,30 @@ func (ocr *Receiver) Stop() error {
 		_ = ocr.httpLn.Close()
 	})
 	return err
+}
+
+// Starts the gRPC and HTTP servers in parallel to reduce startup time.
+func (ocr *Receiver) startServers() error {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	var grpcErr error
+	var httpErr error
+	go func() {
+		defer wg.Done()
+		grpcErr = ocr.startGRPCServer()
+	}()
+	go func() {
+		defer wg.Done()
+		httpErr = ocr.startHTTPServer()
+	}()
+	wg.Wait()
+	if grpcErr != nil {
+		return grpcErr
+	}
+	if httpErr != nil {
+		return httpErr
+	}
+	return nil
 }
 
 func (ocr *Receiver) startGRPCServer() error {
