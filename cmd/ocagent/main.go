@@ -37,6 +37,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/receiver"
 	"github.com/census-instrumentation/opencensus-service/receiver/jaeger"
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus"
+	"github.com/census-instrumentation/opencensus-service/receiver/zipkin"
 )
 
 var configYAMLFile string
