@@ -29,6 +29,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/census-instrumentation/opencensus-service/translator/trace"
+
 	"go.opencensus.io/trace"
 
 	zipkinmodel "github.com/openzipkin/zipkin-go/model"
@@ -110,12 +112,29 @@ func (zr *ZipkinReceiver) StartTraceReception(ctx context.Context, spanSink rece
 	return err
 }
 
-func (zr *ZipkinReceiver) parseAndConvertToTraceSpans(blob []byte, hdr http.Header) (reqs []*agenttracepb.ExportTraceServiceRequest, err error) {
+func (zr *ZipkinReceiver) parseAndConvertToTraceSpans(blob []byte, r *http.Request) (reqs []*agenttracepb.ExportTraceServiceRequest, err error) {
 	var zipkinSpans []*zipkinmodel.SpanModel
+
+	var hdr http.Header
+	var urlPath string
+	if r != nil {
+		hdr = r.Header
+		if r.URL != nil {
+			urlPath = r.URL.Path
+		}
+	}
 
 	// This flag's reference is from:
 	//      https://github.com/openzipkin/zipkin-go/blob/3793c981d4f621c0e3eb1457acffa2c1cc591384/proto/v2/zipkin.proto#L154
 	debugWasSet := hdr.Get("X-B3-Flags") == "1"
+
+	if strings.Contains(urlPath, "api/v1/spans") {
+		ereqs, err := tracetranslator.ZipkinV1JSONBatchToOCProto(blob)
+		if err != nil {
+			return nil, err
+		}
+		return ereqs, nil
+	}
 
 	// Zipkin can send protobuf via http
 	switch hdr.Get("Content-Type") {
@@ -237,7 +256,7 @@ func (zr *ZipkinReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = c.Close()
 	}
 	_ = r.Body.Close()
-	ereqs, err := zr.parseAndConvertToTraceSpans(slurp, r.Header)
+	ereqs, err := zr.parseAndConvertToTraceSpans(slurp, r)
 	if err != nil {
 		span.SetStatus(trace.Status{
 			Code:    trace.StatusCodeInvalidArgument,
