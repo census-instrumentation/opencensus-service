@@ -30,7 +30,7 @@ import (
 
 var (
 	// ZipkinV1 friendly convertion errors
-	msgZipkinV1JSONUnmarshalError = "zipkinv1 json"
+	msgZipkinV1JSONUnmarshalError = "zipkinv1"
 	msgZipkinV1TraceIDError       = "zipkinV1 span traceId"
 	msgZipkinV1SpanIDError        = "zipkinV1 span id"
 	msgZipkinV1ParentIDError      = "zipkinV1 span parentId"

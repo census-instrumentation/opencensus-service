@@ -146,8 +146,6 @@ func TestSingleJSONZipkinV1BatchToOCProto(t *testing.T) {
 	sortTrace(got)
 
 	if !reflect.DeepEqual(got, want) {
-		saveAsFormattedJSON("./testdata/got.json", got)
-		saveAsFormattedJSON("./testdata/want.json", want)
 		t.Fatalf("got different data than want")
 	}
 }
@@ -197,8 +195,6 @@ func TestMultipleJSONZipkinV1BatchesToOCProto(t *testing.T) {
 	sortTrace(got)
 
 	if !reflect.DeepEqual(got, want) {
-		saveAsFormattedJSON("./testdata/got.json", got)
-		saveAsFormattedJSON("./testdata/want.json", want)
 		t.Fatalf("got different data than want")
 	}
 }
@@ -207,16 +203,6 @@ func sortTrace(trace []*agenttracepb.ExportTraceServiceRequest) {
 	sort.Slice(trace, func(i, j int) bool {
 		return trace[i].Node.ServiceInfo.Name < trace[j].Node.ServiceInfo.Name
 	})
-}
-
-// SaveAsFormattedJSON save the object as a formatted JSON file to help
-// with investigations.
-func saveAsFormattedJSON(file string, o interface{}) error {
-	blob, err := json.MarshalIndent(o, "", "  ")
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(file, blob, 0644)
 }
 
 // ocBatches has the OpenCensus proto batches used in the test. They are hard coded because
@@ -234,49 +220,8 @@ var ocBatchesFromZipkinV1 = []*agenttracepb.ExportTraceServiceRequest{
 				ParentSpanId: nil,
 				Name:         &tracepb.TruncatableString{Value: "checkAvailability"},
 				Kind:         tracepb.Span_CLIENT,
-				// Status:       &tracepb.Status{Code: 0},
-				StartTime: &timestamp.Timestamp{Seconds: 1544805927, Nanos: 446743000},
-				EndTime:   &timestamp.Timestamp{Seconds: 1544805927, Nanos: 459699000},
-				Attributes: &tracepb.Span_Attributes{
-					AttributeMap: map[string]*tracepb.AttributeValue{
-						"component": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "proxy"}},
-						},
-						"downstream_cluster": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "-"}},
-						},
-						"guid:x-request-id": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "5fe2c726-60c3-94b4-8581-d228ea36fd6d"}},
-						},
-						"http.method": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "GET"}},
-						},
-						"http.protocol": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "HTTP/1.1"}},
-						},
-						"http.status_code": {
-							Value: &tracepb.AttributeValue_IntValue{IntValue: 200},
-						},
-						"http.url": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "http://0.0.0.0:8000/trace/1"}},
-						},
-						"request_size": {
-							Value: &tracepb.AttributeValue_IntValue{IntValue: 0},
-						},
-						"response_flags": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "-"}},
-						},
-						"response_size": {
-							Value: &tracepb.AttributeValue_IntValue{IntValue: 89},
-						},
-						"upstream_cluster": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "service1"}},
-						},
-						"user_agent": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "curl/7.54.0"}},
-						},
-					},
-				},
+				StartTime:    &timestamp.Timestamp{Seconds: 1544805927, Nanos: 446743000},
+				EndTime:      &timestamp.Timestamp{Seconds: 1544805927, Nanos: 459699000},
 				TimeEvents: &tracepb.Span_TimeEvents{
 					TimeEvent: []*tracepb.Span_TimeEvent{
 						{
@@ -324,49 +269,8 @@ var ocBatchesFromZipkinV1 = []*agenttracepb.ExportTraceServiceRequest{
 				ParentSpanId: nil,
 				Name:         &tracepb.TruncatableString{Value: "checkAvailability"},
 				Kind:         tracepb.Span_SERVER,
-				// Status:       &tracepb.Status{Code: 0},
-				StartTime: &timestamp.Timestamp{Seconds: 1544805927, Nanos: 448081000},
-				EndTime:   &timestamp.Timestamp{Seconds: 1544805927, Nanos: 460102000},
-				Attributes: &tracepb.Span_Attributes{
-					AttributeMap: map[string]*tracepb.AttributeValue{
-						"component": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "proxy"}},
-						},
-						"downstream_cluster": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "-"}},
-						},
-						"guid:x-request-id": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "5fe2c726-60c3-94b4-8581-d228ea36fd6d"}},
-						},
-						"http.method": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "GET"}},
-						},
-						"http.protocol": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "HTTP/2"}},
-						},
-						"http.status_code": {
-							Value: &tracepb.AttributeValue_IntValue{IntValue: 200},
-						},
-						"http.url": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "http://0.0.0.0:8000/trace/1"}},
-						},
-						"request_size": {
-							Value: &tracepb.AttributeValue_IntValue{IntValue: 0},
-						},
-						"response_flags": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "-"}},
-						},
-						"response_size": {
-							Value: &tracepb.AttributeValue_IntValue{IntValue: 89},
-						},
-						"upstream_cluster": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "local_service"}},
-						},
-						"user_agent": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "curl/7.54.0"}},
-						},
-					},
-				},
+				StartTime:    &timestamp.Timestamp{Seconds: 1544805927, Nanos: 448081000},
+				EndTime:      &timestamp.Timestamp{Seconds: 1544805927, Nanos: 460102000},
 				TimeEvents: &tracepb.Span_TimeEvents{
 					TimeEvent: []*tracepb.Span_TimeEvent{
 						{
@@ -406,49 +310,8 @@ var ocBatchesFromZipkinV1 = []*agenttracepb.ExportTraceServiceRequest{
 				ParentSpanId: []byte{0x0e, 0xd2, 0xe6, 0x3c, 0xbe, 0x71, 0xf5, 0xa8},
 				Name:         &tracepb.TruncatableString{Value: "checkStock"},
 				Kind:         tracepb.Span_CLIENT,
-				// Status:       &tracepb.Status{Code: 0},
-				StartTime: &timestamp.Timestamp{Seconds: 1544805927, Nanos: 453923000},
-				EndTime:   &timestamp.Timestamp{Seconds: 1544805927, Nanos: 457663000},
-				Attributes: &tracepb.Span_Attributes{
-					AttributeMap: map[string]*tracepb.AttributeValue{
-						"component": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "proxy"}},
-						},
-						"downstream_cluster": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "-"}},
-						},
-						"guid:x-request-id": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "5fe2c726-60c3-94b4-8581-d228ea36fd6d"}},
-						},
-						"http.method": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "GET"}},
-						},
-						"http.protocol": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "HTTP/1.1"}},
-						},
-						"http.status_code": {
-							Value: &tracepb.AttributeValue_IntValue{IntValue: 200},
-						},
-						"http.url": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "http://localhost:9000/trace/2"}},
-						},
-						"request_size": {
-							Value: &tracepb.AttributeValue_IntValue{IntValue: 0},
-						},
-						"response_flags": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "-"}},
-						},
-						"response_size": {
-							Value: &tracepb.AttributeValue_IntValue{IntValue: 89},
-						},
-						"upstream_cluster": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "service2"}},
-						},
-						"user_agent": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "python-requests/2.18.4"}},
-						},
-					},
-				},
+				StartTime:    &timestamp.Timestamp{Seconds: 1544805927, Nanos: 453923000},
+				EndTime:      &timestamp.Timestamp{Seconds: 1544805927, Nanos: 457663000},
 				TimeEvents: &tracepb.Span_TimeEvents{
 					TimeEvent: []*tracepb.Span_TimeEvent{
 						{
@@ -496,46 +359,18 @@ var ocBatchesFromZipkinV1 = []*agenttracepb.ExportTraceServiceRequest{
 				ParentSpanId: []byte{0x0e, 0xd2, 0xe6, 0x3c, 0xbe, 0x71, 0xf5, 0xa8},
 				Name:         &tracepb.TruncatableString{Value: "checkStock"},
 				Kind:         tracepb.Span_SERVER,
-				// Status:       &tracepb.Status{Code: 0},
-				StartTime: &timestamp.Timestamp{Seconds: 1544805927, Nanos: 454487000},
-				EndTime:   &timestamp.Timestamp{Seconds: 1544805927, Nanos: 457320000},
+				StartTime:    &timestamp.Timestamp{Seconds: 1544805927, Nanos: 454487000},
+				EndTime:      &timestamp.Timestamp{Seconds: 1544805927, Nanos: 457320000},
 				Attributes: &tracepb.Span_Attributes{
 					AttributeMap: map[string]*tracepb.AttributeValue{
-						"component": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "proxy"}},
-						},
-						"downstream_cluster": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "-"}},
-						},
-						"guid:x-request-id": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "5fe2c726-60c3-94b4-8581-d228ea36fd6d"}},
-						},
-						"http.method": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "GET"}},
-						},
-						"http.protocol": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "HTTP/2"}},
-						},
 						"http.status_code": {
 							Value: &tracepb.AttributeValue_IntValue{IntValue: 200},
 						},
 						"http.url": {
 							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "http://localhost:9000/trace/2"}},
 						},
-						"request_size": {
-							Value: &tracepb.AttributeValue_IntValue{IntValue: 0},
-						},
-						"response_flags": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "-"}},
-						},
-						"response_size": {
-							Value: &tracepb.AttributeValue_IntValue{IntValue: 89},
-						},
-						"upstream_cluster": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "local_service"}},
-						},
-						"user_agent": {
-							Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "python-requests/2.18.4"}},
+						"success": {
+							Value: &tracepb.AttributeValue_BoolValue{BoolValue: true},
 						},
 					},
 				},

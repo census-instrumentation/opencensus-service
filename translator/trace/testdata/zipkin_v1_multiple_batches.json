@@ -23,56 +23,6 @@
                         "serviceName": "service1"
                     }
                 }
-            ],
-            "binaryAnnotations": [
-                {
-                    "key": "component",
-                    "value": "proxy"
-                },
-                {
-                    "key": "guid:x-request-id",
-                    "value": "5fe2c726-60c3-94b4-8581-d228ea36fd6d"
-                },
-                {
-                    "key": "http.url",
-                    "value": "http://0.0.0.0:8000/trace/1"
-                },
-                {
-                    "key": "http.method",
-                    "value": "GET"
-                },
-                {
-                    "key": "downstream_cluster",
-                    "value": "-"
-                },
-                {
-                    "key": "user_agent",
-                    "value": "curl/7.54.0"
-                },
-                {
-                    "key": "http.protocol",
-                    "value": "HTTP/2"
-                },
-                {
-                    "key": "request_size",
-                    "value": "0"
-                },
-                {
-                    "key": "upstream_cluster",
-                    "value": "local_service"
-                },
-                {
-                    "key": "http.status_code",
-                    "value": "200"
-                },
-                {
-                    "key": "response_size",
-                    "value": "89"
-                },
-                {
-                    "key": "response_flags",
-                    "value": "-"
-                }
             ]
         }
     ],
@@ -103,56 +53,6 @@
                         "serviceName": "service1"
                     }
                 }
-            ],
-            "binaryAnnotations": [
-                {
-                    "key": "component",
-                    "value": "proxy"
-                },
-                {
-                    "key": "guid:x-request-id",
-                    "value": "5fe2c726-60c3-94b4-8581-d228ea36fd6d"
-                },
-                {
-                    "key": "http.url",
-                    "value": "http://localhost:9000/trace/2"
-                },
-                {
-                    "key": "http.method",
-                    "value": "GET"
-                },
-                {
-                    "key": "downstream_cluster",
-                    "value": "-"
-                },
-                {
-                    "key": "user_agent",
-                    "value": "python-requests/2.18.4"
-                },
-                {
-                    "key": "http.protocol",
-                    "value": "HTTP/1.1"
-                },
-                {
-                    "key": "request_size",
-                    "value": "0"
-                },
-                {
-                    "key": "upstream_cluster",
-                    "value": "service2"
-                },
-                {
-                    "key": "http.status_code",
-                    "value": "200"
-                },
-                {
-                    "key": "response_size",
-                    "value": "89"
-                },
-                {
-                    "key": "response_flags",
-                    "value": "-"
-                }
             ]
         }
     ],
@@ -181,56 +81,6 @@
                         "port": 0,
                         "serviceName": "front-proxy"
                     }
-                }
-            ],
-            "binaryAnnotations": [
-                {
-                    "key": "component",
-                    "value": "proxy"
-                },
-                {
-                    "key": "guid:x-request-id",
-                    "value": "5fe2c726-60c3-94b4-8581-d228ea36fd6d"
-                },
-                {
-                    "key": "http.url",
-                    "value": "http://0.0.0.0:8000/trace/1"
-                },
-                {
-                    "key": "http.method",
-                    "value": "GET"
-                },
-                {
-                    "key": "downstream_cluster",
-                    "value": "-"
-                },
-                {
-                    "key": "user_agent",
-                    "value": "curl/7.54.0"
-                },
-                {
-                    "key": "http.protocol",
-                    "value": "HTTP/1.1"
-                },
-                {
-                    "key": "request_size",
-                    "value": "0"
-                },
-                {
-                    "key": "upstream_cluster",
-                    "value": "service1"
-                },
-                {
-                    "key": "http.status_code",
-                    "value": "200"
-                },
-                {
-                    "key": "response_size",
-                    "value": "89"
-                },
-                {
-                    "key": "response_flags",
-                    "value": "-"
                 }
             ]
         }
@@ -263,52 +113,16 @@
             ],
             "binaryAnnotations": [
                 {
-                    "key": "component",
-                    "value": "proxy"
-                },
-                {
-                    "key": "guid:x-request-id",
-                    "value": "5fe2c726-60c3-94b4-8581-d228ea36fd6d"
-                },
-                {
                     "key": "http.url",
                     "value": "http://localhost:9000/trace/2"
-                },
-                {
-                    "key": "http.method",
-                    "value": "GET"
-                },
-                {
-                    "key": "downstream_cluster",
-                    "value": "-"
-                },
-                {
-                    "key": "user_agent",
-                    "value": "python-requests/2.18.4"
-                },
-                {
-                    "key": "http.protocol",
-                    "value": "HTTP/2"
-                },
-                {
-                    "key": "request_size",
-                    "value": "0"
-                },
-                {
-                    "key": "upstream_cluster",
-                    "value": "local_service"
                 },
                 {
                     "key": "http.status_code",
                     "value": "200"
                 },
                 {
-                    "key": "response_size",
-                    "value": "89"
-                },
-                {
-                    "key": "response_flags",
-                    "value": "-"
+                    "key": "success",
+                    "value": "true"
                 }
             ]
         }
