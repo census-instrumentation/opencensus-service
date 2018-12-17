@@ -142,8 +142,8 @@ func TestSingleJSONZipkinV1BatchToOCProto(t *testing.T) {
 	}
 
 	want := ocBatchesFromZipkinV1
-	sortTrace(want)
-	sortTrace(got)
+	sortTraceByNodeName(want)
+	sortTraceByNodeName(got)
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got different data than want")
@@ -191,15 +191,15 @@ func TestMultipleJSONZipkinV1BatchesToOCProto(t *testing.T) {
 	}
 
 	want := ocBatchesFromZipkinV1
-	sortTrace(want)
-	sortTrace(got)
+	sortTraceByNodeName(want)
+	sortTraceByNodeName(got)
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got different data than want")
 	}
 }
 
-func sortTrace(trace []*agenttracepb.ExportTraceServiceRequest) {
+func sortTraceByNodeName(trace []*agenttracepb.ExportTraceServiceRequest) {
 	sort.Slice(trace, func(i, j int) bool {
 		return trace[i].Node.ServiceInfo.Name < trace[j].Node.ServiceInfo.Name
 	})

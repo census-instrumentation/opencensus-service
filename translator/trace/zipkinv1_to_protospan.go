@@ -198,7 +198,7 @@ func parseZipkinV1Annotations(annotations []*annotation) *annotationParseResult 
 		return nil
 	}
 
-	// Unknow service name works both as a default value and a flag to indicate that a valid endpoint was found.
+	// Unknown service name works both as a default value and a flag to indicate that a valid endpoint was found.
 	const unknownServiceName = "unknown-service"
 
 	// Zipkin V1 annotations have a timestamp so they fit well with OC TimeEvent
@@ -207,7 +207,7 @@ func parseZipkinV1Annotations(annotations []*annotation) *annotationParseResult 
 	res := &annotationParseResult{}
 	timeEvents := make([]*tracepb.Span_TimeEvent, 0, len(annotations))
 	for _, currAnnotation := range annotations {
-		if currAnnotation == nil && currAnnotation.Value != "" {
+		if currAnnotation == nil && currAnnotation.Value == "" {
 			continue
 		}
 

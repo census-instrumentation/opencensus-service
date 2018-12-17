@@ -112,29 +112,18 @@ func (zr *ZipkinReceiver) StartTraceReception(ctx context.Context, spanSink rece
 	return err
 }
 
-func (zr *ZipkinReceiver) parseAndConvertToTraceSpans(blob []byte, r *http.Request) (reqs []*agenttracepb.ExportTraceServiceRequest, err error) {
-	var zipkinSpans []*zipkinmodel.SpanModel
+// v1ToTraceSpans parses Zipkin v1 JSON traces and converts them to OpenCensus Proto spans.
+func (zr *ZipkinReceiver) v1ToTraceSpans(blob []byte) (reqs []*agenttracepb.ExportTraceServiceRequest, err error) {
+	return tracetranslator.ZipkinV1JSONBatchToOCProto(blob)
+}
 
-	var hdr http.Header
-	var urlPath string
-	if r != nil {
-		hdr = r.Header
-		if r.URL != nil {
-			urlPath = r.URL.Path
-		}
-	}
-
+// v2ToTraceSpans parses Zipkin v2 JSON or Protobuf traces and converts them to OpenCensus Proto spans.
+func (zr *ZipkinReceiver) v2ToTraceSpans(blob []byte, hdr http.Header) (reqs []*agenttracepb.ExportTraceServiceRequest, err error) {
 	// This flag's reference is from:
 	//      https://github.com/openzipkin/zipkin-go/blob/3793c981d4f621c0e3eb1457acffa2c1cc591384/proto/v2/zipkin.proto#L154
 	debugWasSet := hdr.Get("X-B3-Flags") == "1"
 
-	if strings.Contains(urlPath, "api/v1/spans") {
-		ereqs, err := tracetranslator.ZipkinV1JSONBatchToOCProto(blob)
-		if err != nil {
-			return nil, err
-		}
-		return ereqs, nil
-	}
+	var zipkinSpans []*zipkinmodel.SpanModel
 
 	// Zipkin can send protobuf via http
 	switch hdr.Get("Content-Type") {
@@ -256,7 +245,18 @@ func (zr *ZipkinReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = c.Close()
 	}
 	_ = r.Body.Close()
-	ereqs, err := zr.parseAndConvertToTraceSpans(slurp, r)
+
+	// Now deserialize and process the spans.
+	asZipkinv1 := r.URL != nil && strings.Contains(r.URL.Path, "api/v1/spans")
+
+	var ereqs []*agenttracepb.ExportTraceServiceRequest
+
+	if asZipkinv1 {
+		ereqs, err = zr.v1ToTraceSpans(slurp)
+	} else {
+		ereqs, err = zr.v2ToTraceSpans(slurp, r.Header)
+	}
+
 	if err != nil {
 		span.SetStatus(trace.Status{
 			Code:    trace.StatusCodeInvalidArgument,
