@@ -158,8 +158,8 @@ func runZPages(port int) func() error {
 
 func runOCReceiver(acfg *config.Config, sr receiver.TraceReceiverSink, mr receiver.MetricsReceiverSink) (doneFn func() error, err error) {
 	grpcAddr := acfg.OpenCensusReceiverAddress()
-	httpPort := acfg.OpenCensusReceiverHTTPPort()
-	ocr, err := opencensus.New(grpcAddr, httpPort)
+	httpAddr := acfg.OpenCensusReceiverAddressHTTP()
+	ocr, err := opencensus.New(grpcAddr, httpAddr)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create the OpenCensus receiver on gRPC address %q: error %v", grpcAddr, err)
 	}
@@ -178,14 +178,14 @@ func runOCReceiver(acfg *config.Config, sr receiver.TraceReceiverSink, mr receiv
 			return nil, fmt.Errorf("Failed to start Trace and Metrics Receivers: %v", err)
 		}
 		log.Printf("Running OpenCensus Trace and Metrics receivers as a gRPC service at %q", grpcAddr)
-		log.Printf("Running OpenCensus Trace receiver as an HTTP service on port %v", httpPort)
+		log.Printf("Running OpenCensus Trace receiver as an HTTP service at %q", httpAddr)
 
 	case acfg.CanRunOpenCensusTraceReceiver():
 		if err := ocr.StartTraceReception(ctx, sr); err != nil {
 			return nil, fmt.Errorf("Failed to start TraceReceiver: %v", err)
 		}
 		log.Printf("Running OpenCensus Trace receiver as a gRPC service at %q", grpcAddr)
-		log.Printf("Running OpenCensus Trace receiver as an HTTP service on port %v", httpPort)
+		log.Printf("Running OpenCensus Trace receiver as an HTTP service at %q", httpAddr)
 
 	case acfg.CanRunOpenCensusMetricsReceiver():
 		if err := ocr.StartMetricsReception(ctx, mr); err != nil {

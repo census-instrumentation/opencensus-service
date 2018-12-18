@@ -21,9 +21,9 @@ import (
 
 // Option interface defines for configuration settings to be applied to receivers.
 //
-// WithReceiver applies the configuration to the given receiver.
+// withReceiver applies the configuration to the given receiver.
 type Option interface {
-	WithReceiver(*Receiver)
+	withReceiver(*Receiver)
 }
 
 type traceReceiverOptions struct {
@@ -32,7 +32,7 @@ type traceReceiverOptions struct {
 
 var _ Option = (*traceReceiverOptions)(nil)
 
-func (tro *traceReceiverOptions) WithReceiver(ocr *Receiver) {
+func (tro *traceReceiverOptions) withReceiver(ocr *Receiver) {
 	ocr.traceReceiverOpts = tro.opts
 }
 
@@ -48,7 +48,7 @@ type metricsReceiverOptions struct {
 
 var _ Option = (*metricsReceiverOptions)(nil)
 
-func (mro *metricsReceiverOptions) WithReceiver(ocr *Receiver) {
+func (mro *metricsReceiverOptions) withReceiver(ocr *Receiver) {
 	ocr.metricsReceiverOpts = mro.opts
 }
 

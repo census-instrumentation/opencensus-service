@@ -64,23 +64,22 @@ var (
 // New just creates the OpenCensus receiver services. It is the caller's
 // responsibility to invoke the respective Start*Reception methods as well
 // as the various Stop*Reception methods or simply Stop to end it.
-func New(grpcAddr string, httpPort int, opts ...Option) (*Receiver, error) {
+func New(grpcAddr string, httpAddr string, opts ...Option) (*Receiver, error) {
 	// TODO: (@odeke-em) use options to enable address binding changes.
 	grpcLn, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to bind to gRPC address %q: error: %v", grpcAddr, err)
+		return nil, fmt.Errorf("Failed to bind to gRPC address %q: %v", grpcAddr, err)
 	}
 
-	httpAddr := fmt.Sprintf(":%d", httpPort)
 	httpLn, err := net.Listen("tcp", httpAddr)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to bind to HTTP port %q: error: %v", httpAddr, err)
+		return nil, fmt.Errorf("Failed to bind to HTTP address %q: %v", httpAddr, err)
 	}
 
 	ocr := &Receiver{grpcLn: grpcLn, httpLn: httpLn}
 
 	for _, opt := range opts {
-		opt.WithReceiver(ocr)
+		opt.withReceiver(ocr)
 	}
 
 	return ocr, nil
