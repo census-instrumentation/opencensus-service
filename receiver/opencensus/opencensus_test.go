@@ -35,12 +35,11 @@ import (
 )
 
 func TestGrpcGateway_endToEnd(t *testing.T) {
-	grpcPort := 55990
-	httpPort := 55991
-	grpcAddr := fmt.Sprintf("localhost:%d", grpcPort)
+	grpcAddr := "localhost:55990"
+	httpAddr := "localhost:55991"
 
 	// Set the buffer count to 1 to make it flush the test span immediately.
-	ocr, err := opencensus.New(grpcAddr, httpPort, opencensus.WithTraceReceiverOptions(octrace.WithSpanBufferCount(1)))
+	ocr, err := opencensus.New(grpcAddr, httpAddr, opencensus.WithTraceReceiverOptions(octrace.WithSpanBufferCount(1)))
 	if err != nil {
 		t.Fatalf("Failed to create trace receiver: %v", err)
 	}
@@ -54,7 +53,7 @@ func TestGrpcGateway_endToEnd(t *testing.T) {
 	// Wait for the servers to start
 	<-time.After(10 * time.Millisecond)
 
-	url := fmt.Sprintf("http://localhost:%d/v1/trace", httpPort)
+	url := fmt.Sprintf("http://%s/v1/trace", httpAddr)
 	traceJSON := []byte(`
     {
        "node":{"identifier":{"hostName":"testHost"}},
