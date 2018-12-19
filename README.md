@@ -358,7 +358,7 @@ queued-exporters:
     # timeout: the timeout for the sender to consider the operation as failed
     jaeger-thrift-http:
       collector-endpoint: "http://svc-jaeger-collector:14268/api/traces"
-      headers: { "x-omnition-api-key": "00000000-0000-0000-0000-000000000001" }
+      headers: { "x-header-key":"00000000-0000-0000-0000-000000000001" }
       timeout: 5s
 ```
 
