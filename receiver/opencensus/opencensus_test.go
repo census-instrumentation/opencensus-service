@@ -35,25 +35,30 @@ import (
 )
 
 func TestGrpcGateway_endToEnd(t *testing.T) {
-	grpcAddr := "localhost:55990"
-	httpAddr := "localhost:55991"
+	addr := ":35990"
 
 	// Set the buffer count to 1 to make it flush the test span immediately.
-	ocr, err := opencensus.New(grpcAddr, httpAddr, opencensus.WithTraceReceiverOptions(octrace.WithSpanBufferCount(1)))
+	ocr, err := opencensus.New(addr, opencensus.WithTraceReceiverOptions(octrace.WithSpanBufferCount(1)))
 	if err != nil {
 		t.Fatalf("Failed to create trace receiver: %v", err)
 	}
 	defer ocr.StopTraceReception(context.Background())
 
+	fmt.Printf("Starting trace receiption")
 	sink := new(testhelper.ConcurrentSpanSink)
-	if err := ocr.StartTraceReception(context.Background(), sink); err != nil {
-		t.Fatalf("Failed to start trace receiver: %v", err)
-	}
+
+	go func() {
+		if err := ocr.StartTraceReception(context.Background(), sink); err != nil {
+			t.Fatalf("Failed to start trace receiver: %v", err)
+		}
+	}()
+
+	fmt.Printf("Started trace receiption")
 
 	// Wait for the servers to start
 	<-time.After(10 * time.Millisecond)
 
-	url := fmt.Sprintf("http://%s/v1/trace", httpAddr)
+	url := fmt.Sprintf("http://%s/v1/trace", addr)
 	traceJSON := []byte(`
     {
        "node":{"identifier":{"hostName":"testHost"}},
@@ -79,6 +84,7 @@ func TestGrpcGateway_endToEnd(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
+	fmt.Println("Sending request...")
 	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("Error posting trace to grpc-gateway server: %v", err)

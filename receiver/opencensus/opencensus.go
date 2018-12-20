@@ -30,6 +30,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus/ocmetrics"
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus/octrace"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/soheilhy/cmux"
 
 	agentmetricspb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
@@ -38,8 +39,7 @@ import (
 // Receiver is the type that exposes Trace and Metrics reception.
 type Receiver struct {
 	mu         sync.Mutex
-	grpcLn     net.Listener
-	httpLn     net.Listener
+	ln         net.Listener
 	serverGRPC *grpc.Server
 	serverHTTP *http.Server
 
@@ -50,7 +50,7 @@ type Receiver struct {
 	metricsReceiver *ocmetrics.Receiver
 
 	stopOnce                 sync.Once
-	startGRPCServerOnce      sync.Once
+	startServerOnce          sync.Once
 	startHTTPServerOnce      sync.Once
 	startTraceReceiverOnce   sync.Once
 	startMetricsReceiverOnce sync.Once
@@ -64,19 +64,14 @@ var (
 // New just creates the OpenCensus receiver services. It is the caller's
 // responsibility to invoke the respective Start*Reception methods as well
 // as the various Stop*Reception methods or simply Stop to end it.
-func New(grpcAddr string, httpAddr string, opts ...Option) (*Receiver, error) {
+func New(addr string, opts ...Option) (*Receiver, error) {
 	// TODO: (@odeke-em) use options to enable address binding changes.
-	grpcLn, err := net.Listen("tcp", grpcAddr)
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to bind to gRPC address %q: %v", grpcAddr, err)
+		return nil, fmt.Errorf("Failed to bind to gRPC address %q: %v", addr, err)
 	}
 
-	httpLn, err := net.Listen("tcp", httpAddr)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to bind to HTTP address %q: %v", httpAddr, err)
-	}
-
-	ocr := &Receiver{grpcLn: grpcLn, httpLn: httpLn}
+	ocr := &Receiver{ln: ln}
 
 	for _, opt := range opts {
 		opt.withReceiver(ocr)
@@ -92,7 +87,7 @@ func (ocr *Receiver) StartTraceReception(ctx context.Context, ts receiver.TraceR
 	if err != nil && err != errAlreadyStarted {
 		return err
 	}
-	return ocr.startServers()
+	return ocr.startServer()
 }
 
 func (ocr *Receiver) registerTraceReceiver(ts receiver.TraceReceiverSink) error {
@@ -116,7 +111,7 @@ func (ocr *Receiver) StartMetricsReception(ctx context.Context, ms receiver.Metr
 	if err != nil && err != errAlreadyStarted {
 		return err
 	}
-	return ocr.startGRPCServer()
+	return ocr.startServer()
 }
 
 func (ocr *Receiver) registerMetricsReceiver(ms receiver.MetricsReceiverSink) error {
@@ -141,17 +136,6 @@ func (ocr *Receiver) grpcServer() *grpc.Server {
 	}
 
 	return ocr.serverGRPC
-}
-
-func (ocr *Receiver) httpServer() *http.Server {
-	ocr.mu.Lock()
-	defer ocr.mu.Unlock()
-
-	if ocr.serverHTTP == nil {
-		ocr.serverHTTP = &http.Server{Handler: runtime.NewServeMux()}
-	}
-
-	return ocr.serverHTTP
 }
 
 // StopTraceReception is a method to turn off receiving traces. It
@@ -183,7 +167,7 @@ func (ocr *Receiver) Start(ctx context.Context, ts receiver.TraceReceiverSink, m
 		return err
 	}
 
-	if err := ocr.startServers(); err != nil && err != errAlreadyStarted {
+	if err := ocr.startServer(); err != nil && err != errAlreadyStarted {
 		return err
 	}
 
@@ -202,74 +186,67 @@ func (ocr *Receiver) Stop() error {
 		// TODO: (@odeke-em) should we instead do (*grpc.Server).GracefulStop?
 		ocr.serverGRPC.Stop()
 		_ = ocr.serverHTTP.Close()
-		_ = ocr.grpcLn.Close()
-		_ = ocr.httpLn.Close()
+		_ = ocr.ln.Close()
 	})
 	return err
 }
 
-// Starts the gRPC and HTTP servers in parallel to reduce startup time.
-func (ocr *Receiver) startServers() error {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	var grpcErr error
-	var httpErr error
-	go func() {
-		defer wg.Done()
-		grpcErr = ocr.startGRPCServer()
-	}()
-	go func() {
-		defer wg.Done()
-		httpErr = ocr.startHTTPServer()
-	}()
-	wg.Wait()
-	if grpcErr != nil {
-		return grpcErr
-	}
-	if httpErr != nil {
-		return httpErr
-	}
-	return nil
+type agentRouter struct {
+	grpcHandler        *grpc.Server
+	grpcGatewayHandler http.Handler
 }
 
-func (ocr *Receiver) startGRPCServer() error {
-	err := errAlreadyStarted
-	ocr.startGRPCServerOnce.Do(func() {
-		errChan := make(chan error, 1)
-		go func() {
-			errChan <- ocr.serverGRPC.Serve(ocr.grpcLn)
-		}()
-
-		// Our goal is to heuristically try running the server
-		// and if it returns an error immediately, we reporter that.
-		select {
-		case serr := <-errChan:
-			err = serr
-
-		case <-time.After(1 * time.Second):
-			// No error otherwise returned in the period of 1s.
-			// We can assume that the serve is at least running.
-			err = nil
-		}
-	})
-	return err
+func (agr *agentRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Content type: %v\n", r.Header.Get("Content-Type"))
+	fmt.Printf("Proto major: %v\n", r.ProtoMajor)
+	switch r.Header.Get("Content-Type") {
+	case "application/json":
+		agr.grpcGatewayHandler.ServeHTTP(w, r)
+		return
+	default: // Normal gRPC serving
+		agr.grpcHandler.ServeHTTP(w, r)
+		return
+	}
 }
 
-func (ocr *Receiver) startHTTPServer() error {
+func (ocr *Receiver) httpServer() *http.Server {
+	ocr.mu.Lock()
+	defer ocr.mu.Unlock()
+
+	if ocr.serverHTTP == nil {
+		ocr.serverHTTP = &http.Server{Handler: runtime.NewServeMux()}
+	}
+
+	return ocr.serverHTTP
+}
+
+func (ocr *Receiver) startServer() error {
 	err := errAlreadyStarted
-	ocr.startHTTPServerOnce.Do(func() {
+	ocr.startServerOnce.Do(func() {
 		errChan := make(chan error, 1)
 		go func() {
+			// Register the grpc-gateway on the HTTP server mux
 			c := context.Background()
 			opts := []grpc.DialOption{grpc.WithInsecure()}
-			endpoint := ocr.grpcLn.Addr().String()
+			endpoint := ocr.ln.Addr().String()
 			mux := ocr.httpServer().Handler.(*runtime.ServeMux)
 			err := agenttracepb.RegisterTraceServiceHandlerFromEndpoint(c, mux, endpoint, opts)
 			if err != nil {
 				errChan <- err
 				return
 			}
-			errChan <- ocr.httpServer().Serve(ocr.httpLn)
+
+			// Start the gRPC and HTTP/JSON (grpc-gateway) servers on the same port.
+			m := cmux.New(ocr.ln)
+			grpcL := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
+			httpL := m.Match(cmux.Any())
+			go func() {
+				errChan <- ocr.serverGRPC.Serve(grpcL)
+			}()
+			go func() {
+				errChan <- ocr.httpServer().Serve(httpL)
+			}()
+			errChan <- m.Serve()
 		}()
 
 		// Our goal is to heuristically try running the server

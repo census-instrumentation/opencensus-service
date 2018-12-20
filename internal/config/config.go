@@ -78,7 +78,6 @@ type Receivers struct {
 type ReceiverConfig struct {
 	// The address to which the OpenCensus receiver will be bound and run on.
 	Address             string `yaml:"address"`
-	AddressHTTP         string `yaml:"address_http"`
 	CollectorHTTPPort   int    `yaml:"collector_http_port"`
 	CollectorThriftPort int    `yaml:"collector_thrift_port"`
 
@@ -113,21 +112,6 @@ func (c *Config) OpenCensusReceiverAddress() string {
 		return defaultOCReceiverAddress
 	}
 	return inCfg.OpenCensus.Address
-}
-
-// OpenCensusReceiverAddressHTTP is a helper to safely retrieve the port
-// that the OpenCensus receiver grpc-gateway will be bound to.
-// If Config is nil or the OpenCensus receiver's configuration is nil, it
-// will be set to the default value of 55681.
-func (c *Config) OpenCensusReceiverAddressHTTP() string {
-	if c == nil || c.Receivers == nil {
-		return defaultOCReceiverAddressHTTP
-	}
-	inCfg := c.Receivers
-	if inCfg.OpenCensus == nil || inCfg.OpenCensus.AddressHTTP == "" {
-		return defaultOCReceiverAddressHTTP
-	}
-	return inCfg.OpenCensus.AddressHTTP
 }
 
 // CanRunOpenCensusTraceReceiver returns true if the configuration

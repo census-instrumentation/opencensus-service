@@ -157,11 +157,10 @@ func runZPages(port int) func() error {
 }
 
 func runOCReceiver(acfg *config.Config, sr receiver.TraceReceiverSink, mr receiver.MetricsReceiverSink) (doneFn func() error, err error) {
-	grpcAddr := acfg.OpenCensusReceiverAddress()
-	httpAddr := acfg.OpenCensusReceiverAddressHTTP()
-	ocr, err := opencensus.New(grpcAddr, httpAddr)
+	addr := acfg.OpenCensusReceiverAddress()
+	ocr, err := opencensus.New(addr)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create the OpenCensus receiver on gRPC address %q: error %v", grpcAddr, err)
+		return nil, fmt.Errorf("Failed to create the OpenCensus receiver on address %q: error %v", addr, err)
 	}
 	if err := view.Register(internal.AllViews...); err != nil {
 		return nil, fmt.Errorf("Failed to register internal.AllViews: %v", err)
@@ -177,21 +176,19 @@ func runOCReceiver(acfg *config.Config, sr receiver.TraceReceiverSink, mr receiv
 		if err := ocr.Start(ctx, sr, mr); err != nil {
 			return nil, fmt.Errorf("Failed to start Trace and Metrics Receivers: %v", err)
 		}
-		log.Printf("Running OpenCensus Trace and Metrics receivers as a gRPC service at %q", grpcAddr)
-		log.Printf("Running OpenCensus Trace receiver as an HTTP service at %q", httpAddr)
+		log.Printf("Running OpenCensus Trace and Metrics receivers as a gRPC service at %q", addr)
 
 	case acfg.CanRunOpenCensusTraceReceiver():
 		if err := ocr.StartTraceReception(ctx, sr); err != nil {
 			return nil, fmt.Errorf("Failed to start TraceReceiver: %v", err)
 		}
-		log.Printf("Running OpenCensus Trace receiver as a gRPC service at %q", grpcAddr)
-		log.Printf("Running OpenCensus Trace receiver as an HTTP service at %q", httpAddr)
+		log.Printf("Running OpenCensus Trace receiver as a gRPC service at %q", addr)
 
 	case acfg.CanRunOpenCensusMetricsReceiver():
 		if err := ocr.StartMetricsReception(ctx, mr); err != nil {
 			return nil, fmt.Errorf("Failed to start MetricsReceiver: %v", err)
 		}
-		log.Printf("Running OpenCensus Metrics receiver as a gRPC service at %q", grpcAddr)
+		log.Printf("Running OpenCensus Metrics receiver as a gRPC service at %q", addr)
 	}
 
 	doneFn = ocr.Stop
