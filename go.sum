@@ -39,6 +39,8 @@ github.com/census-instrumentation/opencensus-proto v0.0.2-0.20180913191712-f303a
 github.com/census-instrumentation/opencensus-proto v0.0.2/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.0.3-0.20181210140528-fc7914dc3ace h1:jxV/mTdeYGFrkIvcietYtuknRyRuIsezMEkNU8V7O64=
 github.com/census-instrumentation/opencensus-proto v0.0.3-0.20181210140528-fc7914dc3ace/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
+github.com/census-instrumentation/opencensus-proto v0.0.3-0.20181214143942-ba49f56771b8 h1:vvX9PxDdQSEmcYSMjZpKbCRRTyHrvfr08Ue9/zk7HV4=
+github.com/census-instrumentation/opencensus-proto v0.0.3-0.20181214143942-ba49f56771b8/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.1.0 h1:VwZ9smxzX8u14/125wHIX7ARV+YhR+L4JADswwxWK0Y=
 github.com/census-instrumentation/opencensus-proto v0.1.0/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
