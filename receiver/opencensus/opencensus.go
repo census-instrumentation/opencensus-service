@@ -30,6 +30,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus/ocmetrics"
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus/octrace"
 	gatewayruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/rs/cors"
 	"github.com/soheilhy/cmux"
 
 	agentmetricspb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
@@ -42,6 +43,9 @@ type Receiver struct {
 	ln         net.Listener
 	serverGRPC *grpc.Server
 	serverHTTP *http.Server
+	gatewayMux *gatewayruntime.ServeMux
+
+	corsOrigins []string
 
 	traceReceiverOpts   []octrace.Option
 	metricsReceiverOpts []ocmetrics.Option
@@ -51,7 +55,6 @@ type Receiver struct {
 
 	stopOnce                 sync.Once
 	startServerOnce          sync.Once
-	startHTTPServerOnce      sync.Once
 	startTraceReceiverOnce   sync.Once
 	startMetricsReceiverOnce sync.Once
 }
@@ -68,10 +71,17 @@ func New(addr string, opts ...Option) (*Receiver, error) {
 	// TODO: (@odeke-em) use options to enable address binding changes.
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to bind to gRPC address %q: %v", addr, err)
+		return nil, fmt.Errorf("Failed to bind to address %q: %v", addr, err)
 	}
 
-	ocr := &Receiver{ln: ln}
+	// Do not allow any CORS origins by default.
+	defaultCorsOrigins := []string{}
+
+	ocr := &Receiver{
+		ln:          ln,
+		corsOrigins: defaultCorsOrigins,
+		gatewayMux:  gatewayruntime.NewServeMux(),
+	}
 
 	for _, opt := range opts {
 		opt.withReceiver(ocr)
@@ -196,7 +206,12 @@ func (ocr *Receiver) httpServer() *http.Server {
 	defer ocr.mu.Unlock()
 
 	if ocr.serverHTTP == nil {
-		ocr.serverHTTP = &http.Server{Handler: gatewayruntime.NewServeMux()}
+		var mux http.Handler = ocr.gatewayMux
+		if len(ocr.corsOrigins) > 0 {
+			co := cors.Options{AllowedOrigins: ocr.corsOrigins}
+			mux = cors.New(co).Handler(mux)
+		}
+		ocr.serverHTTP = &http.Server{Handler: mux}
 	}
 
 	return ocr.serverHTTP
@@ -211,8 +226,8 @@ func (ocr *Receiver) startServer() error {
 			c := context.Background()
 			opts := []grpc.DialOption{grpc.WithInsecure()}
 			endpoint := ocr.ln.Addr().String()
-			mux := ocr.httpServer().Handler.(*gatewayruntime.ServeMux)
-			err := agenttracepb.RegisterTraceServiceHandlerFromEndpoint(c, mux, endpoint, opts)
+
+			err := agenttracepb.RegisterTraceServiceHandlerFromEndpoint(c, ocr.gatewayMux, endpoint, opts)
 			if err != nil {
 				errChan <- err
 				return

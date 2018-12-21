@@ -45,9 +45,12 @@ import (
 //  zpages:
 //      port: 55679
 
+
+var defaultOCReceiverCorsAllowedOrigins = []string{}
+
 const (
-	defaultOCReceiverAddress = ":55678"
-	defaultZPagesPort        = 55679
+	defaultOCReceiverAddress            = ":55678"
+	defaultZPagesPort                   = 55679
 )
 
 // Config denotes the configuration for the various elements of an agent, that is:
@@ -76,9 +79,14 @@ type Receivers struct {
 // * Various ports
 type ReceiverConfig struct {
 	// The address to which the OpenCensus receiver will be bound and run on.
-	Address             string `yaml:"address"`
-	CollectorHTTPPort   int    `yaml:"collector_http_port"`
-	CollectorThriftPort int    `yaml:"collector_thrift_port"`
+	Address string `yaml:"address"`
+
+	// The allowed CORS origins for HTTP/JSON requests the grpc-gateway adapter
+	// for the OpenCensus receiver. See github.com/rs/cors
+	CorsAllowedOrigins []string `yaml:"cors_allowed_origins"`
+
+	CollectorHTTPPort   int `yaml:"collector_http_port"`
+	CollectorThriftPort int `yaml:"collector_thrift_port"`
 
 	// DisableTracing disables trace receiving and is only applicable to trace receivers.
 	DisableTracing bool `yaml:"disable_tracing"`
@@ -111,6 +119,19 @@ func (c *Config) OpenCensusReceiverAddress() string {
 		return defaultOCReceiverAddress
 	}
 	return inCfg.OpenCensus.Address
+}
+
+// OpenCensusReceiverCorsAllowedOrigins is a helper to safely retrieve the list
+// of allowed CORS origins for HTTP/JSON requests to the grpc-gateway adapter.
+func (c *Config) OpenCensusReceiverCorsAllowedOrigins() []string {
+	if c == nil || c.Receivers == nil {
+		return defaultOCReceiverCorsAllowedOrigins
+	}
+	inCfg := c.Receivers
+	if inCfg.OpenCensus == nil {
+		return defaultOCReceiverCorsAllowedOrigins
+	}
+	return inCfg.OpenCensus.CorsAllowedOrigins
 }
 
 // CanRunOpenCensusTraceReceiver returns true if the configuration
