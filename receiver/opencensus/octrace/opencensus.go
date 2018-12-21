@@ -17,7 +17,6 @@ package octrace
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"time"
 
@@ -104,7 +103,6 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(tes.Context(), receiverName)
 
 	processReceivedSpans := func(ni *commonpb.Node, resource *resourcepb.Resource, spans []*tracepb.Span) {
-		fmt.Printf("Received spans: %v", spans)
 		// Firstly, we'll add them to the bundler.
 		if len(spans) > 0 {
 			bundlerPayload := &data.TraceData{Node: ni, Resource: resource, Spans: spans}

@@ -12,7 +12,7 @@ require (
 	github.com/apache/thrift v0.0.0-20161221203622-b2a4d4ae21c7
 	github.com/aws/aws-sdk-go v1.15.68 // indirect
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
-	github.com/census-instrumentation/opencensus-proto v0.0.3-0.20181214143942-ba49f56771b8
+	github.com/census-instrumentation/opencensus-proto v0.1.0-0.20181214143942-ba49f56771b8
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/go-kit/kit v0.8.0 // indirect
 	github.com/gogo/googleapis v1.1.0 // indirect

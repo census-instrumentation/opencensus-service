@@ -35,7 +35,7 @@ import (
 )
 
 func TestGrpcGateway_endToEnd(t *testing.T) {
-	addr := ":35990"
+	addr := ":35991"
 
 	// Set the buffer count to 1 to make it flush the test span immediately.
 	ocr, err := opencensus.New(addr, opencensus.WithTraceReceiverOptions(octrace.WithSpanBufferCount(1)))
@@ -44,7 +44,6 @@ func TestGrpcGateway_endToEnd(t *testing.T) {
 	}
 	defer ocr.StopTraceReception(context.Background())
 
-	fmt.Printf("Starting trace receiption")
 	sink := new(testhelper.ConcurrentSpanSink)
 
 	go func() {
@@ -52,8 +51,6 @@ func TestGrpcGateway_endToEnd(t *testing.T) {
 			t.Fatalf("Failed to start trace receiver: %v", err)
 		}
 	}()
-
-	fmt.Printf("Started trace receiption")
 
 	// Wait for the servers to start
 	<-time.After(10 * time.Millisecond)
@@ -84,7 +81,6 @@ func TestGrpcGateway_endToEnd(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
-	fmt.Println("Sending request...")
 	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("Error posting trace to grpc-gateway server: %v", err)

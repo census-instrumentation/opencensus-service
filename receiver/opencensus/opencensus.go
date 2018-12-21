@@ -29,7 +29,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/receiver"
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus/ocmetrics"
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus/octrace"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	gatewayruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/soheilhy/cmux"
 
 	agentmetricspb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
@@ -191,30 +191,12 @@ func (ocr *Receiver) Stop() error {
 	return err
 }
 
-type agentRouter struct {
-	grpcHandler        *grpc.Server
-	grpcGatewayHandler http.Handler
-}
-
-func (agr *agentRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Content type: %v\n", r.Header.Get("Content-Type"))
-	fmt.Printf("Proto major: %v\n", r.ProtoMajor)
-	switch r.Header.Get("Content-Type") {
-	case "application/json":
-		agr.grpcGatewayHandler.ServeHTTP(w, r)
-		return
-	default: // Normal gRPC serving
-		agr.grpcHandler.ServeHTTP(w, r)
-		return
-	}
-}
-
 func (ocr *Receiver) httpServer() *http.Server {
 	ocr.mu.Lock()
 	defer ocr.mu.Unlock()
 
 	if ocr.serverHTTP == nil {
-		ocr.serverHTTP = &http.Server{Handler: runtime.NewServeMux()}
+		ocr.serverHTTP = &http.Server{Handler: gatewayruntime.NewServeMux()}
 	}
 
 	return ocr.serverHTTP
@@ -229,7 +211,7 @@ func (ocr *Receiver) startServer() error {
 			c := context.Background()
 			opts := []grpc.DialOption{grpc.WithInsecure()}
 			endpoint := ocr.ln.Addr().String()
-			mux := ocr.httpServer().Handler.(*runtime.ServeMux)
+			mux := ocr.httpServer().Handler.(*gatewayruntime.ServeMux)
 			err := agenttracepb.RegisterTraceServiceHandlerFromEndpoint(c, mux, endpoint, opts)
 			if err != nil {
 				errChan <- err

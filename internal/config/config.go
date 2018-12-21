@@ -46,9 +46,8 @@ import (
 //      port: 55679
 
 const (
-	defaultOCReceiverAddress     = ":55678"
-	defaultZPagesPort            = 55679
-	defaultOCReceiverAddressHTTP = ":55681"
+	defaultOCReceiverAddress = ":55678"
+	defaultZPagesPort        = 55679
 )
 
 // Config denotes the configuration for the various elements of an agent, that is:
