@@ -35,7 +35,7 @@ import (
 )
 
 func TestGrpcGateway_endToEnd(t *testing.T) {
-	addr := ":35991"
+	addr := ":35990"
 
 	// Set the buffer count to 1 to make it flush the test span immediately.
 	ocr, err := opencensus.New(addr, opencensus.WithTraceReceiverOptions(octrace.WithSpanBufferCount(1)))
