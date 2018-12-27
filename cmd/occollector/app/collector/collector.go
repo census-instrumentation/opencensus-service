@@ -181,10 +181,6 @@ func execute() {
 	receiversCloseFns := createReceivers(spanProcessor)
 	closeFns = append(closeFns, receiversCloseFns...)
 
-	view.Register(processor.MetricViews(telemetryLevel)...)
-	view.Register(processor.QueuedProcessorMetricViews(telemetryLevel)...)
-
-	// All metric views should have been loaded at this point.
 	err = initTelemetry(telemetryLevel, v.GetInt(metricsPortCfg), asyncErrorChannel, logger)
 	if err != nil {
 		logger.Error("Failed to initialize telemetry", zap.Error(err))
@@ -213,6 +209,12 @@ func execute() {
 func initTelemetry(level telemetry.Level, port int, asyncErrorChannel chan<- error, logger *zap.Logger) error {
 	if level == telemetry.None {
 		return nil
+	}
+
+	views := processor.MetricViews(level)
+	views = append(views, processor.QueuedProcessorMetricViews(level)...)
+	if err := view.Register(views...); err != nil {
+		return err
 	}
 
 	// Until we can use a generic metrics exporter, default to Prometheus.
