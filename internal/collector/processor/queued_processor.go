@@ -118,9 +118,9 @@ func (sp *queuedSpanProcessor) enqueueSpanBatch(batch *agenttracepb.ExportTraceS
 		spanFormat: spanFormat,
 	}
 
-	statsTags := statsTagsForBatch(sp.name, batch, spanFormat)
+	statsTags := statsTagsForBatch(sp.name, serviceNameForBatch(batch), spanFormat)
 	numSpans := len(batch.Spans)
-	stats.RecordWithTags(context.Background(), statsTags, statBatchCount.M(1), statSpanCount.M(int64(numSpans)))
+	stats.RecordWithTags(context.Background(), statsTags, statReceivedBatchCount.M(1), statReceivedSpanCount.M(int64(numSpans)))
 
 	addedToQueue := sp.queue.Produce(item)
 	if !addedToQueue {
@@ -136,7 +136,7 @@ func (sp *queuedSpanProcessor) processItemFromQueue(item *queueItem) {
 		// Record latency metrics and return
 		sendLatencyMs := int64(time.Since(startTime) / time.Millisecond)
 		inQueueLatencyMs := int64(time.Since(item.queuedTime) / time.Millisecond)
-		statsTags := statsTagsForBatch(sp.name, item.batch, item.spanFormat)
+		statsTags := statsTagsForBatch(sp.name, serviceNameForBatch(item.batch), item.spanFormat)
 		stats.RecordWithTags(context.Background(),
 			statsTags,
 			statSuccessSendOps.M(1),
@@ -147,7 +147,7 @@ func (sp *queuedSpanProcessor) processItemFromQueue(item *queueItem) {
 	}
 
 	// There was an error
-	statsTags := statsTagsForBatch(sp.name, item.batch, item.spanFormat)
+	statsTags := statsTagsForBatch(sp.name, serviceNameForBatch(item.batch), item.spanFormat)
 	stats.RecordWithTags(context.Background(), statsTags, statFailedSendOps.M(1))
 	batchSize := len(item.batch.Spans)
 	sp.logger.Warn("Sender failed", zap.String("processor", sp.name), zap.Error(err), zap.String("spanFormat", item.spanFormat))
