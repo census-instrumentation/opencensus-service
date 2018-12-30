@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -59,23 +60,31 @@ func TestMinBufferedChannels(t *testing.T) {
 func BenchmarkConcurrentEnqueue(b *testing.B) {
 	ids := generateSequentialIds(1)
 	batcher, err := New(10, 100, uint64(4*runtime.NumCPU()))
+	defer batcher.Stop()
 	if err != nil {
 		b.Fatalf("Failed to create Batcher: %v", err)
 	}
 
 	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	var ticked int32
 	go func() {
 		for range ticker.C {
-			batcher.Dequeue()
+			batcher.CloseCurrentAndTakeFirstBatch()
+			atomic.AddInt32(&ticked, 1)
 		}
 	}()
 
 	b.ReportAllocs()
+	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			batcher.Enqueue(ids[0])
+			batcher.AddToCurrentBatch(ids[0])
 		}
 	})
+
+	closedBatches := atomic.LoadInt32(&ticked)
+	b.Logf("Closed %d batches", closedBatches)
 }
 
 func concurrencyTest(t *testing.T, numBatches, newBatchesInitialCapacity, batchChannelSize uint64) {
@@ -92,7 +101,7 @@ func concurrencyTest(t *testing.T, numBatches, newBatchesInitialCapacity, batchC
 		for {
 			select {
 			case <-ticker.C:
-				g, _ := batcher.Dequeue()
+				g, _ := batcher.CloseCurrentAndTakeFirstBatch()
 				completedDequeues++
 				if completedDequeues <= numBatches && len(g) != 0 {
 					t.Fatal("Some of the first batches were not empty")
@@ -109,7 +118,7 @@ func concurrencyTest(t *testing.T, numBatches, newBatchesInitialCapacity, batchC
 	for i := 0; i < len(ids); i++ {
 		wg.Add(1)
 		go func(id []byte) {
-			batcher.Enqueue(id)
+			batcher.AddToCurrentBatch(id)
 			wg.Done()
 		}(ids[i])
 	}
@@ -121,7 +130,7 @@ func concurrencyTest(t *testing.T, numBatches, newBatchesInitialCapacity, batchC
 
 	// Get all ids added to the batcher
 	for {
-		batch, ok := batcher.Dequeue()
+		batch, ok := batcher.CloseCurrentAndTakeFirstBatch()
 		got = append(got, batch...)
 		if !ok {
 			break

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package idbatchqueue defines a FIFO queue of fixed size in which the
-// elements are batches of ids defined as byte slices.
+// Package idbatchqueue defines a pipeline of fixed size in which the
+// elements are batches of ids.
 package idbatchqueue
 
 import (
@@ -34,22 +34,26 @@ type ID []byte
 // Batch is the type of batches held by the Batcher.
 type Batch []ID
 
-// Batcher behaves like a FIFO queue of a fixed number of batches, in which
-// items can be enqueued concurrently. The caller is in control of when a batch is
-// completed and a new one should be started.
+// Batcher behaves like a pipeline of batches that has a fixed number of batches in the pipe
+// and a new batch being built outside of the pipe. Items can be concurrently added to the batch
+// currently being built. When the batch being built is closed, the oldest batch in the pipe
+// is pushed out so the one just closed can be put on the end of the pipe (this is done as an
+// atomic operation). The caller is in control of when a batch is completed and a new one should
+// be started.
 type Batcher interface {
-	// Enqueue puts the given id on the batch being currently built. The client is in charge
+	// AddToCurrentBatch puts the given id on the batch being currently built. The client is in charge
 	// of limiting the growth of the current batch if appropriate for its scenario. It can
-	// either call Dequeue earlier or stop adding new items depending on what is required by
-	// the scenario.
-	Enqueue(id ID)
-	// Dequeue takes the batch at the front of the queue, and moves the current batch to
-	// the end of the queue, creating a new batch to receive new enqueued items.
-	// It returns the batch that was in front of the queue and a boolean
-	// that if true indicates that there are more batches to be retrieved.
-	Dequeue() (Batch, bool)
-	// Stop informs that no more items are going to be enqueued. After
-	// this method is called attempts to enqueue new items will panic.
+	// either call CloseCurrentAndTakeFirstBatch earlier or stop adding new items depending on what is
+	// required by the scenario.
+	AddToCurrentBatch(id ID)
+	// CloseCurrentAndTakeFirstBatch takes the batch at the front of the pipe, and moves the current
+	// batch to the end of the pipe, creating a new batch to receive new items. This operation should
+	// be atomic.
+	// It returns the batch that was in front of the pipe and a boolean that if true indicates that
+	// there are more batches to be retrieved.
+	CloseCurrentAndTakeFirstBatch() (Batch, bool)
+	// Stop informs that no more items are going to be batched and the pipeline can be read until it
+	// is empty. After this method is called attempts to enqueue new items will panic.
 	Stop()
 }
 
@@ -69,7 +73,7 @@ type batcher struct {
 	stopped                   bool
 }
 
-// New creates a Batcher that will hold numBatches in its FIFO queue, having a channel with
+// New creates a Batcher that will hold numBatches in its pipeline, having a channel with
 // batchChannelSize to receive new items. New batches will be created with capacity set to
 // newBatchesInitialCapacity.
 func New(numBatches, newBatchesInitialCapacity, batchChannelSize uint64) (Batcher, error) {
@@ -82,9 +86,9 @@ func New(numBatches, newBatchesInitialCapacity, batchChannelSize uint64) (Batche
 
 	batches := make(chan Batch, numBatches)
 	// First numBatches batches will be empty in order to simplify clients that are running
-	// Dequeue on a timer and want to delay the processing of the first batch with actual
-	// data. This way there is no need for accounting on the client side and single timer
-	// can be started immediately.
+	// CloseCurrentAndTakeFirstBatch on a timer and want to delay the processing of the first
+	// batch with actual data. This way there is no need for accounting on the client side and
+	// a single timer can be started immediately.
 	for i := uint64(0); i < numBatches; i++ {
 		batches <- nil
 	}
@@ -111,19 +115,11 @@ func New(numBatches, newBatchesInitialCapacity, batchChannelSize uint64) (Batche
 	return batcher, nil
 }
 
-// Enqueue puts the given id on the batch being currently built. The client is in charge
-// of limiting the growth of the current batch if appropriate for its scenario. It can
-// either call Dequeue earlier or stop adding new items depending on what is required by
-// the scenario.
-func (b *batcher) Enqueue(id ID) {
+func (b *batcher) AddToCurrentBatch(id ID) {
 	b.pendingIds <- id
 }
 
-// Dequeue takes the batch at the front of the queue, and moves the current batch to
-// the end of the queue, creating a new batch to receive new enqueued items.
-// It returns the batch that was in front of the queue and a boolean
-// that if true indicates that there are more batches to be retrieved.
-func (b *batcher) Dequeue() (Batch, bool) {
+func (b *batcher) CloseCurrentAndTakeFirstBatch() (Batch, bool) {
 	for readBatch := range b.batches {
 		if !b.stopped {
 			nextBatch := make(Batch, 0, b.newBatchesInitialCapacity)
@@ -140,8 +136,6 @@ func (b *batcher) Dequeue() (Batch, bool) {
 	return readBatch, false
 }
 
-// Stop informs that no more items are going to be enqueued. After
-// this method is called attempts to enqueue new items will panic.
 func (b *batcher) Stop() {
 	close(b.pendingIds)
 	b.stopped = <-b.stopchan
