@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package idbatchqueue defines a pipeline of fixed size in which the
+// Package idbatcher defines a pipeline of fixed size in which the
 // elements are batches of ids.
-package idbatchqueue
+package idbatcher
 
 import (
 	"errors"
