@@ -42,11 +42,8 @@ services:
   # Synthetic load generator
   synthetic-load-generator:
     image: omnition/synthetic-load-generator:1.0.6
-    volumes:
-      - ./hipster-shop.json:/sample-topologies/hipster-shop.json
     environment:
       - JAEGER_COLLECTOR_URL=http://oc-agent:14268
-      - TOPOLOGY_FILE=/sample-topologies/hipster-shop.json
     depends_on:
       - oc-agent
 
