@@ -103,7 +103,7 @@ func jSpansToOCProtoSpans(jspans []*jaeger.Span) []*tracepb.Span {
 			continue
 		}
 
-		startTime := epochMicrosecondsAsTime(uint64(jspan.StartTime))
+		startTime := EpochMicrosecondsAsTime(uint64(jspan.StartTime))
 		_, sKind, sStatus, sAttributes := jtagsToAttributes(jspan.Tags)
 		span := &tracepb.Span{
 			TraceId: tracetranslator.Int64ToByteTraceID(jspan.TraceIdHigh, jspan.TraceIdLow),
@@ -143,7 +143,7 @@ func jLogsToOCProtoTimeEvents(logs []*jaeger.Log) *tracepb.Span_TimeEvents {
 			}
 		}
 		timeEvent := &tracepb.Span_TimeEvent{
-			Time:  internal.TimeToTimestamp(epochMicrosecondsAsTime(uint64(log.Timestamp))),
+			Time:  internal.TimeToTimestamp(EpochMicrosecondsAsTime(uint64(log.Timestamp))),
 			Value: &tracepb.Span_TimeEvent_Annotation_{Annotation: annotation},
 		}
 
@@ -196,9 +196,8 @@ func jtagsToAttributes(tags []*jaeger.Tag) (string, tracepb.Span_SpanKind, *trac
 
 	for _, tag := range tags {
 		// Take the opportunity to get the "span.kind" per OpenTracing spec, however, keep it also on the attributes.
-		// TODO: (@pjanotti): Replace any OpenTracing literals by importing github.com/opentracing/opentracing-go/ext?
 		switch tag.Key {
-		case "span.kind":
+		case OpentracingKey_SPAN_KIND:
 			switch tag.GetVStr() {
 			case "client":
 				sKind = tracepb.Span_CLIENT
@@ -206,14 +205,15 @@ func jtagsToAttributes(tags []*jaeger.Tag) (string, tracepb.Span_SpanKind, *trac
 				sKind = tracepb.Span_SERVER
 			}
 
-		case "http.status_code", "status.code": // It is expected to be an int
+		case OpentracingKey_HTTP_STATUS_CODE, OpentracingKey_STATUS_CODE:
+			// It is expected to be an int
 			statusCodePtr = new(int32)
 			*statusCodePtr = int32(tag.GetVLong())
 
-		case "http.status_message", "status.message":
+		case OpentracingKey_HTTP_STATUS_MESSAGE, OpentracingKey_STATUS_MESSAGE:
 			statusMessage = tag.GetVStr()
 
-		case "message":
+		case OpentracingKey_MESSAGE:
 			message = tag.GetVStr()
 		}
 
@@ -262,12 +262,4 @@ func jtagsToAttributes(tags []*jaeger.Tag) (string, tracepb.Span_SpanKind, *trac
 		sAttributes = &tracepb.Span_Attributes{AttributeMap: sAttribs}
 	}
 	return message, sKind, sStatus, sAttributes
-}
-
-// epochMicrosecondsAsTime converts microseconds since epoch to time.Time value.
-func epochMicrosecondsAsTime(ts uint64) (t time.Time) {
-	if ts == 0 {
-		return
-	}
-	return time.Unix(0, int64(ts*1e3)).UTC()
 }
