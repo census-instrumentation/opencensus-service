@@ -49,7 +49,7 @@ import (
 
 const (
 	configCfg           = "config"
-	healthcheckHTTPPort = "health-check-http-port"
+	healthCheckHTTPPort = "health-check-http-port"
 	logLevelCfg         = "log-level"
 	metricsLevelCfg     = "metrics-level"
 	metricsPortCfg      = "metrics-port"
