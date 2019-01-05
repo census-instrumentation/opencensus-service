@@ -29,6 +29,7 @@ import (
 	"github.com/jaegertracing/jaeger/cmd/agent/app/reporter"
 	"github.com/jaegertracing/jaeger/cmd/collector/app"
 	"github.com/jaegertracing/jaeger/model"
+	jaegerproto "github.com/jaegertracing/jaeger/proto-gen/api_v2"
 	"github.com/jaegertracing/jaeger/thrift-gen/baggage"
 	"github.com/jaegertracing/jaeger/thrift-gen/jaeger"
 	"github.com/jaegertracing/jaeger/thrift-gen/sampling"
@@ -48,8 +49,9 @@ import (
 // Configuration defines the behavior and the ports that
 // the Jaeger receiver will use.
 type Configuration struct {
-	CollectorThriftPort int `mapstructure:"tchannel_port"`
-	CollectorHTTPPort   int `mapstructure:"collector_http_port"`
+	CollectorThriftPort int `yaml:"tchannel_port"`
+	CollectorHTTPPort   int `yaml:"collector_http_port"`
+	CollectorGRPCPort   int `yaml:"collector_grpc_port"`
 
 	AgentPort              int `mapstructure:"agent_port"`
 	AgentCompactThriftPort int `mapstructure:"agent_compact_thrift_port"`
@@ -128,7 +130,7 @@ func (jr *jReceiver) collectorAddr() string {
 	return fmt.Sprintf(":%d", port)
 }
 
-func (jr *jReceiver) collectorGRPCPort() int {
+func (jr *jReceiver) collectorGRPCAddr() string {
 	var port int
 	if jr.config != nil {
 		port = jr.config.CollectorGRPCPort
@@ -136,7 +138,7 @@ func (jr *jReceiver) collectorGRPCPort() int {
 	if port <= 0 {
 		port = defaultGRPCPort
 	}
-	return port
+	return fmt.Sprintf(":%d", port)
 }
 
 func (jr *jReceiver) agentAddress() string {
@@ -237,10 +239,6 @@ func (jr *jReceiver) stopTraceReceptionLocked(ctx context.Context) error {
 		}
 		if jr.collectorGRPCServer != nil {
 			jr.collectorGRPCServer.GracefulStop()
-			err := closer.Close()
-			if err != nil {
-				errs = append(errs, err)
-			}
 		}
 		if len(errs) == 0 {
 			err = nil
@@ -293,24 +291,25 @@ func (jr *jReceiver) ProcessSpans(mSpans []*model.Span, spanFormat string) ([]bo
 
 	// If we failed to convert all the spans, return false for all spans received.
 	if err != nil {
-		for _, _ := range mSpans {
+		for range mSpans {
 			response = append(response, false)
 		}
-		return response
+		return response, nil
 	}
 
 	for _, ocTrace := range ocTraces {
 		if ocTrace != nil {
-			err = jr.spanSink.ReceiveTraceData(ctx, data.TraceData{Node: ocTrace.Node, Spans: ocTrace.Spans})
+			ctx := context.Background()
+			_, err = jr.spanSink.ReceiveTraceData(ctx, data.TraceData{Node: ocTrace.Node, Spans: ocTrace.Spans})
 		}
 
 		// Return true for all the spans in the batch if err is nil, otherwise return false
-		for _, _ := range ocTrace.Spans {
+		for range ocTrace.Spans {
 			response = append(response, err == nil)
 		}
 	}
 
-	return response
+	return response, nil
 }
 
 var _ reporter.Reporter = (*jReceiver)(nil)
@@ -398,16 +397,16 @@ func (jr *jReceiver) startAgent() error {
 // startCollector starts a thrift server, http server, and gRPC server to accept
 // spans in any jaeger-supported format
 func (jr *jReceiver) startCollector() error {
-	err := startThriftServer()
+	err := jr.startThriftServer()
 	if err != nil {
 		return err
 	}
-	err = startHttpServer()
+	err = jr.startHTTPServer()
 	if err != nil {
 		return err
 	}
 
-	err = startGRPCServcer()
+	err = jr.startGRPCServer()
 	if err != nil {
 		return err
 	}
@@ -434,13 +433,12 @@ func (jr *jReceiver) startThriftServer() error {
 	return nil
 }
 
-func (jr *jReceiver) startHttpServer() error {
+func (jr *jReceiver) startHTTPServer() error {
 	addr := jr.collectorAddr()
-	ln, cerr := net.Listen("tcp", addr)
-	if cerr != nil {
-		// Abort and close tch
-		tch.Close()
-		return fmt.Errorf("Failed to bind to Collector address %q: %v", addr, cerr)
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		ln.Close()
+		return fmt.Errorf("Failed to bind to Collector address %q: %v", addr, err)
 	}
 
 	nr := mux.NewRouter()
@@ -455,19 +453,21 @@ func (jr *jReceiver) startHttpServer() error {
 
 func (jr *jReceiver) startGRPCServer() error {
 	server := grpc.NewServer()
-	_, err := grpcserver.StartGRPCCollector(
-		jr.collectorGRPCPort(),
-		server,
-		app.NewGRPCHandler(jr.logger, jr),
-		samplingStore,
-		jr.logger,
-		func(err error) {
-			logger.Fatal("gRPC collector failed", zap.Error(err))
-		},
-	)
-	jr.collectorGRPCServer = server
+	addr := jr.collectorGRPCAddr()
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, err
+		ln.Close()
+		return fmt.Errorf("Failed to bind to grpc Collector address %q: %v", addr, err)
 	}
+	jaegerproto.RegisterCollectorServiceServer(server, app.NewGRPCHandler(jr.logger, jr))
+	jr.collectorGRPCServer = server
+
+	jr.logger.Info("Starting jaeger grpc server", zap.String("addr", addr))
+	go func() {
+		if err := server.Serve(ln); err != nil {
+			jr.logger.Fatal("gRPC collector failed", zap.Error(err))
+		}
+	}()
+
 	return err
 }

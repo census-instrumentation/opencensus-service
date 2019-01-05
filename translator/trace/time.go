@@ -18,10 +18,10 @@ import (
 	"time"
 )
 
-var MICROS_PER_SECOND = 1000000
-var NANOS_PER_MICRO = 1000
+var microsPerSecond = int64(1000000)
+var nanosPerMicro = int64(1000)
 
 // EpochMicrosecondsAsTime converts microseconds since epoch to time.Time value.
-func EpochMicrosecondsAsTime(ts uint64) time.Time {
-	return time.Unix(ts/MICROS_PER_SECOND, NANOS_PER_MICRO*(ts%MICROS_PER_SECOND)).UTC()
+func EpochMicrosecondsAsTime(ts int64) time.Time {
+	return time.Unix(ts/microsPerSecond, nanosPerMicro*(ts%microsPerSecond)).UTC()
 }

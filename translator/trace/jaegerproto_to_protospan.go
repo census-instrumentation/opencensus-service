@@ -15,27 +15,35 @@
 package tracetranslator
 
 import (
-	"github.com/census-instrumentation/opencensus-service/internal"
+	"encoding/base64"
+	"fmt"
+	"strconv"
+	"time"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	jmodel "github.com/jaegertracing/jaeger/model"
+
+	"github.com/census-instrumentation/opencensus-service/internal"
 )
 
+// JaegerProtoToOCProtoBatch converts a slice of jaeger gRPC protobuf spans into oc ExportTraceServiceRequest
+// batches. Spans following a span with a set process are assumed to be from the same process (node).
 func JaegerProtoToOCProtoBatch(jSpans []*jmodel.Span) ([]*agenttracepb.ExportTraceServiceRequest, error) {
 	ocSpans := make([]*tracepb.Span, 0, len(jSpans))
 	var ocNode *commonpb.Node
-	ocBatches := make([]*agenttracepb.ExportTraceServiceRequest)
+	ocBatches := make([]*agenttracepb.ExportTraceServiceRequest, 0, len(jSpans))
 	for spanIndex, span := range jSpans {
-		ocSpans, err := append(ocSpans, JaegerProtoToOCProto(span))
+		ocSpan, err := JaegerProtoToOCProto(span)
 		if err != nil {
 			return nil, err
 		}
+		ocSpans := append(ocSpans, ocSpan)
 		if span.Process != nil {
-			newOcNode := getNodeFromProcess(span.Process)
-			if ocNode != nil && newOCNode != nil && *newOcNode != *ocNode {
-				// Cut new batch with old process
+			newOcNode := jProtoProcessToOCProtoNode(span.Process)
+			if ocNode != nil && newOcNode != nil {
+				// Cut new batch with old process, and reset to add spans to a batch for the new process
 				ocBatch := &agenttracepb.ExportTraceServiceRequest{
 					Node:  ocNode,
 					Spans: ocSpans,
@@ -58,17 +66,19 @@ func JaegerProtoToOCProtoBatch(jSpans []*jmodel.Span) ([]*agenttracepb.ExportTra
 	return ocBatches, nil
 }
 
+// JaegerProtoToOCProto converts a jaeger gRPC protobuf span into a oc Span
 func JaegerProtoToOCProto(jSpan *jmodel.Span) (*tracepb.Span, error) {
-	_, kind, status, attributes := jKeyValuesToAttributes(jspan.Tags)
+	_, kind, status, attributes := jKeyValuesToAttributes(jSpan.Tags)
 
-	traceId := make([]byte, 16)
+	traceID := make([]byte, 16)
 	jSpan.TraceID.MarshalTo(traceID)
 
-	spanId := make([]byte, 8)
+	spanID := make([]byte, 8)
 	jSpan.SpanID.MarshalTo(spanID)
 
-	parentSpanId := make([]byte, 8)
-	jSpan.ParentSpanID().MarshalTo(parentSpanID)
+	parentSpanID := make([]byte, 8)
+	jParentSpan := jSpan.ParentSpanID()
+	jParentSpan.MarshalTo(parentSpanID)
 
 	var name *tracepb.TruncatableString
 	if jSpan.OperationName != "" {
@@ -76,23 +86,23 @@ func JaegerProtoToOCProto(jSpan *jmodel.Span) (*tracepb.Span, error) {
 	}
 
 	return &tracepb.Span{
-		TraceId:      traceId,
-		SpanId:       spanId,
-		ParentSpanId: parentSpanId,
+		TraceId:      traceID,
+		SpanId:       spanID,
+		ParentSpanId: parentSpanID,
 		Name:         name,
 		Kind:         kind,
 		StartTime:    internal.TimeToTimestamp(jSpan.StartTime),
 		EndTime:      internal.TimeToTimestamp(jSpan.StartTime.Add(time.Duration(jSpan.Duration) * time.Microsecond)),
 		Attributes:   attributes,
 		// TODO: StackTrace: OpenTracing defines a semantic key for "stack", should we attempt to its content to StackTrace?
-		TimeEvents: jProtoLogsToOCProtoTimeEvents(jspan.Logs),
-		Links:      jProtoRefsToOCProtoLinks(jspan.References),
+		TimeEvents: jProtoLogsToOCProtoTimeEvents(jSpan.Logs),
+		Links:      jProtoRefsToOCProtoLinks(jSpan.References),
 		Status:     status,
 	}, nil
 }
 
-func jProcessToOCProtoNode(jProcess *jmodel.Process) *commonpb.Node {
-	if p == nil {
+func jProtoProcessToOCProtoNode(jProcess *jmodel.Process) *commonpb.Node {
+	if jProcess == nil {
 		return nil
 	}
 
@@ -115,22 +125,22 @@ func jProcessToOCProtoNode(jProcess *jmodel.Process) *commonpb.Node {
 
 		switch tag.GetVType() {
 		case jmodel.ValueType_STRING:
-			attribs[tag.Key] = tag.GetVStr()
+			attributes[tag.Key] = tag.GetVStr()
 		case jmodel.ValueType_BOOL:
-			attribs[tag.Key] = strconv.FormatBool(tag.GetVBool())
+			attributes[tag.Key] = strconv.FormatBool(tag.GetVBool())
 		case jmodel.ValueType_INT64:
-			attribs[tag.Key] = strconv.FormatInt(tag.GetVInt64(), 10)
+			attributes[tag.Key] = strconv.FormatInt(tag.GetVInt64(), 10)
 		case jmodel.ValueType_FLOAT64:
-			attribs[tag.Key] = strconv.FormatFloat(tag.GetVFloat64(), 'f', -1, 64)
+			attributes[tag.Key] = strconv.FormatFloat(tag.GetVFloat64(), 'f', -1, 64)
 		case jmodel.ValueType_BINARY:
-			attribs[tag.Key] = base64.StdEncoding.EncodeToString(tag.GetVBinary())
+			attributes[tag.Key] = base64.StdEncoding.EncodeToString(tag.GetVBinary())
 		default:
-			attribs[tag.Key] = fmt.Sprintf("<Unknown Jaeger TagType %q>", tag.GetVType())
+			attributes[tag.Key] = fmt.Sprintf("<Unknown Jaeger TagType %q>", tag.GetVType())
 		}
 	}
 
-	if len(attribs) > 0 {
-		node.Attributes = attribs
+	if len(attributes) > 0 {
+		node.Attributes = attributes
 	}
 	return node
 }
@@ -144,7 +154,7 @@ func jKeyValuesToAttributes(
 
 	// Init all special attributes
 	var kind tracepb.Span_SpanKind
-	var statusCode int32
+	var statusCodePtr *int32
 	var statusMessage string
 	var message string
 
@@ -153,19 +163,20 @@ func jKeyValuesToAttributes(
 	for _, kv := range kvs {
 		// First try to populate special opentracing defined tags from jaeger keyvalues.
 		switch kv.Key {
-		case OpentracingKey_SPAN_KIND:
+		case OpentracingKeySpanKind:
 			switch kv.GetVStr() {
 			case "client":
 				kind = tracepb.Span_CLIENT
 			case "server":
 				kind = tracepb.Span_SERVER
 			}
-		case OpentracingKey_HTTP_STATUS_CODE, OpentracingKey_STATUS_CODE:
+		case OpentracingKeyHTTPStatusCode, OpentracingKeyStatusCode:
 			// It is expected to be an int
-			statusCode = int32(kv.GetVInt64())
-		case OpentracingKey_HTTP_STATUS_MESSAGE, OpentracingKey_STATUS_MESSAGE:
+			statusCodePtr = new(int32)
+			*statusCodePtr = int32(kv.GetVInt64())
+		case OpentracingKeyHTTPStatusMessage, OpentracingKeyStatusMessage:
 			statusMessage = kv.GetVStr()
-		case OpentracingKey_MESSAGE:
+		case OpentracingKeyMessage:
 			message = kv.GetVStr()
 		}
 
@@ -174,7 +185,7 @@ func jKeyValuesToAttributes(
 		switch kv.VType {
 		case jmodel.ValueType_STRING:
 			attrib.Value = &tracepb.AttributeValue_StringValue{
-				StringValue: &tracepb.TruncatableString{Value: kv.getVStr()},
+				StringValue: &tracepb.TruncatableString{Value: kv.GetVStr()},
 			}
 		case jmodel.ValueType_BOOL:
 			attrib.Value = &tracepb.AttributeValue_BoolValue{
@@ -206,6 +217,10 @@ func jKeyValuesToAttributes(
 
 	var status *tracepb.Status
 	if statusCodePtr != nil || statusMessage != "" {
+		statusCode := int32(0)
+		if statusCodePtr != nil {
+			statusCode = *statusCodePtr
+		}
 		status = &tracepb.Status{Message: statusMessage, Code: statusCode}
 	}
 
@@ -217,7 +232,7 @@ func jKeyValuesToAttributes(
 	return message, kind, status, spanAttributes
 }
 
-func jProtoLogsToOCProtoTimeEvents(logs []*jmodel.Log) *tracepb.Span_TimeEvents {
+func jProtoLogsToOCProtoTimeEvents(logs []jmodel.Log) *tracepb.Span_TimeEvents {
 	if logs == nil {
 		return nil
 	}
@@ -244,7 +259,7 @@ func jProtoLogsToOCProtoTimeEvents(logs []*jmodel.Log) *tracepb.Span_TimeEvents 
 	return &tracepb.Span_TimeEvents{TimeEvent: timeEvents}
 }
 
-func jProtoRefsToOCProtoLinks(jRefs []*jmodel.SpanRef) *tracepb.Span_Links {
+func jProtoRefsToOCProtoLinks(jRefs []jmodel.SpanRef) *tracepb.Span_Links {
 	if jRefs == nil {
 		return nil
 	}
@@ -261,14 +276,14 @@ func jProtoRefsToOCProtoLinks(jRefs []*jmodel.SpanRef) *tracepb.Span_Links {
 			linkType = tracepb.Span_Link_TYPE_UNSPECIFIED
 		}
 
-		traceId := make([]byte, 16)
+		traceID := make([]byte, 16)
 		jRef.TraceID.MarshalTo(traceID)
 
-		spanId := make([]byte, 8)
-		jSpan.SpanID.MarshalTo(spanID)
+		spanID := make([]byte, 8)
+		jRef.SpanID.MarshalTo(spanID)
 
 		link := &tracepb.Span_Link{
-			TraceId: traceId,
+			TraceId: traceID,
 			SpanId:  spanID,
 			Type:    linkType,
 		}

@@ -103,7 +103,7 @@ func jSpansToOCProtoSpans(jspans []*jaeger.Span) []*tracepb.Span {
 			continue
 		}
 
-		startTime := EpochMicrosecondsAsTime(uint64(jspan.StartTime))
+		startTime := EpochMicrosecondsAsTime(jspan.StartTime)
 		_, sKind, sStatus, sAttributes := jtagsToAttributes(jspan.Tags)
 		span := &tracepb.Span{
 			TraceId: tracetranslator.Int64ToByteTraceID(jspan.TraceIdHigh, jspan.TraceIdLow),
@@ -143,7 +143,7 @@ func jLogsToOCProtoTimeEvents(logs []*jaeger.Log) *tracepb.Span_TimeEvents {
 			}
 		}
 		timeEvent := &tracepb.Span_TimeEvent{
-			Time:  internal.TimeToTimestamp(EpochMicrosecondsAsTime(uint64(log.Timestamp))),
+			Time:  internal.TimeToTimestamp(EpochMicrosecondsAsTime(log.Timestamp)),
 			Value: &tracepb.Span_TimeEvent_Annotation_{Annotation: annotation},
 		}
 
@@ -197,7 +197,7 @@ func jtagsToAttributes(tags []*jaeger.Tag) (string, tracepb.Span_SpanKind, *trac
 	for _, tag := range tags {
 		// Take the opportunity to get the "span.kind" per OpenTracing spec, however, keep it also on the attributes.
 		switch tag.Key {
-		case OpentracingKey_SPAN_KIND:
+		case OpentracingKeySpanKind:
 			switch tag.GetVStr() {
 			case "client":
 				sKind = tracepb.Span_CLIENT
@@ -205,15 +205,15 @@ func jtagsToAttributes(tags []*jaeger.Tag) (string, tracepb.Span_SpanKind, *trac
 				sKind = tracepb.Span_SERVER
 			}
 
-		case OpentracingKey_HTTP_STATUS_CODE, OpentracingKey_STATUS_CODE:
+		case OpentracingKeyHTTPStatusCode, OpentracingKeyStatusCode:
 			// It is expected to be an int
 			statusCodePtr = new(int32)
 			*statusCodePtr = int32(tag.GetVLong())
 
-		case OpentracingKey_HTTP_STATUS_MESSAGE, OpentracingKey_STATUS_MESSAGE:
+		case OpentracingKeyHTTPStatusMessage, OpentracingKeyStatusMessage:
 			statusMessage = tag.GetVStr()
 
-		case OpentracingKey_MESSAGE:
+		case OpentracingKeyMessage:
 			message = tag.GetVStr()
 		}
 

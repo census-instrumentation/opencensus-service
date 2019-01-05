@@ -45,7 +45,9 @@ func Start(logger *zap.Logger, v *viper.Viper, traceConsumer consumer.TraceConsu
 	config := &jaegerreceiver.Configuration{
 		CollectorThriftPort: rOpts.ThriftTChannelPort,
 		CollectorHTTPPort:   rOpts.ThriftHTTPPort,
+		CollectorGRPCPort:   rOpts.ProtoGRPCPort,
 	}
+
 	jtr, err := jaegerreceiver.New(ctx, config, traceConsumer)
 	if err != nil {
 		return nil, err

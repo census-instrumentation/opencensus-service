@@ -77,6 +77,8 @@ type JaegerReceiverCfg struct {
 	ThriftTChannelPort int `mapstructure:"jaeger-thrift-tchannel-port"`
 	// ThriftHTTPPort is the port that the relay receives on for jaeger thrift http requests
 	ThriftHTTPPort int `mapstructure:"jaeger-thrift-http-port"`
+	// ProtoGRPCPort is the port that the relay receives on for jaeger proto gRPC requests
+	ProtoGRPCPort int `mapstructure:"jaeger-proto-grpc-port"`
 }
 
 // JaegerReceiverEnabled checks if the Jaeger receiver is enabled, via a command-line flag, environment
@@ -90,6 +92,7 @@ func NewDefaultJaegerReceiverCfg() *JaegerReceiverCfg {
 	opts := &JaegerReceiverCfg{
 		ThriftTChannelPort: 14267,
 		ThriftHTTPPort:     14268,
+		ProtoGRPCPort:      14250,
 	}
 	return opts
 }
