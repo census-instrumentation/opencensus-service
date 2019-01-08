@@ -1,6 +1,7 @@
 module github.com/census-instrumentation/opencensus-service
 
 require (
+	bazil.org/fuse v0.0.0-20180421153158-65cc252bf669 // indirect
 	cloud.google.com/go v0.32.0 // indirect
 	contrib.go.opencensus.io/exporter/ocagent v0.3.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.7.0
@@ -8,6 +9,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/DataDog/datadog-go v0.0.0-20180822151419-281ae9f2d895 // indirect
 	github.com/DataDog/opencensus-go-exporter-datadog v0.0.0-20181026070331-e7c4bd17b329
+	github.com/GoogleCloudPlatform/cloudsql-proxy v0.0.0-20181215173202-6f1ecdcf9588 // indirect
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/apache/thrift v0.0.0-20161221203622-b2a4d4ae21c7
 	github.com/aws/aws-sdk-go v1.15.68 // indirect
