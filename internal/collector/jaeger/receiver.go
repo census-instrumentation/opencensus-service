@@ -15,7 +15,7 @@
 // Package jaegerreceiver wraps the functionality to start the end-point that
 // receives Jaeger data sent by the jaeger-agent in jaeger.thrift format over
 // TChannel and directly from clients in jaeger.thrift format over binary thrift
-// protocol (HTTP transport).
+// protocol (HTTP/GRPC transport).
 // Note that the UDP transport is not supported since these protocol/transport
 // are for task->jaeger-agent communication only and the receiver does not try to
 // support jaeger-agent endpoints.
@@ -44,6 +44,7 @@ func Run(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor) (
 	jtr, err := jaeger.New(ctx, &jaeger.Configuration{
 		CollectorThriftPort: rOpts.ThriftTChannelPort,
 		CollectorHTTPPort:   rOpts.ThriftHTTPPort,
+		CollectorGRPCPort:   rOpts.ThriftGRPCPort,
 	})
 	if err != nil {
 		return nil, err
@@ -56,7 +57,8 @@ func Run(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor) (
 
 	logger.Info("Jaeger receiver is running.",
 		zap.Int("thrift-tchannel-port", rOpts.ThriftTChannelPort),
-		zap.Int("thrift-http-port", rOpts.ThriftHTTPPort))
+		zap.Int("thrift-http-port", rOpts.ThriftHTTPPort),
+		zap.Int("thrift-grpc-port", rOpts.ThriftGRPCPort))
 
 	closeFn := func() {
 		jtr.StopTraceReception(context.Background())

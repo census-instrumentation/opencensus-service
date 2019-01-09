@@ -47,6 +47,7 @@ import (
 type Configuration struct {
 	CollectorThriftPort int `yaml:"tchannel_port"`
 	CollectorHTTPPort   int `yaml:"collector_http_port"`
+	CollectorGRPCPort   int `yaml:"collector_http_port"`
 
 	AgentPort              int `yaml:"agent_port"`
 	AgentCompactThriftPort int `yaml:"agent_compact_thrift_port"`
@@ -79,6 +80,8 @@ const (
 	defaultTChannelPort = 14267
 	// By default, can accept spans directly from clients in jaeger.thrift format over binary thrift protocol
 	defaultCollectorHTTPPort = 14268
+	// By default, can accept spans directly from GRPC clients
+	defaultCollectorGRPCPort = 14250
 
 	// As per https://www.jaegertracing.io/docs/1.7/deployment/#agent
 	// 5775	UDP accept zipkin.thrift over compact thrift protocol
@@ -132,6 +135,17 @@ func (jr *jReceiver) tchannelAddr() string {
 	}
 	if port <= 0 {
 		port = defaultTChannelPort
+	}
+	return fmt.Sprintf(":%d", port)
+}
+
+func (jr *jReceiver) grpcAddr() string {
+	var port int
+	if jr.config != nil {
+		port = jr.config.CollectorGRPCPort
+	}
+	if port <= 0 {
+		port = defaultCollectorGRPCPort
 	}
 	return fmt.Sprintf(":%d", port)
 }
@@ -349,6 +363,15 @@ func (jr *jReceiver) startCollector() error {
 		// Abort and close tch
 		tch.Close()
 		return fmt.Errorf("Failed to bind to Collector address %q: %v", caddr, cerr)
+	}
+
+	// GRPC Collector
+	grpcaddr := jr.grpcAddr()
+	gln, gerr := net.Listen("tcp", grpcaddr)
+	if gerr != nil {
+		// Abort and close tch
+		tch.Close()
+		return fmt.Errorf("Failed to bind to Collector address %q: %v", gaddr, gerr)
 	}
 
 	nr := mux.NewRouter()
