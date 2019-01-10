@@ -16,6 +16,7 @@ package tracetranslator
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"reflect"
 	"sort"
@@ -195,6 +196,9 @@ func TestMultipleJSONZipkinV1BatchesToOCProto(t *testing.T) {
 	sortTraceByNodeName(got)
 
 	if !reflect.DeepEqual(got, want) {
+
+		fmt.Printf("%+v\n", got)
+		fmt.Printf("%+v\n", want)
 		t.Fatalf("got different data than want")
 	}
 }
@@ -406,6 +410,23 @@ var ocBatchesFromZipkinV1 = []*agenttracepb.ExportTraceServiceRequest{
 						},
 					},
 				},
+			},
+		},
+	},
+	{
+		Node: &commonpb.Node{
+			ServiceInfo: &commonpb.ServiceInfo{Name: "unknown-service"},
+		},
+		Spans: []*tracepb.Span{
+			{
+				TraceId:      []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e, 0xd2, 0xe6, 0x3c, 0xbe, 0x71, 0xf5, 0xa8},
+				SpanId:       []byte{0xfe, 0x35, 0x1a, 0x05, 0x3f, 0xbc, 0xac, 0x1f},
+				ParentSpanId: []byte{0x0e, 0xd2, 0xe6, 0x3c, 0xbe, 0x71, 0xf5, 0xa8},
+				Name:         &tracepb.TruncatableString{Value: "checkStock"},
+				Kind:         tracepb.Span_SPAN_KIND_UNSPECIFIED,
+				StartTime:    &timestamp.Timestamp{Seconds: 1544805927, Nanos: 453923000},
+				EndTime:      &timestamp.Timestamp{Seconds: 1544805927, Nanos: 457663000},
+				Attributes:   nil,
 			},
 		},
 	},
