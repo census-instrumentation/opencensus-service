@@ -35,9 +35,11 @@ import (
 	"github.com/uber/jaeger-lib/metrics"
 	tchannel "github.com/uber/tchannel-go"
 	"github.com/uber/tchannel-go/thrift"
+	"go.opencensus.io/plugin/ocgrpc"
 	"go.uber.org/zap"
 
 	"github.com/census-instrumentation/opencensus-service/data"
+	"github.com/census-instrumentation/opencensus-service/internal"
 	"github.com/census-instrumentation/opencensus-service/receiver"
 	"github.com/census-instrumentation/opencensus-service/translator/trace"
 )
@@ -70,8 +72,9 @@ type jReceiver struct {
 	agent       *agentapp.Agent
 	agentServer *http.Server
 
-	tchannel        *tchannel.Channel
-	collectorServer *http.Server
+	tchannel            *tchannel.Channel
+	collectorHTTPServer *http.Server
+	collectorGRPCServer *grpc.Server
 }
 
 const (
@@ -213,11 +216,15 @@ func (jr *jReceiver) stopTraceReceptionLocked(ctx context.Context) error {
 			jr.agent = nil
 		}
 
-		if jr.collectorServer != nil {
-			if cerr := jr.collectorServer.Close(); cerr != nil {
+		if jr.collectorHTTPServer != nil {
+			if cerr := jr.collectorHTTPServer.Close(); cerr != nil {
 				errs = append(errs, cerr)
 			}
-			jr.collectorServer = nil
+			jr.collectorHTTPServer = nil
+		}
+		if jr.collectorGRPCServer != nil {
+			jr.collectorGRPCServer.Stop()
+			jr.collectorGRPCServer = nil
 		}
 		if jr.tchannel != nil {
 			jr.tchannel.Close()
@@ -377,9 +384,14 @@ func (jr *jReceiver) startCollector() error {
 	nr := mux.NewRouter()
 	apiHandler := app.NewAPIHandler(jr)
 	apiHandler.RegisterRoutes(nr)
-	jr.collectorServer = &http.Server{Handler: nr}
+	jr.collectorHTTPServer = &http.Server{Handler: nr}
 	go func() {
-		_ = jr.collectorServer.Serve(cln)
+		_ = jr.collectorHTTPServer.Serve(cln)
+	}()
+
+	jr.collectorGRPCServer = internal.GRPCServerWithObservabilityEnabled()
+	go func() {
+		_ = jr.collectorGRPCServer.Serve(gln)
 	}()
 
 	return nil
