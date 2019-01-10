@@ -16,7 +16,6 @@ package tracetranslator
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"reflect"
 	"sort"
@@ -196,9 +195,6 @@ func TestMultipleJSONZipkinV1BatchesToOCProto(t *testing.T) {
 	sortTraceByNodeName(got)
 
 	if !reflect.DeepEqual(got, want) {
-
-		fmt.Printf("%+v\n", got)
-		fmt.Printf("%+v\n", want)
 		t.Fatalf("got different data than want")
 	}
 }
