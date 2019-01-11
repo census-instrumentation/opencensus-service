@@ -127,12 +127,11 @@ receivers:
   opencensus:
     address: "localhost:55678"
 
-  zipkin:
-    port: 9411
-
   jaeger:
     collector_thrift_port: 14267
     collector_http_port: 14268
+
+  zipkin:
 ```
 
 ### <a name="config-exporters"></a>Exporters
