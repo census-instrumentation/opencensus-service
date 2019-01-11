@@ -128,7 +128,7 @@ receivers:
     address: "localhost:55678"
 
   zipkin:
-    address: "localhost:9411"
+    port: 9411
 
   jaeger:
     collector_thrift_port: 14267
@@ -145,7 +145,7 @@ please see the [exporter README.md](exporter/exporterparser/README.md).
 ```yaml
 exporters:
   opencensus:
-    endpoint: "http://localhost:10001"
+    endpoint: "localhost:10001"
 
   jaeger:
     collector_endpoint: "http://localhost:14268/api/traces"
