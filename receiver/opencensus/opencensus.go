@@ -39,12 +39,11 @@ import (
 
 // Receiver is the type that exposes Trace and Metrics reception.
 type Receiver struct {
-	mu         sync.Mutex
-	ln         net.Listener
-	serverGRPC *grpc.Server
-	serverHTTP *http.Server
-	gatewayMux *gatewayruntime.ServeMux
-
+	mu          sync.Mutex
+	ln          net.Listener
+	serverGRPC  *grpc.Server
+	serverHTTP  *http.Server
+	gatewayMux  *gatewayruntime.ServeMux
 	corsOrigins []string
 
 	traceReceiverOpts   []octrace.Option
@@ -74,12 +73,9 @@ func New(addr string, opts ...Option) (*Receiver, error) {
 		return nil, fmt.Errorf("Failed to bind to address %q: %v", addr, err)
 	}
 
-	// Do not allow any CORS origins by default.
-	defaultCorsOrigins := []string{}
-
 	ocr := &Receiver{
 		ln:          ln,
-		corsOrigins: defaultCorsOrigins,
+		corsOrigins: []string{}, // Disable CORS by default.
 		gatewayMux:  gatewayruntime.NewServeMux(),
 	}
 
