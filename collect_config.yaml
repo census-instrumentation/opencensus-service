@@ -1,0 +1,7 @@
+receivers:
+  opencensus:
+    address: "http://localhost:10001"
+exporters:
+  jaeger:
+    collector_endpoint: "http://localhost:14268/api/traces"
+

@@ -45,19 +45,21 @@ require (
 	github.com/uber/jaeger-lib v1.5.0
 	github.com/uber/tchannel-go v1.10.0
 	github.com/yancl/opencensus-go-exporter-kafka v0.0.0-20181029030031-9c471c1bfbeb
-	go.opencensus.io v0.18.0
+	go.opencensus.io v0.18.1-0.20181204023538-aab39bd6a98b
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3 // indirect
-	golang.org/x/net v0.0.0-20181102091132-c10e9556a7bc
+	golang.org/x/net v0.0.0-20181106065722-10aee1819953
 	golang.org/x/oauth2 v0.0.0-20181102170140-232e45548389 // indirect
 	golang.org/x/sys v0.0.0-20181031143558-9b800f95dbbc // indirect
 	google.golang.org/api v0.0.0-20181102150758-04bb50b6b83d
 	google.golang.org/appengine v1.3.0 // indirect
-	google.golang.org/genproto v0.0.0-20181101192439-c830210a61df // indirect
+	google.golang.org/genproto v0.0.0-20190111180523-db91494dd46c // indirect
 	google.golang.org/grpc v1.16.0
 	gopkg.in/DataDog/dd-trace-go.v1 v1.4.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v2 v2.2.1
 )
+
+replace contrib.go.opencensus.io/exporter/ocagent => ../../sjkaris/opencensus-go-exporter-ocagent
