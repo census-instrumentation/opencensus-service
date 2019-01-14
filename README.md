@@ -77,11 +77,178 @@ separately as either a Docker container, VM, or Kubernetes pod.
 
 ### <a name="deploy-k8s"></a>Kubernetes
 
-Coming soon!
+```yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ocagent-conf
+  labels:
+    app: opencensus
+    component: ocagent-conf
+data:
+  ocagent-config: |
+#    receivers:
+#      jaeger: {}
+#      zipkin: {}
+    exporters:
+      opencensus:
+        endpoint: "occollector.default.svc.cluster.local:55678" # TODO: Update me
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: ocagent
+  labels:
+    app: opencensus
+    component: ocagent
+spec:
+  template:
+    metadata:
+      labels:
+        app: opencensus
+        component: ocagent
+    spec:
+      containers:
+      - image: omnition/opencensus-agent:1.0.26
+        name: ocagent
+        resources:
+          limits:
+            cpu: 0.5
+            memory: 500Mi
+        command:
+          - "ocagent_linux"
+          - "--config-file=/conf/ocagent-config.yaml"
+        ports:
+        - containerPort: 55678
+        - containerPort: 55679
+#        - containerPort: 14267
+#        - containerPort: 14268
+#        - containerPort: 9411
+        volumeMounts:
+        - name: ocagent-config-vol
+          mountPath: /conf
+      volumes:
+        - configMap:
+            name: ocagent-conf
+            items:
+              - key: ocagent-config
+                path: ocagent-config.yaml
+          name: ocagent-config-vol
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: occollector-conf
+  labels:
+    app: opencensus
+    component: occollector-conf
+data:
+  occollector-config: |
+    receivers:
+      opencensus: {}
+      jaeger: {}
+      zipkin: {}
+# Can only use one exporter
+#    exporters:
+#      jaeger:
+#        collector_endpoint: "http://localhost:14268/api/traces"
+#      zipkin: {}
+    queued-exporters:
+      omnition:
+        num-workers: 20
+        queue-size: 10000
+        retry-on-failure: true
+        sender-type: jaeger-thrift-http
+        jaeger-thrift-http:
+          collector_endpoint: https://ingest.omnition.io/api/traces
+          headers: { "x-omnition-api-key":"00000000-0000-0000-0000-000000000001" } # TODO: Update me
+          timeout: 5s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: occollector
+  labels:
+    app: opencesus
+    component: occollector
+spec:
+  ports:
+  - name: opencensus
+    port: 55678
+    protocol: TCP
+    targetPort: 55678
+#  - name: jaeger-tchannel
+#    port: 14267
+#  - name: jaeger-thrift-http
+#    port: 14268
+#  - name: zipkin
+#    port: 9411
+  selector:
+    component: occollector
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: occollector
+  labels:
+    app: opencensus
+    component: occollector
+spec:
+  minReadySeconds: 5
+  progressDeadlineSeconds: 120
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8888"
+        prometheus.io/scrape: "true"
+      labels:
+        app: opencensus
+        component: occollector
+    spec:
+      containers:
+      - image: omnition/opencensus-collector:1.0.26
+        name: occollector
+        resources:
+          limits:
+            cpu: 1
+            memory: 2Gi
+          requests:
+            cpu: 200m
+            memory: 400Mi
+        command:
+          - "occollector_linux"
+          - "--config-file=/conf/occollector-config.yaml"
+        ports:
+        - containerPort: 55678
+#        - containerPort: 14267
+#        - containerPort: 14268
+#        - containerPort: 9411
+        volumeMounts:
+        - name: occollector-config-vol
+          mountPath: /conf
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 13133
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 13133
+      volumes:
+        - configMap:
+            name: occollector-conf
+            items:
+              - key: occollector-config
+                path: occollector-config.yaml
+          name: occollector-config-vol
+```
 
 ### <a name="deploy-standalone"></a>Standalone
 
-Create an Agent [configuration file](#configuration-file) as described above.
+Create an Agent [configuration](#configuration-file) file based on the options described below. By default, the agent has the opencensus receiver enabled, but no exporters.
 
 Build the Agent, see [Building binaries](#agent-building-binaries),
 and start it:
@@ -91,7 +258,7 @@ $ ./bin/ocagent_$(go env GOOS)
 $ 2018/10/08 21:38:00 Running OpenCensus receiver as a gRPC service at "127.0.0.1:55678"
 ```
 
-Create a Collector [configuration file](#configuration-file) as described above.
+Create an Collector [configuration](#configuration-file) file based on the options described below. By default, the collector has the opencensus receiver enabled, but no exporters.
 
 Build the Collector and start it:
 
@@ -112,13 +279,13 @@ If you run it again, exporting will resume.
 
 ## <a name="config-file"></a>Configuration
 
-The OpenCensus Service (both the Agent and Collector) is configured via a config.yaml file. In general, you need to
+The OpenCensus Service (both the Agent and Collector) is configured via a YAML file. In general, you need to
 configure one or more receivers as well as one or more exporters. In addition, diagnostics can also be configured.
 
 ### <a name="config-receivers"></a>Receivers
 
 A receiver is how you get data into the OpenCensus Service. One or more receivers can be configured. By default,
-the ``opencensus`` receiver is enabled on the OpenCensus Agent while no receivers are enabled on the OpenCensus Collector.
+the ``opencensus`` receiver is enabled on the OpenCensus Service (both the Agent and Collector).
 
 A basic example of all available receivers is provided below. For detailed receiver configuration,
 please see the [receiver README.md](receiver/README.md).
@@ -138,14 +305,14 @@ receivers:
 ### <a name="config-exporters"></a>Exporters
 
 An exporter is how you send data to one or more backends/destinations. One or more exporters can be configured.
-By default, no exporters are configured on the OpenCensus Agent or Collector.
+By default, no exporters are configured on the OpenCensus Service (either the Agent or Collector).
 
 A basic example of all available exporters is provided below. For detailed exporter configuration,
 please see the [exporter README.md](exporter/exporterparser/README.md).
 ```yaml
 exporters:
   opencensus:
-    endpoint: "localhost:10001"
+    endpoint: "localhost:55678"
 
   jaeger:
     collector_endpoint: "http://localhost:14268/api/traces"
@@ -255,7 +422,7 @@ For example, to create a Docker image of the agent, tagged `v1.0.0`:
 
 and then the Docker image `v1.0.0` of the agent can be started  by
 ```shell
-docker run -v $(pwd)/config.yaml:/config.yaml  -p 55678:55678  ocagent:v1.0.0
+docker run --rm -it -v $(pwd)/ocagent-config.yaml:/conf/ocagent-config.yaml -p 55678:55678 -p 55679:55679 ocagent:v1.0.0
 ```
 
 A Docker scratch image can be built with make by targeting `docker-agent`.
@@ -308,7 +475,7 @@ $ ./bin/occollector_$($GOOS)
 (note: additional ports may be required depending on your receiver configuration):
 ```shell
 $ make docker-collector
-$ docker run --rm -it -p 55678:55678 occollector
+$ docker run --rm -it -v $(pwd)/occollector-config.yaml:/conf/occollector-config.yaml -p 55678:55678 -p 8888:8888 occollector
 ```
 
 It can be configured via command-line or config file:
@@ -336,7 +503,7 @@ Sample configuration file:
 log-level: DEBUG
 
 receivers:
-  opencensus: {} # Runs OpenCensus receiver with default configuration
+  opencensus: {} # Runs OpenCensus receiver with default configuration (default behavior)
 
 queued-exporters:
   jaeger-sender-test: # A friendly name for the exporter
