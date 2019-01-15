@@ -18,11 +18,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cast"
+
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 )
 
-type option func(*multiSpanProcessor)
+type MultiProcessorOption func(*multiSpanProcessor)
 type preProcessFn func(*agenttracepb.ExportTraceServiceRequest, string)
 
 // MultiSpanProcessor enables processing on multiple processors.
@@ -36,43 +38,64 @@ type multiSpanProcessor struct {
 
 // NewMultiSpanProcessor creates a multiSpanProcessor from the variadic
 // list of passed SpanProcessors and options.
-func NewMultiSpanProcessor(procs []SpanProcessor, options ...option) SpanProcessor {
-	multiSpanProcessor := &MultiSpanProcessor{
+func NewMultiSpanProcessor(procs []SpanProcessor, options ...MultiProcessorOption) SpanProcessor {
+	multiSpanProc := &multiSpanProcessor{
 		processors: procs,
 	}
 	for _, opt := range options {
-		opt(multiSpan)
+		opt(multiSpanProc)
 	}
-	return multiSpanProcessor
+	return multiSpanProc
 }
 
-func WithPreProcessFn(preProcFn preProcessFn) option {
+func WithPreProcessFn(preProcFn preProcessFn) MultiProcessorOption {
 	return func(msp *multiSpanProcessor) {
-		msp.preProcessFns = append(msp.preProcessFns, preProcessFn)
+		msp.preProcessFns = append(msp.preProcessFns, preProcFn)
 	}
 }
 
-func WithAddAttributes(attributes map[string]*AttributeValue, overwrite bool) option {
+func WithAddAttributes(attributes map[string]interface{}, overwrite bool) MultiProcessorOption {
 	return WithPreProcessFn(
 		func(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) {
 			if len(attributes) == 0 {
 				return
 			}
 			for _, span := range batch.Spans {
+				if span == nil {
+					// We will not create nil spans with just attributes on them
+					continue
+				}
 				if span.Attributes == nil {
 					span.Attributes = &tracepb.Span_Attributes{}
 				}
 				// Create a new map if one does not exist. Could re-use passed in map, but
 				// feels too unsafe.
 				if span.Attributes.AttributeMap == nil {
-					span.Attributes.AttributeMap = make(map[string]*AttributeValue, len(attributes))
+					span.Attributes.AttributeMap = make(map[string]*tracepb.AttributeValue, len(attributes))
 				}
 				// Copy all attributes that need to be added into the span's attribute map.
 				// If a key already exists, we will only overwrite is the overwrite flag
 				// is set to true.
 				for key, value := range attributes {
 					if _, exists := span.Attributes.AttributeMap[key]; overwrite || !exists {
-						span.Attributes.AttributeMap[key] = value
+						attrib := &tracepb.AttributeValue{}
+						switch val := value.(type) {
+						case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+							attrib.Value = &tracepb.AttributeValue_IntValue{IntValue: cast.ToInt64(val)}
+						case float32, float64:
+							attrib.Value = &tracepb.AttributeValue_DoubleValue{DoubleValue: cast.ToFloat64(val)}
+						case string:
+							attrib.Value = &tracepb.AttributeValue_StringValue{
+								StringValue: &tracepb.TruncatableString{Value: val},
+							}
+						case bool:
+							attrib.Value = &tracepb.AttributeValue_BoolValue{BoolValue: val}
+						default:
+							// just skip values that we cannot parse.
+						}
+						if attrib.Value != nil {
+							span.Attributes.AttributeMap[key] = attrib
+						}
 					}
 				}
 			}

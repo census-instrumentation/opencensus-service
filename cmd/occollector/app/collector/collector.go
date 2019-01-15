@@ -191,7 +191,19 @@ func execute() {
 	}
 
 	// Wraps processors in a single one to be connected to all enabled receivers.
-	spanProcessor := processor.NewMultiSpanProcessor(spanProcessors...)
+	var processorOptions []processor.MultiProcessorOption
+	fmt.Printf("global %+v and global attrs %+v\n", multiProcessorCfg.Global, multiProcessorCfg.Global.Attributes)
+	if multiProcessorCfg.Global != nil && multiProcessorCfg.Global.Attributes != nil {
+		fmt.Println("appending processor options")
+		processorOptions = append(
+			processorOptions,
+			processor.WithAddAttributes(
+				multiProcessorCfg.Global.Attributes.Values,
+				multiProcessorCfg.Global.Attributes.Overwrite,
+			),
+		)
+	}
+	spanProcessor := processor.NewMultiSpanProcessor(spanProcessors, processorOptions...)
 
 	receiversCloseFns := createReceivers(spanProcessor)
 	closeFns = append(closeFns, receiversCloseFns...)

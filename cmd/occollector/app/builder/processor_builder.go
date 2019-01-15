@@ -80,6 +80,15 @@ type QueuedSpanProcessorCfg struct {
 	SenderConfig interface{}
 }
 
+type AttributesCfg struct {
+	Overwrite bool                   `mapstructure:"overwrite"`
+	Values    map[string]interface{} `mapstructure:"values"`
+}
+
+type GlobalProcessorCfg struct {
+	Attributes *AttributesCfg `mapstructure:"attributes"`
+}
+
 // NewDefaultQueuedSpanProcessorCfg returns an instance of QueuedSpanProcessorCfg with default values
 func NewDefaultQueuedSpanProcessorCfg() *QueuedSpanProcessorCfg {
 	opts := &QueuedSpanProcessorCfg{
@@ -119,6 +128,7 @@ func (qOpts *QueuedSpanProcessorCfg) InitFromViper(v *viper.Viper) *QueuedSpanPr
 // MultiSpanProcessorCfg holds configuration for all the span processors
 type MultiSpanProcessorCfg struct {
 	Processors []*QueuedSpanProcessorCfg
+	Global     *GlobalProcessorCfg `mapstructure:"global"`
 }
 
 // NewDefaultMultiSpanProcessorCfg returns an instance of MultiSpanProcessorCfg with default values
@@ -133,15 +143,24 @@ func NewDefaultMultiSpanProcessorCfg() *MultiSpanProcessorCfg {
 func (mOpts *MultiSpanProcessorCfg) InitFromViper(v *viper.Viper) *MultiSpanProcessorCfg {
 	const baseKey = "queued-exporters"
 	procsv := v.Sub(baseKey)
-	if procsv == nil {
-		return mOpts
+	if procsv != nil {
+		for procName := range v.GetStringMap(baseKey) {
+			procv := procsv.Sub(procName)
+			procOpts := NewDefaultQueuedSpanProcessorCfg()
+			procOpts.Name = procName
+			procOpts.InitFromViper(procv)
+			mOpts.Processors = append(mOpts.Processors, procOpts)
+		}
 	}
-	for procName := range v.GetStringMap(baseKey) {
-		procv := procsv.Sub(procName)
-		procOpts := NewDefaultQueuedSpanProcessorCfg()
-		procOpts.Name = procName
-		procOpts.InitFromViper(procv)
-		mOpts.Processors = append(mOpts.Processors, procOpts)
+
+	vglobal := v.Sub("global")
+	if vglobal != nil {
+		global := &GlobalProcessorCfg{}
+		err := vglobal.Unmarshal(global)
+		if err == nil {
+			mOpts.Global = global
+		}
 	}
+
 	return mOpts
 }
