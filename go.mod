@@ -33,10 +33,13 @@ require (
 	github.com/opentracing/opentracing-go v1.0.2 // indirect
 	github.com/openzipkin/zipkin-go v0.1.3
 	github.com/peterh/liner v1.1.0 // indirect
+	github.com/orijtech/prometheus-go-metrics-exporter v0.0.1
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.0
 	github.com/prashantv/protectmem v0.0.0-20171002184600-e20412882b3a // indirect
 	github.com/sirupsen/logrus v1.3.0 // indirect
+	github.com/prometheus/client_golang v0.8.0
+	github.com/rs/cors v1.6.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/cast v1.2.0
 	github.com/spf13/cobra v0.0.3

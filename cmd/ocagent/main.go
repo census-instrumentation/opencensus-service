@@ -26,7 +26,6 @@ import (
 	"os"
 	"os/signal"
 
-	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/zpages"
 
@@ -157,16 +156,19 @@ func runZPages(port int) func() error {
 
 func runOCReceiver(acfg *config.Config, sr receiver.TraceReceiverSink, mr receiver.MetricsReceiverSink) (doneFn func() error, err error) {
 	addr := acfg.OpenCensusReceiverAddress()
-	ocr, err := opencensus.New(addr)
+	corsOrigins := acfg.OpenCensusReceiverCorsAllowedOrigins()
+	ocr, err := opencensus.New(addr, opencensus.WithCorsOrigins(corsOrigins))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create the OpenCensus receiver on address %q: error %v", addr, err)
 	}
 	if err := view.Register(internal.AllViews...); err != nil {
 		return nil, fmt.Errorf("Failed to register internal.AllViews: %v", err)
 	}
-	if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
-		return nil, fmt.Errorf("Failed to register ocgrpc.DefaultServerViews: %v", err)
-	}
+	// Temporarily disabling the grpc metrics since they do not provide good data at this moment,
+	// See https://github.com/census-instrumentation/opencensus-service/issues/287
+	// if err := view.Register(ocgrpc.DefaultServerViews...); err != nil {
+	// 	return nil, fmt.Errorf("Failed to register ocgrpc.DefaultServerViews: %v", err)
+	// }
 
 	ctx := context.Background()
 
