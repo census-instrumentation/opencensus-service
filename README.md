@@ -76,7 +76,8 @@ $ kubectl apply -f example/k8s.yaml
 
 ### <a name="getting-started-standalone"></a>Standalone
 
-Create an Agent [configuration](#config) file based on the options described below. By default, the agent has the opencensus receiver enabled, but no exporters.
+Create an Agent [configuration](#config) file based on the options described below. Please note the Agent
+requires the `opencensus` receiver be enabled. By default, the Agent has no exporters configured.
 
 Build the Agent, see [Building binaries](#agent-building-binaries),
 and start it:
@@ -86,7 +87,8 @@ $ ./bin/ocagent_$(go env GOOS)
 $ 2018/10/08 21:38:00 Running OpenCensus receiver as a gRPC service at "127.0.0.1:55678"
 ```
 
-Create an Collector [configuration](#config) file based on the options described below. By default, the collector has the opencensus receiver enabled, but no exporters.
+Create an Collector [configuration](#config) file based on the options described below. By default, the
+Collector has the `opencensus` receiver enabled, but no exporters.
 
 Build the Collector and start it:
 
@@ -113,7 +115,7 @@ configure one or more receivers as well as one or more exporters. In addition, d
 ### <a name="config-receivers"></a>Receivers
 
 A receiver is how you get data into the OpenCensus Service. One or more receivers can be configured. By default,
-the ``opencensus`` receiver is enabled on the OpenCensus Service (both the Agent and Collector).
+the `opencensus` receiver is enabled on the Collector and required as a defined receiver for the Agent.
 
 A basic example of all available receivers is provided below. For detailed receiver configuration,
 please see the [receiver README.md](receiver/README.md).
@@ -245,7 +247,10 @@ For example, to create a Docker image of the agent, tagged `v1.0.0`:
 
 and then the Docker image `v1.0.0` of the agent can be started  by
 ```shell
-docker run --rm -it -v $(pwd)/ocagent-config.yaml:/conf/ocagent-config.yaml -p 55678:55678 -p 55679:55679 ocagent:v1.0.0
+docker run --rm -it -p 55678:55678 -p 55679:55679 \
+    -v $(pwd)/ocagent-config.yaml:/conf/ocagent-config.yaml \
+    --config=/conf/ocagent-config.yaml \
+    ocagent:v1.0.0
 ```
 
 A Docker scratch image can be built with make by targeting `docker-agent`.
@@ -298,7 +303,10 @@ $ ./bin/occollector_$($GOOS)
 (note: additional ports may be required depending on your receiver configuration):
 ```shell
 $ make docker-collector
-$ docker run --rm -it -v $(pwd)/occollector-config.yaml:/conf/occollector-config.yaml -p 55678:55678 -p 8888:8888 occollector
+$ docker run --rm -it -p 55678:55678 -p 8888:8888 \
+    -v $(pwd)/occollector-config.yaml:/conf/occollector-config.yaml \
+    --config=/conf/occollector-config.yaml \
+    occollector
 ```
 
 It can be configured via command-line or config file:

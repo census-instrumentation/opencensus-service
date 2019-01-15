@@ -8,7 +8,8 @@ metadata:
     component: oc-agent-conf
 data:
   oc-agent-config: |
-#    receivers:
+    receivers:
+      opencensus: {}
 #      jaeger: {}
 #      zipkin: {}
     exporters:
