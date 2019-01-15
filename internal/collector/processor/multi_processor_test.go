@@ -192,7 +192,7 @@ func multiSpanProcessorWithAddAttributesTestHelper(t *testing.T, overwrite bool)
 		batch.Spans = append(batch.Spans, &tracepb.Span{
 			Attributes: &tracepb.Span_Attributes{
 				AttributeMap: map[string]*tracepb.AttributeValue{
-					"some_int": &tracepb.AttributeValue{
+					"some_int": {
 						Value: &tracepb.AttributeValue_IntValue{IntValue: int64(4567)},
 					},
 				},
