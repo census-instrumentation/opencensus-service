@@ -126,8 +126,8 @@ receivers:
     address: "localhost:9411"
 
   jaeger:
-    collector_thrift_port: 14267
-    collector_http_port: 14268
+    jaeger-thrift-tchannel-port: 14267
+    jaeger-thrift-http-port: 14268
 ```
 
 ### <a name="config-exporters"></a>Exporters
