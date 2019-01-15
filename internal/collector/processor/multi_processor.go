@@ -24,6 +24,7 @@ import (
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 )
 
+// MultiProcessorOption represents options that can be applied to a MultiSpanProcessor.
 type MultiProcessorOption func(*multiSpanProcessor)
 type preProcessFn func(*agenttracepb.ExportTraceServiceRequest, string)
 
@@ -48,12 +49,15 @@ func NewMultiSpanProcessor(procs []SpanProcessor, options ...MultiProcessorOptio
 	return multiSpanProc
 }
 
+// WithPreProcessFn returns a MultiProcessorOption that applies some preProcessFn to all ExportTraceServiceRequests.
 func WithPreProcessFn(preProcFn preProcessFn) MultiProcessorOption {
 	return func(msp *multiSpanProcessor) {
 		msp.preProcessFns = append(msp.preProcessFns, preProcFn)
 	}
 }
 
+// WithAddAttributes returns a MultiProcessorOption that adds the provided attributes to all spans
+// in each ExportTraceServiceRequest.
 func WithAddAttributes(attributes map[string]interface{}, overwrite bool) MultiProcessorOption {
 	return WithPreProcessFn(
 		func(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) {

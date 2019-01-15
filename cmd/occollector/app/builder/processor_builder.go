@@ -80,11 +80,14 @@ type QueuedSpanProcessorCfg struct {
 	SenderConfig interface{}
 }
 
+// AttributesCfg holds configuration for attributes that can be added to all spans
+// going through a processor.
 type AttributesCfg struct {
 	Overwrite bool                   `mapstructure:"overwrite"`
 	Values    map[string]interface{} `mapstructure:"values"`
 }
 
+// GlobalProcessorCfg holds global configuration values that apply to all processors
 type GlobalProcessorCfg struct {
 	Attributes *AttributesCfg `mapstructure:"attributes"`
 }
