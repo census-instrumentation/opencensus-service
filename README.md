@@ -172,6 +172,7 @@ global:
   attributes:
     overwrite: true
     values:
+      # values are key value pairs where the value can be an int, float, bool, or string
       some_string: "hello world"
       some_int: 1234
       some_float: 3.14159
