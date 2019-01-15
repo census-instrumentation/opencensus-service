@@ -76,7 +76,7 @@ $ kubectl apply -f example/k8s.yaml
 
 ### <a name="getting-started-standalone"></a>Standalone
 
-Create an Agent [configuration](#configuration-file) file based on the options described below. By default, the agent has the opencensus receiver enabled, but no exporters.
+Create an Agent [configuration](#config) file based on the options described below. By default, the agent has the opencensus receiver enabled, but no exporters.
 
 Build the Agent, see [Building binaries](#agent-building-binaries),
 and start it:
@@ -86,7 +86,7 @@ $ ./bin/ocagent_$(go env GOOS)
 $ 2018/10/08 21:38:00 Running OpenCensus receiver as a gRPC service at "127.0.0.1:55678"
 ```
 
-Create an Collector [configuration](#configuration-file) file based on the options described below. By default, the collector has the opencensus receiver enabled, but no exporters.
+Create an Collector [configuration](#config) file based on the options described below. By default, the collector has the opencensus receiver enabled, but no exporters.
 
 Build the Collector and start it:
 
@@ -182,11 +182,6 @@ To disable zPages, you can use `disabled` like this:
 zpages:
     disabled: true
 ```
-
-and for example navigating to http://localhost:55679/debug/tracez to debug the
-OpenCensus receiver's traces in your browser should produce something like this
-
-![zPages](https://user-images.githubusercontent.com/4898263/47132981-892bb500-d25b-11e8-980c-08f0115ba72e.png)
 
 ## OpenCensus Agent
 
