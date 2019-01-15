@@ -78,7 +78,7 @@ func OpenCensusTraceExportersFromYAML(config []byte) (tes []exporter.TraceExport
 }
 
 func (sde *ocagentExporter) ExportSpans(ctx context.Context, td data.TraceData) error {
-	err := sde.exporter.ExportSpanBatch(
+	err := sde.exporter.ExportTraceServiceRequest(
 		&agenttracepb.ExportTraceServiceRequest{
 			Spans: td.Spans,
 			Node:  td.Node,

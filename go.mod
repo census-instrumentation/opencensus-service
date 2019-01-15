@@ -2,7 +2,7 @@ module github.com/census-instrumentation/opencensus-service
 
 require (
 	cloud.google.com/go v0.32.0 // indirect
-	contrib.go.opencensus.io/exporter/ocagent v0.3.0
+	contrib.go.opencensus.io/exporter/ocagent v0.3.0-7f300d54031c19e528f0c9c8a296cf77658cf3b4
 	contrib.go.opencensus.io/exporter/stackdriver v0.7.0
 	git.apache.org/thrift.git v0.0.0-20181101003639-92be4f312b88 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
@@ -61,5 +61,3 @@ require (
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v2 v2.2.1
 )
-
-replace contrib.go.opencensus.io/exporter/ocagent => ../../sjkaris/opencensus-go-exporter-ocagent
