@@ -6,11 +6,12 @@
 
 # Table of contents
 - [Introduction](#introduction)
-- [Goals](#goals)
-- [Deployment](#deploy-example)
-    - [Kubernetes](#deploy-k8s)
-    - [Standalone](#deploy-standalone)
-- [Configuration](#config-file)
+- [Deployment](#deploy)
+- [Getting Started](#getting-started)
+    - [Demo](#getting-started-demo)
+    - [Kubernetes](#getting-started-k8s)
+    - [Standalone](#getting-started-standalone)
+- [Configuration](#config)
     - [Receivers](#config-receivers)
     - [Exporters](#config-exporters)
     - [Diagnostics](#config-diagnostics)
@@ -47,26 +48,10 @@ Service will then automatically collect traces and metrics and export to any
 backend of users' choice.
 
 Currently the OpenCensus Service consists of two components,
-[OpenCensus Agent](#opencensus-agent) and [OpenCensus Collector](#opencensus-collector).
-High-level workflow:
+[OpenCensus Agent](#opencensus-agent) and [OpenCensus Collector](#opencensus-collector). For the detailed design specs,
+please see [DESIGN.md](DESIGN.md).
 
-![service-architecture](images/opencensus-service.png)
-
-For the detailed design specs, please see [DESIGN.md](DESIGN.md).
-
-## Goals
-
-* Allow enabling/configuring of exporters lazily. After deploying code,
-optionally run a daemon on the host and it will read the
-collected data and upload to the configured backend.
-* Binaries can be instrumented without thinking about the exporting story.
-Allows open source binary projects (e.g. web servers like Caddy or Istio Mixer)
-to adopt OpenCensus without having to link any exporters into their binary.
-* Easier to scale the exporter development. Not every language has to
-implement support for each backend.
-* Custom daemons containing only the required exporters compiled in can be created.
-
-## <a name="deploy-example"></a>Deployment
+## <a name="deploy"></a>Deployment
 
 The OpenCensus Service can be deployed in a variety of different ways. The OpenCensus
 Agent can be deployed with the application either as a separate process, as a sidecar,
@@ -75,178 +60,21 @@ separately as either a Docker container, VM, or Kubernetes pod.
 
 ![deployment-models](images/opencensus-service-deployment-models.png)
 
-### <a name="deploy-k8s"></a>Kubernetes
+## <a name="getting-started"></a>Getting Started
 
-```yaml
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ocagent-conf
-  labels:
-    app: opencensus
-    component: ocagent-conf
-data:
-  ocagent-config: |
-#    receivers:
-#      jaeger: {}
-#      zipkin: {}
-    exporters:
-      opencensus:
-        endpoint: "occollector.default.svc.cluster.local:55678" # TODO: Update me
----
-apiVersion: extensions/v1beta1
-kind: DaemonSet
-metadata:
-  name: ocagent
-  labels:
-    app: opencensus
-    component: ocagent
-spec:
-  template:
-    metadata:
-      labels:
-        app: opencensus
-        component: ocagent
-    spec:
-      containers:
-      - image: omnition/opencensus-agent:1.0.26
-        name: ocagent
-        resources:
-          limits:
-            cpu: 0.5
-            memory: 500Mi
-        command:
-          - "ocagent_linux"
-          - "--config-file=/conf/ocagent-config.yaml"
-        ports:
-        - containerPort: 55678
-        - containerPort: 55679
-#        - containerPort: 14267
-#        - containerPort: 14268
-#        - containerPort: 9411
-        volumeMounts:
-        - name: ocagent-config-vol
-          mountPath: /conf
-      volumes:
-        - configMap:
-            name: ocagent-conf
-            items:
-              - key: ocagent-config
-                path: ocagent-config.yaml
-          name: ocagent-config-vol
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: occollector-conf
-  labels:
-    app: opencensus
-    component: occollector-conf
-data:
-  occollector-config: |
-    receivers:
-      opencensus: {}
-      jaeger: {}
-      zipkin: {}
-# Can only use one exporter
-#    exporters:
-#      jaeger:
-#        collector_endpoint: "http://localhost:14268/api/traces"
-#      zipkin: {}
-    queued-exporters:
-      omnition:
-        num-workers: 20
-        queue-size: 10000
-        retry-on-failure: true
-        sender-type: jaeger-thrift-http
-        jaeger-thrift-http:
-          collector_endpoint: https://ingest.omnition.io/api/traces
-          headers: { "x-omnition-api-key":"00000000-0000-0000-0000-000000000001" } # TODO: Update me
-          timeout: 5s
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: occollector
-  labels:
-    app: opencesus
-    component: occollector
-spec:
-  ports:
-  - name: opencensus
-    port: 55678
-    protocol: TCP
-    targetPort: 55678
-#  - name: jaeger-tchannel
-#    port: 14267
-#  - name: jaeger-thrift-http
-#    port: 14268
-#  - name: zipkin
-#    port: 9411
-  selector:
-    component: occollector
----
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: occollector
-  labels:
-    app: opencensus
-    component: occollector
-spec:
-  minReadySeconds: 5
-  progressDeadlineSeconds: 120
-  replicas: 1
-  template:
-    metadata:
-      annotations:
-        prometheus.io/path: "/metrics"
-        prometheus.io/port: "8888"
-        prometheus.io/scrape: "true"
-      labels:
-        app: opencensus
-        component: occollector
-    spec:
-      containers:
-      - image: omnition/opencensus-collector:1.0.26
-        name: occollector
-        resources:
-          limits:
-            cpu: 1
-            memory: 2Gi
-          requests:
-            cpu: 200m
-            memory: 400Mi
-        command:
-          - "occollector_linux"
-          - "--config-file=/conf/occollector-config.yaml"
-        ports:
-        - containerPort: 55678
-#        - containerPort: 14267
-#        - containerPort: 14268
-#        - containerPort: 9411
-        volumeMounts:
-        - name: occollector-config-vol
-          mountPath: /conf
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 13133
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 13133
-      volumes:
-        - configMap:
-            name: occollector-conf
-            items:
-              - key: occollector-config
-                path: occollector-config.yaml
-          name: occollector-config-vol
+### <a name="getting-started-demo"></a>Demo
+
+Instructions for setting up an end-to-end demo environment can be found [here](https://github.com/census-instrumentation/opencensus-service/tree/master/demos/trace)
+
+### <a name="getting-started-k8s"></a>Kubernetes
+
+Apply the [sample YAML](example/k8s.yaml) file:
+
+```shell
+$ kubectl apply -f example/k8s.yaml
 ```
 
-### <a name="deploy-standalone"></a>Standalone
+### <a name="getting-started-standalone"></a>Standalone
 
 Create an Agent [configuration](#configuration-file) file based on the options described below. By default, the agent has the opencensus receiver enabled, but no exporters.
 
@@ -277,7 +105,7 @@ You should be able to see the traces in your exporter(s) of choice.
 If you stop the ocagent, the example application will stop exporting.
 If you run it again, exporting will resume.
 
-## <a name="config-file"></a>Configuration
+## <a name="config"></a>Configuration
 
 The OpenCensus Service (both the Agent and Collector) is configured via a YAML file. In general, you need to
 configure one or more receivers as well as one or more exporters. In addition, diagnostics can also be configured.
