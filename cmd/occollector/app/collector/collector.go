@@ -193,9 +193,7 @@ func execute() {
 
 	// Wraps processors in a single one to be connected to all enabled receivers.
 	var processorOptions []processor.MultiProcessorOption
-	fmt.Printf("global %+v and global attrs %+v\n", multiProcessorCfg.Global, multiProcessorCfg.Global.Attributes)
 	if multiProcessorCfg.Global != nil && multiProcessorCfg.Global.Attributes != nil {
-		fmt.Println("appending processor options")
 		processorOptions = append(
 			processorOptions,
 			processor.WithAddAttributes(
