@@ -164,6 +164,14 @@ func TestMultiSpanProcessorWithPreProcessFn(t *testing.T) {
 }
 
 func TestMultiSpanProcessorWithAddAttributesOverwrite(t *testing.T) {
+	multiSpanProcessorWithAddAttributesTestHelper(t, true)
+}
+
+func TestMultiSpanProcessorWithAddAttributesNoOverwrite(t *testing.T) {
+	multiSpanProcessorWithAddAttributesTestHelper(t, false)
+}
+
+func multiSpanProcessorWithAddAttributesTestHelper(t *testing.T, overwrite bool) {
 	processors := make([]SpanProcessor, 3)
 	for i := range processors {
 		processors[i] = &mockSpanProcessor{}
@@ -176,12 +184,20 @@ func TestMultiSpanProcessorWithAddAttributesOverwrite(t *testing.T) {
 			"some_str":   "some_string",
 			"some_bool":  true,
 			"some_float": 3.14159,
-		}, true),
+		}, overwrite),
 	)
 
 	batch := &agenttracepb.ExportTraceServiceRequest{}
 	for i := 0; i < 7; i++ {
-		batch.Spans = append(batch.Spans, &tracepb.Span{})
+		batch.Spans = append(batch.Spans, &tracepb.Span{
+			Attributes: &tracepb.Span_Attributes{
+				AttributeMap: map[string]*tracepb.AttributeValue{
+					"some_int": &tracepb.AttributeValue{
+						Value: &tracepb.AttributeValue_IntValue{IntValue: int64(4567)},
+					},
+				},
+			},
+		})
 	}
 
 	spans := make([]*tracepb.Span, 0, len(batch.Spans)*2)
@@ -190,9 +206,14 @@ func TestMultiSpanProcessorWithAddAttributesOverwrite(t *testing.T) {
 		spans = append(spans, batch.Spans...)
 	}
 
+	expectedSomeIntValue := int64(4567)
+	if overwrite {
+		expectedSomeIntValue = int64(1234)
+	}
+
 	// This should have modified the spans themselves
 	for _, span := range spans {
-		if val, ok := span.Attributes.AttributeMap["some_int"]; !ok || val.GetIntValue() != int64(1234) {
+		if val, ok := span.Attributes.AttributeMap["some_int"]; !ok || val.GetIntValue() != expectedSomeIntValue {
 			t.Errorf("Missing or invalid int value")
 			return
 		}
