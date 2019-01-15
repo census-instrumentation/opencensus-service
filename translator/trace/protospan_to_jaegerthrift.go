@@ -315,7 +315,7 @@ func ocAnnotationToJagerTags(annotation *tracepb.Span_TimeEvent_Annotation) []*j
 	desc := truncableStringToStr(annotation.Description)
 	if desc != "" {
 		jDescTag := &jaeger.Tag{
-			Key:   "description",
+			Key:   annotationDescriptionKey,
 			VStr:  &desc,
 			VType: jaeger.TagType_STRING,
 		}
@@ -332,14 +332,14 @@ func ocMessageEventToJaegerTags(msgEvent *tracepb.Span_TimeEvent_MessageEvent) [
 
 	jID := int64(msgEvent.Id)
 	idTag := &jaeger.Tag{
-		Key:   "message.id",
+		Key:   messageEventIDKey,
 		VLong: &jID,
 		VType: jaeger.TagType_LONG,
 	}
 
 	msgTypeStr := msgEvent.Type.String()
 	msgType := &jaeger.Tag{
-		Key:   "message.type",
+		Key:   messageEventTypeKey,
 		VStr:  &msgTypeStr,
 		VType: jaeger.TagType_STRING,
 	}
@@ -355,14 +355,14 @@ func ocMessageEventToJaegerTags(msgEvent *tracepb.Span_TimeEvent_MessageEvent) [
 	// seems a good compromise since the risk of such large values are small.
 	compSize := int64(msgEvent.CompressedSize)
 	compressedSize := &jaeger.Tag{
-		Key:   "message.compressed_size",
+		Key:   messageEventCompressedSizeKey,
 		VLong: &compSize,
 		VType: jaeger.TagType_LONG,
 	}
 
 	uncompSize := int64(msgEvent.UncompressedSize)
 	uncompressedSize := &jaeger.Tag{
-		Key:   "message.uncompressed_size",
+		Key:   messageEventUncompressedSizeKey,
 		VLong: &uncompSize,
 		VType: jaeger.TagType_LONG,
 	}
