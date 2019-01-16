@@ -29,11 +29,6 @@ import (
 )
 
 var (
-	errZeroTraceID = errors.New("OC span has an all zeros trace ID")
-	errZeroSpanID  = errors.New("OC span has an all zeros span ID")
-)
-
-var (
 	unknownProcess = &jaeger.Process{ServiceName: "unknown-service-name"}
 )
 
@@ -164,7 +159,7 @@ func ocSpansToJaegerSpans(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) {
 			return nil, fmt.Errorf("OC span has invalid trace ID: %v", err)
 		}
 		if traceIDLow == 0 && traceIDHigh == 0 {
-			return nil, errZeroTraceID
+			return nil, ErrZeroTraceID
 		}
 		jReferences, err := ocLinksToJaegerReferences(ocSpan.Links)
 		if err != nil {
@@ -175,7 +170,7 @@ func ocSpansToJaegerSpans(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) {
 			return nil, fmt.Errorf("OC span has invalid span ID: %v", err)
 		}
 		if spanID == 0 {
-			return nil, errZeroSpanID
+			return nil, ErrZeroSpanID
 		}
 		// OC ParentSpanId can be nil/empty: only attempt conversion if not nil/empty.
 		var parentSpanID int64
@@ -296,7 +291,7 @@ func ocTimeEventsToJaegerLogs(ocSpanTimeEvents *tracepb.Span_TimeEvents) []*jaeg
 		default:
 			msg := "An unknown OpenCensus TimeEvent type was detected when translating to Jaeger"
 			jTag := &jaeger.Tag{
-				Key:  "unknown.oc.timeevent.type",
+				Key:  JaegerTagForOcUnknownTimeEventType,
 				VStr: &msg,
 			}
 			jLog.Fields = append(jLog.Fields, jTag)
