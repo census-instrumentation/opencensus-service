@@ -2,7 +2,7 @@ module github.com/census-instrumentation/opencensus-service
 
 require (
 	cloud.google.com/go v0.32.0 // indirect
-	contrib.go.opencensus.io/exporter/ocagent v0.3.0
+	contrib.go.opencensus.io/exporter/ocagent v0.4.2
 	contrib.go.opencensus.io/exporter/stackdriver v0.7.0
 	git.apache.org/thrift.git v0.0.0-20181101003639-92be4f312b88 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
@@ -36,6 +36,7 @@ require (
 	github.com/prometheus/client_golang v0.8.0
 	github.com/rs/cors v1.6.0
 	github.com/soheilhy/cmux v0.1.4
+	github.com/spf13/cast v1.2.0
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/spf13/viper v1.2.1
