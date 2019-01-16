@@ -29,15 +29,6 @@ import (
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 )
 
-var (
-	errZeroTraceID     = errors.New("OC span has an all zeros trace ID")
-	errNilTraceID      = errors.New("OC trace ID is nil")
-	errWrongLenTraceID = errors.New("TraceID does not have 16 bytes")
-	errZeroSpanID      = errors.New("OC span has an all zeros span ID")
-	errNilID           = errors.New("OC ID is nil")
-	errWrongLenID      = errors.New("ID does not have 8 bytes")
-)
-
 // OCProtoToJaegerProto translates OpenCensus trace data into the Jaeger Proto for GRPC.
 func OCProtoToJaegerProto(ocBatch *agenttracepb.ExportTraceServiceRequest) (jaeger.Batch, error) {
 	if ocBatch == nil {
@@ -278,7 +269,7 @@ func ocTimeEventsToJaegerLogs(ocSpanTimeEvents *tracepb.Span_TimeEvents) []jaege
 		default:
 			msg := "An unknown OpenCensus TimeEvent type was detected when translating to Jaeger"
 			jKV := jaeger.KeyValue{
-				Key:  "unknown.oc.timeevent.type",
+				Key:  JaegerTagForOcUnknownTimeEventType,
 				VStr: &msg,
 			}
 			jLog.Fields = append(jLog.Fields, jKV)
@@ -297,7 +288,7 @@ func ocAnnotationToJagerTags(annotation *tracepb.Span_TimeEvent_Annotation) []ja
 
 	// TODO: Find a better tag for Annotation description.
 	jKV := jaeger.KeyValue{
-		Key:  "oc.timeevent.annotation.description",
+		Key:  JaegerTagForOcTimeEventAnnotationDescription,
 		VStr: annotation.Description,
 	}
 	return append(ocSpanAttributesToJaegerTags(annotation.Attributes), jKV)
@@ -320,19 +311,19 @@ func ocMessageEventToJaegerTags(msgEvent *tracepb.Span_TimeEvent_MessageEvent) [
 	// TODO: Find a better tag for Message event.
 	jaegerKVs := []jaeger.KeyValue{
 		jaeger.KeyValue{
-			Key:    "oc.timeevent.messageevent.type",
+			Key:    JaegerTagForOcTimeEventMessageEventType,
 			VInt64: msgEvent.Type,
 		},
 		jaeger.KeyValue{
-			Key:     "oc.timeevent.messageevent.id",
+			Key:     JaegerTagForOcTimeEventMessageEventId,
 			VBinary: msgEventId,
 		},
 		jaeger.KeyValue{
-			Key:     "oc.timeevent.messageevent.usize",
+			Key:     JaegerTagForOcTimeEventMessageEventUSize,
 			VBinary: uncompressedSize,
 		},
 		jaeger.KeyValue{
-			Key:     "oc.timeevent.messageevent.csize",
+			Key:     JaegerTagForOcTimeEventMessageEventCSize,
 			VBinary: compressedSize,
 		},
 	}
@@ -399,7 +390,7 @@ func appendJaegerTagFromOCSameProcessAsParentSpan(jTags []jaeger.Tag, ocSameProc
 	}
 
 	jTag := jaeger.Tag{
-		Key:   "span.sameprocessasparentspan",
+		Key:   JaegerTagForOcSameProcessAsParentSpan,
 		VBool: ocSameProcessAsParentSpan.Value,
 	}
 	jTags = append(jTags, jTag)
@@ -413,7 +404,7 @@ func appendJaegerTagFromOCChildSpanCount(jTags []jaeger.Tag, ocChildSpanCount *t
 	}
 
 	jTag := jaeger.Tag{
-		Key:    "span.childcount",
+		Key:    JaegerTagForOcChildSpanCount,
 		VInt64: ocChildSpanCount.Value,
 	}
 	jTags = append(jTags, jTag)
@@ -431,22 +422,22 @@ func ocSpansToJaegerSpans(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) {
 	for _, ocSpan := range ocSpans {
 		var traceId [16]byte
 		if ocSpan.TraceId == nil {
-			return nil, errNilTraceID
+			return nil, ErrNilTraceID
 		} else if len(ocSpan.TraceId) != 16 {
-			return nil, errWrongLenTraceID
+			return nil, ErrWrongLenTraceID
 		} else if ocSpan.TraceId == 0 {
-			return nil, errZeroTraceID
+			return nil, ErrZeroTraceID
 		} else {
 			traceId = ocSpan.TraceId
 		}
 
 		var spanId [8]byte
 		if ocSpan.SpanId == nil {
-			return nil, errNilID
+			return nil, ErrNilID
 		} else if len(ocSpan.SpanId) != 8 {
-			return nil, errWrongLenID
+			return nil, ErrWrongLenID
 		} else if ocSpan.SpanId == 0 {
-			return nil, errZeroSpanID
+			return nil, ErrZeroSpanID
 		} else {
 			spanId = ocSpan.SpanId
 		}
