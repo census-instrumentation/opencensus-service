@@ -27,7 +27,7 @@ var viewAllocMem = &view.View{
 	TagKeys:     nil,
 }
 
-var mRuntimeTotalAllocMem = stats.Int64("oc.io/process/total_memory_alloc", "Number of bytes allocated in total", "By")
+var mRuntimeTotalAllocMem = stats.Int64("oc.io/process/total_memory_alloc", "Number of allocations in total", "By")
 var viewTotalAllocMem = &view.View{
 	Name:        mRuntimeTotalAllocMem.Name(),
 	Description: mRuntimeTotalAllocMem.Description(),
@@ -36,7 +36,7 @@ var viewTotalAllocMem = &view.View{
 	TagKeys:     nil,
 }
 
-var mRuntimeSysMem = stats.Int64("oc.io/process/sys_memory_alloc", "Number of bytes given to the process in total", "By")
+var mRuntimeSysMem = stats.Int64("oc.io/process/sys_memory_alloc", "Number of bytes given to the process to use in total", "By")
 var viewSysMem = &view.View{
 	Name:        mRuntimeSysMem.Name(),
 	Description: mRuntimeSysMem.Description(),
