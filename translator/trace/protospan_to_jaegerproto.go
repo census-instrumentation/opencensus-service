@@ -166,14 +166,14 @@ func ocLinksToJaegerReferences(ocSpanLinks *tracepb.Span_Links) ([]jaeger.SpanRe
 		if ocLink.TraceId != nil {
 			traceId = ocLink.TraceId
 		} else {
-			return nil, fmt.Errorf("OC link has invalid trace ID: %v", err)
+			return nil, ErrNilTraceID
 		}
 
 		var spanId [8]byte
 		if ocLink.SpanId != nil {
 			spanId = ocLink.SpanId
 		} else {
-			return nil, fmt.Errorf("OC link has invalid span ID: %v", err)
+			return nil, ErrNilSpanID
 		}
 
 		var jRefType jaeger.SpanRefType

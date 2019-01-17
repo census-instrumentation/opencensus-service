@@ -16,7 +16,7 @@ package tracetranslator
 
 const (
 	// Jaeger Tags
-	JaegerTagForOcUnknownTimeEventType           = "unknown.oc.timeevent.type"
+	JaegerTagForOcUnknownTimeEventType           = "oc.timeevent.unknown.type"
 	JaegerTagForOcTimeEventAnnotationDescription = "oc.timeevent.annotation.description"
 	JaegerTagForOcTimeEventMessageEventType      = "oc.timeevent.messageevent.type"
 	JaegerTagForOcTimeEventMessageEventId        = "oc.timeevent.messageevent.id"
