@@ -21,7 +21,7 @@ import (
 )
 
 // version variable will be replaced at link time after `make` has been run.
-var version = "latest"
+var Version = "latest"
 
 // GitHash variable will be replaced at link time after `make` has been run.
 var GitHash = "<NOT PROPERLY GENERATED>"
@@ -31,7 +31,7 @@ var GitHash = "<NOT PROPERLY GENERATED>"
 func Info() string {
 	buf := new(bytes.Buffer)
 	rows := [][2]string{
-		{"Version", version},
+		{"Version", Version},
 		{"GitHash", GitHash},
 		{"Goversion", runtime.Version()},
 		{"OS", runtime.GOOS},
