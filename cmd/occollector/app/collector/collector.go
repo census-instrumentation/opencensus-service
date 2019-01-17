@@ -248,7 +248,6 @@ func initTelemetry(level telemetry.Level, port int, asyncErrorChannel chan<- err
 	views := processor.MetricViews(level)
 	views = append(views, processor.QueuedProcessorMetricViews(level)...)
 	views = append(views, internal.AllViews...)
-	views = append(views, processor.SamplingProcessorMetricViews(level)...)
 	processMetricsViews := telemetry.NewProcessMetricsViews()
 	views = append(views, processMetricsViews.Views()...)
 	if err := view.Register(views...); err != nil {
