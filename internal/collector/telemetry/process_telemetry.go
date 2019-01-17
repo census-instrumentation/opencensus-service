@@ -9,7 +9,6 @@ import (
 	"github.com/prometheus/procfs"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
 )
 
 // ProcessMetricsViews is a struct that contains views related to process metrics (cpu, mem, etc)
