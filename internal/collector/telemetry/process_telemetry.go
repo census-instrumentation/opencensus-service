@@ -24,7 +24,7 @@ var viewAllocMem = &view.View{
 	Description: mRuntimeAllocMem.Description(),
 	Measure:     mRuntimeAllocMem,
 	Aggregation: view.LastValue(),
-	TagKeys:     []tag.Key{},
+	TagKeys:     nil,
 }
 
 var mRuntimeTotalAllocMem = stats.Int64("oc.io/process/total_memory_alloc", "Number of bytes allocated in total", "By")
@@ -33,7 +33,7 @@ var viewTotalAllocMem = &view.View{
 	Description: mRuntimeTotalAllocMem.Description(),
 	Measure:     mRuntimeTotalAllocMem,
 	Aggregation: view.Count(),
-	TagKeys:     []tag.Key{},
+	TagKeys:     nil,
 }
 
 var mRuntimeSysMem = stats.Int64("oc.io/process/sys_memory_alloc", "Number of bytes given to the process in total", "By")
@@ -42,7 +42,7 @@ var viewSysMem = &view.View{
 	Description: mRuntimeSysMem.Description(),
 	Measure:     mRuntimeSysMem,
 	Aggregation: view.LastValue(),
-	TagKeys:     []tag.Key{},
+	TagKeys:     nil,
 }
 
 var mCPUSeconds = stats.Int64("oc.io/process/cpu_seconds", "CPU seconds for this process", "1")
@@ -51,7 +51,7 @@ var viewCPUSeconds = &view.View{
 	Description: mCPUSeconds.Description(),
 	Measure:     mCPUSeconds,
 	Aggregation: view.Count(),
-	TagKeys:     []tag.Key{},
+	TagKeys:     nil,
 }
 
 // NewProcessMetricsViews creates a new set of ProcessMetrics (mem, cpu) that can be used to measure
