@@ -14,7 +14,7 @@ For example:
 ```yaml
 receivers:
   opencensus:
-    address: "localhost:55678"
+    address: "127.0.0.1:55678"
 ```
 ### Writing with HTTP/JSON 
 
@@ -89,7 +89,7 @@ For example:
 ```yaml
 receivers:
   zipkin:
-    address: "localhost:9411"
+    address: "127.0.0.1:9411"
 ```
 
 ### Collector Differences
