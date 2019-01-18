@@ -49,7 +49,7 @@ require (
 	github.com/uber/jaeger-lib v1.5.0
 	github.com/uber/tchannel-go v1.10.0
 	github.com/yancl/opencensus-go-exporter-kafka v0.0.0-20181029030031-9c471c1bfbeb
-	go.opencensus.io v0.18.0
+	go.opencensus.io v0.18.1-0.20181204023538-aab39bd6a98b
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
