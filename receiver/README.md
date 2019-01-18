@@ -22,7 +22,7 @@ The OpenCensus receiver for the agent can receive trace export calls via
 HTTP/JSON in addition to gRPC. The HTTP/JSON address is the same as gRPC as the
 protocol is recognized and processed accordingly.
 
-To write traces with HTTP/JSON `POST` to `[address]/v1/trace`. The JSON message
+To write traces with HTTP/JSON, `POST` to `[address]/v1/trace`. The JSON message
 format parallels the gRPC protobuf format, see this [OpenApi spec for it](https://github.com/census-instrumentation/opencensus-proto/blob/master/gen-openapi/opencensus/proto/agent/trace/v1/trace_service.swagger.json).
 
 The HTTP/JSON endpoint can also optionally 
