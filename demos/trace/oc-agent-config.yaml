@@ -2,7 +2,7 @@ receivers:
   opencensus:
     address: ":55678"
   jaeger:
-    collector_http_port: 14268
+    collector-http-port: 14268
 
 exporters:
   opencensus:

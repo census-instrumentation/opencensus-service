@@ -29,17 +29,17 @@ type datadogConfig struct {
 
 	// TraceAddr specifies the host[:port] address of the Datadog Trace Agent.
 	// It defaults to localhost:8126.
-	TraceAddr string `yaml:"trace_addr,omitempty"`
+	TraceAddr string `yaml:"trace-addr,omitempty"`
 
 	// MetricsAddr specifies the host[:port] address for DogStatsD. It defaults
 	// to localhost:8125.
-	MetricsAddr string `yaml:"metrics_addr,omitempty"`
+	MetricsAddr string `yaml:"metrics-addr,omitempty"`
 
 	// Tags specifies a set of global tags to attach to each metric.
 	Tags []string `yaml:"tags,omitempty"`
 
-	EnableTracing bool `yaml:"enable_tracing,omitempty"`
-	EnableMetrics bool `yaml:"enable_metrics,omitempty"`
+	EnableTracing bool `yaml:"enable-tracing,omitempty"`
+	EnableMetrics bool `yaml:"enable-metrics,omitempty"`
 }
 
 type datadogExporter struct {

@@ -144,7 +144,7 @@ func TestZipkinExportersFromYAML_roundtripJSON(t *testing.T) {
 	config := `
 exporters:
     zipkin:
-      upload_period: 1ms
+      upload-period: 1ms
       endpoint: ` + cst.URL
 	tes, _, doneFns, err := ZipkinExportersFromYAML([]byte(config))
 	if err != nil {

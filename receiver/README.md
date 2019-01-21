@@ -27,13 +27,13 @@ format parallels the gRPC protobuf format, see this [OpenApi spec for it](https:
 
 The HTTP/JSON endpoint can also optionally 
 [CORS](https://fetch.spec.whatwg.org/#cors-protocol), which is enabled by
-specifying a list of allowed CORS origins in the `cors_allowed_origins` field:
+specifying a list of allowed CORS origins in the `cors-allowed-origins` field:
 
 ```yaml
 receivers:
   opencensus:
     address: "localhost:55678"
-    cors_allowed_origins:
+    cors-allowed-origins:
     - http://test.com
     # Origins can have wildcards with *, use * by itself to match any origin.
     - https://*.example.com  
@@ -55,15 +55,15 @@ receivers:
 
 This receiver receives spans from Jaeger collector HTTP and Thrift uploads and translates them into the internal span types that are then sent to the collector/exporters.
 
-Its address can be configured in the YAML configuration file under section "receivers", subsection "jaeger" and fields "collector_http_port", "collector_thrift_port".
+Its address can be configured in the YAML configuration file under section "receivers", subsection "jaeger" and fields "collector-http-port", "collector-thrift-port".
 
 For example:
 
 ```yaml
 receivers:
   jaeger:
-    collector_thrift_port: 14267
-    collector_http_port: 14268
+    collector-thrift-port: 14267
+    collector-http-port: 14268
 ```
 
 ### Collector Differences

@@ -24,10 +24,10 @@ import (
 
 // Slight modified version of go/src/go.opencensus.io/exporter/jaeger/jaeger.go
 type jaegerConfig struct {
-	CollectorEndpoint string `yaml:"collector_endpoint,omitempty"`
+	CollectorEndpoint string `yaml:"collector-endpoint,omitempty"`
 	Username          string `yaml:"username,omitempty"`
 	Password          string `yaml:"password,omitempty"`
-	ServiceName       string `yaml:"service_name,omitempty"`
+	ServiceName       string `yaml:"service-name,omitempty"`
 }
 
 type jaegerExporter struct {

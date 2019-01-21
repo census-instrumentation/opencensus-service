@@ -39,10 +39,10 @@ import (
 
 // ZipkinConfig holds the configuration of a Zipkin exporter.
 type ZipkinConfig struct {
-	ServiceName      string         `yaml:"service_name,omitempty"`
+	ServiceName      string         `yaml:"service-name,omitempty"`
 	Endpoint         string         `yaml:"endpoint,omitempty"`
-	LocalEndpointURI string         `yaml:"local_endpoint,omitempty"`
-	UploadPeriod     *time.Duration `yaml:"upload_period,omitempty"`
+	LocalEndpointURI string         `yaml:"local-endpoint,omitempty"`
+	UploadPeriod     *time.Duration `yaml:"upload-period,omitempty"`
 }
 
 // zipkinExporter is a multiplexing exporter that spawns a new OpenCensus-Go Zipkin

@@ -73,7 +73,7 @@ data:
 # Can only use one exporter
 #    exporters:
 #      jaeger:
-#        collector_endpoint: "http://jaeger.default.svc.cluster.local:14268/api/traces"
+#        collector-endpoint: "http://jaeger.default.svc.cluster.local:14268/api/traces"
 #      zipkin: {}
     queued-exporters:
       omnition:
@@ -82,7 +82,7 @@ data:
         retry-on-failure: true
         sender-type: jaeger-thrift-http
         jaeger-thrift-http:
-          collector_endpoint: https://ingest.omnition.io/api/traces
+          collector-endpoint: https://ingest.omnition.io/api/traces
           headers: { "x-omnition-api-key":"00000000-0000-0000-0000-000000000001" } # TODO: Update me
           timeout: 5s
 ---

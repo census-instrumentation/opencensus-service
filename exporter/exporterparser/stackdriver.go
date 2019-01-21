@@ -26,8 +26,8 @@ import (
 
 type stackdriverConfig struct {
 	ProjectID     string `yaml:"project,omitempty"`
-	EnableTracing bool   `yaml:"enable_tracing,omitempty"`
-	EnableMetrics bool   `yaml:"enable_metrics,omitempty"`
+	EnableTracing bool   `yaml:"enable-tracing,omitempty"`
+	EnableMetrics bool   `yaml:"enable-metrics,omitempty"`
 }
 
 type stackdriverExporter struct {

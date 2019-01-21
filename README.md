@@ -128,8 +128,8 @@ receivers:
     address: "127.0.0.1:9411"
 
   jaeger:
-    jaeger-thrift-tchannel-port: 14267
-    jaeger-thrift-http-port: 14268
+    jaeger_thrift_tchannel-port: 14267
+    jaeger_thrift_http_port: 14268
 ```
 
 ### <a name="config-exporters"></a>Exporters
@@ -145,7 +145,7 @@ exporters:
     endpoint: "127.0.0.1:55678"
 
   jaeger:
-    collector_endpoint: "http://127.0.0.1:14268/api/traces"
+    collector-endpoint: "http://127.0.0.1:14268/api/traces"
 
   kafka:
     brokers: ["127.0.0.1:9092"]
@@ -153,7 +153,7 @@ exporters:
 
   stackdriver:
     project: "your-project-id"
-    enable_tracing: true
+    enable-tracing: true
 
   zipkin:
     endpoint: "http://127.0.0.1:9411/api/v2/spans"

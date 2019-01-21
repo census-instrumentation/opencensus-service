@@ -38,7 +38,7 @@ import (
 //  exporters:
 //      stackdriver:
 //          project: <project_id>
-//          enable_tracing: true
+//          enable-tracing: true
 //      zipkin:
 //          endpoint: "http://localhost:9411/api/v2/spans"
 //
@@ -79,19 +79,19 @@ type Receivers struct {
 type ReceiverConfig struct {
 	// The address to which the OpenCensus receiver will be bound and run on.
 	Address             string `yaml:"address"`
-	CollectorHTTPPort   int    `yaml:"collector_http_port"`
-	CollectorThriftPort int    `yaml:"collector_thrift_port"`
+	CollectorHTTPPort   int    `yaml:"collector-http-port"`
+	CollectorThriftPort int    `yaml:"collector-thrift-port"`
 
 	// The allowed CORS origins for HTTP/JSON requests the grpc-gateway adapter
 	// for the OpenCensus receiver. See github.com/rs/cors
 	// An empty list means that CORS is not enabled at all. A wildcard (*) can be
 	// used to match any origin or one or more characters of an origin.
-	CorsAllowedOrigins []string `yaml:"cors_allowed_origins"`
+	CorsAllowedOrigins []string `yaml:"cors-allowed-origins"`
 
 	// DisableTracing disables trace receiving and is only applicable to trace receivers.
-	DisableTracing bool `yaml:"disable_tracing"`
+	DisableTracing bool `yaml:"disable-tracing"`
 	// DisableMetrics disables metrics receiving and is only applicable to metrics receivers.
-	DisableMetrics bool `yaml:"disable_metrics"`
+	DisableMetrics bool `yaml:"disable-metrics"`
 }
 
 // Exporters denotes the configurations for the various backends
