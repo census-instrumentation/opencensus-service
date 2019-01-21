@@ -128,8 +128,8 @@ receivers:
     address: "127.0.0.1:9411"
 
   jaeger:
-    jaeger_thrift_tchannel-port: 14267
-    jaeger_thrift_http_port: 14268
+    jaeger-thrift-tchannel-port: 14267
+    jaeger-thrift-http-port: 14268
 ```
 
 ### <a name="config-exporters"></a>Exporters
