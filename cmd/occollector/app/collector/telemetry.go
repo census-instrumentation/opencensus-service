@@ -41,14 +41,14 @@ func telemetryFlags(flags *flag.FlagSet) {
 	flags.Uint(metricsPortCfg, 8888, "Port exposing collector telemetry.")
 }
 
-func initTelemetry(asyncErrorChannel chan<- error, v *viper.Viper, logger *zap.Logger) error {
+func initTelemetry(asyncErrorChannel chan<- error, v *viper.Viper, logger *zap.Logger) (*prometheus.Exporter, error) {
 	level, err := telemetry.ParseLevel(v.GetString(metricsLevelCfg))
 	if err != nil {
 		log.Fatalf("Failed to parse metrics level: %v", err)
 	}
 
 	if level == telemetry.None {
-		return nil
+		return nil, nil
 	}
 
 	port := v.GetInt(metricsPortCfg)
@@ -59,7 +59,7 @@ func initTelemetry(asyncErrorChannel chan<- error, v *viper.Viper, logger *zap.L
 	processMetricsViews := telemetry.NewProcessMetricsViews()
 	views = append(views, processMetricsViews.Views()...)
 	if err := view.Register(views...); err != nil {
-		return err
+		return nil, err
 	}
 
 	processMetricsViews.StartCollection()
@@ -70,7 +70,7 @@ func initTelemetry(asyncErrorChannel chan<- error, v *viper.Viper, logger *zap.L
 	}
 	pe, err := prometheus.NewExporter(opts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	view.RegisterExporter(pe)
@@ -85,5 +85,5 @@ func initTelemetry(asyncErrorChannel chan<- error, v *viper.Viper, logger *zap.L
 		}
 	}()
 
-	return nil
+	return pe, nil
 }

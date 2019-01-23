@@ -16,12 +16,10 @@ package tracetranslator
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/jaegertracing/jaeger/thrift-gen/jaeger"
+	jaeger "github.com/jaegertracing/jaeger/model"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
@@ -29,53 +27,45 @@ import (
 )
 
 var (
-	errZeroTraceID     = errors.New("OC span has an all zeros trace ID")
-	errNilTraceID      = errors.New("OC trace ID is nil")
-	errWrongLenTraceID = errors.New("TraceID does not have 16 bytes")
-	errZeroSpanID      = errors.New("OC span has an all zeros span ID")
-	errNilID           = errors.New("OC ID is nil")
-	errWrongLenID      = errors.New("ID does not have 8 bytes")
+	unknownJaegerProtoProcess = jaeger.Process{ServiceName: "unknown-service-name"}
 )
 
-var (
-	unknownProcess = &jaeger.Process{ServiceName: "unknown-service-name"}
-)
-
-// OCProtoToJaegerThrift translates OpenCensus trace data into the Jaeger Thrift format.
-func OCProtoToJaegerThrift(ocBatch *agenttracepb.ExportTraceServiceRequest) (*jaeger.Batch, error) {
+// OCProtoToJaegerProto translates OpenCensus trace data into the Jaeger Protobuf format.
+func OCProtoToJaegerProto(ocBatch *agenttracepb.ExportTraceServiceRequest) (*jaeger.Batch, error) {
 	if ocBatch == nil {
 		return nil, nil
 	}
 
-	jSpans, err := ocSpansToJaegerThriftSpans(ocBatch.Spans)
+	jProcess := ocNodeToJaegerProtoProcess(ocBatch.Node)
+	jSpans, err := ocSpansToJaegerProtoSpans(ocBatch.Spans, jProcess)
 	if err != nil {
 		return nil, err
 	}
 
 	jb := &jaeger.Batch{
-		Process: ocNodeToJaegerThriftProcess(ocBatch.Node),
+		Process: jProcess,
 		Spans:   jSpans,
 	}
 
 	return jb, nil
 }
 
-func ocNodeToJaegerThriftProcess(node *commonpb.Node) *jaeger.Process {
+func ocNodeToJaegerProtoProcess(node *commonpb.Node) jaeger.Process {
 	if node == nil {
-		// Jaeger requires a non-nil Process
-		return unknownProcess
+		return unknownJaegerProtoProcess
 	}
 
-	var jTags []*jaeger.Tag
+	// var jTags []jaeger.KeyValue
 	nodeAttribsLen := len(node.Attributes)
+	jTags := make([]jaeger.KeyValue, 0, nodeAttribsLen+6)
 	if nodeAttribsLen > 0 {
-		jTags = make([]*jaeger.Tag, 0, nodeAttribsLen)
+		// jTags = make([]jaeger.KeyValue, 0, nodeAttribsLen)
 		for k, v := range node.Attributes {
 			str := v
-			jTag := &jaeger.Tag{
+			jTag := jaeger.KeyValue{
 				Key:   k,
-				VType: jaeger.TagType_STRING,
-				VStr:  &str,
+				VType: jaeger.ValueType_STRING,
+				VStr:  str,
 			}
 			jTags = append(jTags, jTag)
 		}
@@ -83,28 +73,28 @@ func ocNodeToJaegerThriftProcess(node *commonpb.Node) *jaeger.Process {
 
 	if node.Identifier != nil {
 		if node.Identifier.HostName != "" {
-			hostTag := &jaeger.Tag{
+			hostTag := jaeger.KeyValue{
 				Key:   "hostname",
-				VType: jaeger.TagType_STRING,
-				VStr:  &node.Identifier.HostName,
+				VType: jaeger.ValueType_STRING,
+				VStr:  node.Identifier.HostName,
 			}
 			jTags = append(jTags, hostTag)
 		}
 		if node.Identifier.Pid != 0 {
 			pid := int64(node.Identifier.Pid)
-			hostTag := &jaeger.Tag{
-				Key:   "pid",
-				VType: jaeger.TagType_LONG,
-				VLong: &pid,
+			hostTag := jaeger.KeyValue{
+				Key:    "pid",
+				VType:  jaeger.ValueType_INT64,
+				VInt64: pid,
 			}
 			jTags = append(jTags, hostTag)
 		}
 		if node.Identifier.StartTimestamp != nil && node.Identifier.StartTimestamp.Seconds != 0 {
 			startTimeStr := ptypes.TimestampString(node.Identifier.StartTimestamp)
-			hostTag := &jaeger.Tag{
+			hostTag := jaeger.KeyValue{
 				Key:   "start.time",
-				VType: jaeger.TagType_STRING,
-				VStr:  &startTimeStr,
+				VType: jaeger.ValueType_STRING,
+				VStr:  startTimeStr,
 			}
 			jTags = append(jTags, hostTag)
 		}
@@ -116,26 +106,26 @@ func ocNodeToJaegerThriftProcess(node *commonpb.Node) *jaeger.Process {
 		// Only add language if specified
 		if ocLib.Language != commonpb.LibraryInfo_LANGUAGE_UNSPECIFIED {
 			languageStr := ocLib.Language.String()
-			languageTag := &jaeger.Tag{
+			languageTag := jaeger.KeyValue{
 				Key:   "opencensus.language",
-				VType: jaeger.TagType_STRING,
-				VStr:  &languageStr,
+				VType: jaeger.ValueType_STRING,
+				VStr:  languageStr,
 			}
 			jTags = append(jTags, languageTag)
 		}
 		if ocLib.ExporterVersion != "" {
-			exporterTag := &jaeger.Tag{
+			exporterTag := jaeger.KeyValue{
 				Key:   "opencensus.exporterversion",
-				VType: jaeger.TagType_STRING,
-				VStr:  &ocLib.ExporterVersion,
+				VType: jaeger.ValueType_STRING,
+				VStr:  ocLib.ExporterVersion,
 			}
 			jTags = append(jTags, exporterTag)
 		}
 		if ocLib.CoreLibraryVersion != "" {
-			exporterTag := &jaeger.Tag{
+			exporterTag := jaeger.KeyValue{
 				Key:   "opencensus.corelibversion",
-				VType: jaeger.TagType_STRING,
-				VStr:  &ocLib.CoreLibraryVersion,
+				VType: jaeger.ValueType_STRING,
+				VStr:  ocLib.CoreLibraryVersion,
 			}
 			jTags = append(jTags, exporterTag)
 		}
@@ -148,18 +138,16 @@ func ocNodeToJaegerThriftProcess(node *commonpb.Node) *jaeger.Process {
 
 	if serviceName == "" && len(jTags) == 0 {
 		// No info to put in the process...
-		return nil
+		return unknownJaegerProtoProcess
 	}
 
-	jProc := &jaeger.Process{
+	return jaeger.Process{
 		ServiceName: serviceName,
 		Tags:        jTags,
 	}
-
-	return jProc
 }
 
-func ocSpansToJaegerThriftSpans(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) {
+func ocSpansToJaegerProtoSpans(ocSpans []*tracepb.Span, jProcess jaeger.Process) ([]*jaeger.Span, error) {
 	if ocSpans == nil {
 		return nil, nil
 	}
@@ -167,18 +155,19 @@ func ocSpansToJaegerThriftSpans(ocSpans []*tracepb.Span) ([]*jaeger.Span, error)
 	// Pre-allocate assuming that few, if any spans, are nil.
 	jSpans := make([]*jaeger.Span, 0, len(ocSpans))
 	for _, ocSpan := range ocSpans {
-		traceIDLow, traceIDHigh, err := traceIDBytesToLowAndHigh(ocSpan.TraceId)
+		// traceIDLow, traceIDHigh, err := traceIDBytesToLowAndHigh(ocSpan.TraceId)
+		traceID, err := ocTraceIDToJaegerProtoTraceID(ocSpan.TraceId)
 		if err != nil {
 			return nil, fmt.Errorf("OC span has invalid trace ID: %v", err)
 		}
-		if traceIDLow == 0 && traceIDHigh == 0 {
+		if traceID.High == 0 && traceID.Low == 0 {
 			return nil, errZeroTraceID
 		}
-		jReferences, err := ocLinksToJaegerThriftReferences(ocSpan.Links)
+		jReferences, err := ocLinksToJaegerProtoReferences(ocSpan.Links)
 		if err != nil {
 			return nil, fmt.Errorf("Error converting OC links to Jaeger references: %v", err)
 		}
-		spanID, err := ocIDBytesToJaegerThriftID(ocSpan.SpanId)
+		spanID, err := ocSpanIDToJaegerProtoSpanID(ocSpan.SpanId)
 		if err != nil {
 			return nil, fmt.Errorf("OC span has invalid span ID: %v", err)
 		}
@@ -186,44 +175,60 @@ func ocSpansToJaegerThriftSpans(ocSpans []*tracepb.Span) ([]*jaeger.Span, error)
 			return nil, errZeroSpanID
 		}
 		// OC ParentSpanId can be nil/empty: only attempt conversion if not nil/empty.
-		var parentSpanID int64
-		if len(ocSpan.ParentSpanId) != 0 {
-			parentSpanID, err = ocIDBytesToJaegerThriftID(ocSpan.ParentSpanId)
-			if err != nil {
-				return nil, fmt.Errorf("OC span has invalid parent span ID: %v", err)
+		// TODO(owais): REVIEW: Do we need to convert parent ID to a span reference of child type
+		// if a child type ref does not already exist??
+		/*
+			var parentSpanID int64
+			if len(ocSpan.ParentSpanId) != 0 {
+				parentSpanID, err = ocSpanIDToJaegerProtoSpanID(ocSpan.ParentSpanId)
+				if err != nil {
+					return nil, fmt.Errorf("OC span has invalid parent span ID: %v", err)
+				}
 			}
+		*/
+		startTime, err := ptypes.Timestamp(ocSpan.StartTime)
+		if err != nil {
+			// TODO: handle err
 		}
-		startTime := timestampToEpochMicroseconds(ocSpan.StartTime)
+		endTime, err := ptypes.Timestamp(ocSpan.EndTime)
+		if err != nil {
+			// TODO: handle err
+		}
 		jSpan := &jaeger.Span{
-			TraceIdLow:    traceIDLow,
-			TraceIdHigh:   traceIDHigh,
-			SpanId:        spanID,
-			ParentSpanId:  parentSpanID,
+			TraceID:       traceID,
+			SpanID:        spanID,
 			OperationName: truncableStringToStr(ocSpan.Name),
 			References:    jReferences,
 			// Flags: TODO (@pjanotti) Nothing from OC-Proto seems to match the values for Flags see https://www.jaegertracing.io/docs/1.8/client-libraries/
 			StartTime: startTime,
-			Duration:  timestampToEpochMicroseconds(ocSpan.EndTime) - startTime,
-			Tags:      ocSpanAttributesToJaegerThriftTags(ocSpan.Attributes),
-			Logs:      ocTimeEventsToJaegerThriftLogs(ocSpan.TimeEvents),
+			Duration:  endTime.Sub(startTime),
+			Tags:      ocSpanAttributesToJaegerProtoTags(ocSpan.Attributes),
+			Logs:      ocTimeEventsToJaegerProtoLogs(ocSpan.TimeEvents),
+			Process:   &jProcess,
 		}
 
-		jSpan.Tags = appendJaegerThriftTagFromOCSpanKind(jSpan.Tags, ocSpan.Kind)
+		if ocSpan.Attributes == nil {
+			jSpan.Tags = appendJaegerProtoTagFromOCSpanKind(jSpan.Tags, ocSpan.Kind)
+		} else {
+			if _, ok := ocSpan.Attributes.AttributeMap["span.kind"]; !ok {
+				jSpan.Tags = appendJaegerProtoTagFromOCSpanKind(jSpan.Tags, ocSpan.Kind)
+			}
+		}
 		jSpans = append(jSpans, jSpan)
 	}
 
 	return jSpans, nil
 }
 
-func ocLinksToJaegerThriftReferences(ocSpanLinks *tracepb.Span_Links) ([]*jaeger.SpanRef, error) {
+func ocLinksToJaegerProtoReferences(ocSpanLinks *tracepb.Span_Links) ([]jaeger.SpanRef, error) {
 	if ocSpanLinks == nil || ocSpanLinks.Link == nil {
 		return nil, nil
 	}
 
 	ocLinks := ocSpanLinks.Link
-	jRefs := make([]*jaeger.SpanRef, 0, len(ocLinks))
+	jRefs := make([]jaeger.SpanRef, 0, len(ocLinks))
 	for _, ocLink := range ocLinks {
-		traceIDLow, traceIDHigh, err := traceIDBytesToLowAndHigh(ocLink.TraceId)
+		traceID, err := ocTraceIDToJaegerProtoTraceID(ocLink.TraceId)
 		if err != nil {
 			return nil, fmt.Errorf("OC link has invalid trace ID: %v", err)
 		}
@@ -238,16 +243,15 @@ func ocLinksToJaegerThriftReferences(ocSpanLinks *tracepb.Span_Links) ([]*jaeger
 			jRefType = jaeger.SpanRefType_FOLLOWS_FROM
 		}
 
-		spanID, err := ocIDBytesToJaegerThriftID(ocLink.SpanId)
+		spanID, err := ocSpanIDToJaegerProtoSpanID(ocLink.SpanId)
 		if err != nil {
 			return nil, fmt.Errorf("OC link has invalid span ID: %v", err)
 		}
 
-		jRef := &jaeger.SpanRef{
-			TraceIdLow:  traceIDLow,
-			TraceIdHigh: traceIDHigh,
-			RefType:     jRefType,
-			SpanId:      spanID,
+		jRef := jaeger.SpanRef{
+			TraceID: traceID,
+			SpanID:  spanID,
+			RefType: jRefType,
 		}
 		jRefs = append(jRefs, jRef)
 	}
@@ -255,8 +259,7 @@ func ocLinksToJaegerThriftReferences(ocSpanLinks *tracepb.Span_Links) ([]*jaeger
 	return jRefs, nil
 }
 
-func appendJaegerThriftTagFromOCSpanKind(jTags []*jaeger.Tag, ocSpanKind tracepb.Span_SpanKind) []*jaeger.Tag {
-	// We could check if the key is already present but it doesn't seem worth at this point.
+func appendJaegerProtoTagFromOCSpanKind(jTags []jaeger.KeyValue, ocSpanKind tracepb.Span_SpanKind) []jaeger.KeyValue {
 	// TODO: (@pjanotti): Replace any OpenTracing literals by importing github.com/opentracing/opentracing-go/ext?
 	var tagValue string
 	switch ocSpanKind {
@@ -267,9 +270,9 @@ func appendJaegerThriftTagFromOCSpanKind(jTags []*jaeger.Tag, ocSpanKind tracepb
 	}
 
 	if tagValue != "" {
-		jTag := &jaeger.Tag{
+		jTag := jaeger.KeyValue{
 			Key:  "span.kind",
-			VStr: &tagValue,
+			VStr: tagValue,
 		}
 		jTags = append(jTags, jTag)
 	}
@@ -277,29 +280,31 @@ func appendJaegerThriftTagFromOCSpanKind(jTags []*jaeger.Tag, ocSpanKind tracepb
 	return jTags
 }
 
-func ocTimeEventsToJaegerThriftLogs(ocSpanTimeEvents *tracepb.Span_TimeEvents) []*jaeger.Log {
+func ocTimeEventsToJaegerProtoLogs(ocSpanTimeEvents *tracepb.Span_TimeEvents) []jaeger.Log {
 	if ocSpanTimeEvents == nil || ocSpanTimeEvents.TimeEvent == nil {
-		return nil
+		return make([]jaeger.Log, 0, 0)
 	}
 
 	ocTimeEvents := ocSpanTimeEvents.TimeEvent
 
 	// Assume that in general no time events are going to produce nil Jaeger logs.
-	jLogs := make([]*jaeger.Log, 0, len(ocTimeEvents))
+	jLogs := make([]jaeger.Log, 0, len(ocTimeEvents))
 	for _, ocTimeEvent := range ocTimeEvents {
-		jLog := &jaeger.Log{
-			Timestamp: timestampToEpochMicroseconds(ocTimeEvent.Time),
+		ts, err := ptypes.Timestamp(ocTimeEvent.Time)
+		if err != nil {
+			// TODO: handler error
 		}
+		jLog := jaeger.Log{Timestamp: ts}
 		switch teValue := ocTimeEvent.Value.(type) {
 		case *tracepb.Span_TimeEvent_Annotation_:
-			jLog.Fields = ocAnnotationToJaegerThriftTags(teValue.Annotation)
+			jLog.Fields = ocAnnotationToJagerProtoTags(teValue.Annotation)
 		case *tracepb.Span_TimeEvent_MessageEvent_:
-			jLog.Fields = ocMessageEventToJaegerThriftTags(teValue.MessageEvent)
+			jLog.Fields = ocMessageEventToJaegerProtoTags(teValue.MessageEvent)
 		default:
 			msg := "An unknown OpenCensus TimeEvent type was detected when translating to Jaeger"
-			jTag := &jaeger.Tag{
+			jTag := jaeger.KeyValue{
 				Key:  "unknown.oc.timeevent.type",
-				VStr: &msg,
+				VStr: msg,
 			}
 			jLog.Fields = append(jLog.Fields, jTag)
 		}
@@ -310,19 +315,19 @@ func ocTimeEventsToJaegerThriftLogs(ocSpanTimeEvents *tracepb.Span_TimeEvents) [
 	return jLogs
 }
 
-func ocAnnotationToJaegerThriftTags(annotation *tracepb.Span_TimeEvent_Annotation) []*jaeger.Tag {
+func ocAnnotationToJagerProtoTags(annotation *tracepb.Span_TimeEvent_Annotation) []jaeger.KeyValue {
 	if annotation == nil {
-		return nil
+		return make([]jaeger.KeyValue, 0, 0)
 	}
 
-	jTags := ocSpanAttributesToJaegerThriftTags(annotation.Attributes)
+	jTags := ocSpanAttributesToJaegerProtoTags(annotation.Attributes)
 
 	desc := truncableStringToStr(annotation.Description)
 	if desc != "" {
-		jDescTag := &jaeger.Tag{
+		jDescTag := jaeger.KeyValue{
 			Key:   annotationDescriptionKey,
-			VStr:  &desc,
-			VType: jaeger.TagType_STRING,
+			VStr:  desc,
+			VType: jaeger.ValueType_STRING,
 		}
 		jTags = append(jTags, jDescTag)
 	}
@@ -330,28 +335,28 @@ func ocAnnotationToJaegerThriftTags(annotation *tracepb.Span_TimeEvent_Annotatio
 	return jTags
 }
 
-func ocMessageEventToJaegerThriftTags(msgEvent *tracepb.Span_TimeEvent_MessageEvent) []*jaeger.Tag {
+func ocMessageEventToJaegerProtoTags(msgEvent *tracepb.Span_TimeEvent_MessageEvent) []jaeger.KeyValue {
 	if msgEvent == nil {
-		return nil
+		return make([]jaeger.KeyValue, 0, 0)
 	}
 
 	jID := int64(msgEvent.Id)
-	idTag := &jaeger.Tag{
-		Key:   messageEventIDKey,
-		VLong: &jID,
-		VType: jaeger.TagType_LONG,
+	idTag := jaeger.KeyValue{
+		Key:    messageEventIDKey,
+		VInt64: jID,
+		VType:  jaeger.ValueType_INT64,
 	}
 
 	msgTypeStr := msgEvent.Type.String()
-	msgType := &jaeger.Tag{
+	msgType := jaeger.KeyValue{
 		Key:   messageEventTypeKey,
-		VStr:  &msgTypeStr,
-		VType: jaeger.TagType_STRING,
+		VStr:  msgTypeStr,
+		VType: jaeger.ValueType_STRING,
 	}
 
 	// Some implementations always have these two fields as zeros.
 	if msgEvent.CompressedSize == 0 && msgEvent.UncompressedSize == 0 {
-		return []*jaeger.Tag{
+		return []jaeger.KeyValue{
 			idTag, msgType,
 		}
 	}
@@ -359,100 +364,93 @@ func ocMessageEventToJaegerThriftTags(msgEvent *tracepb.Span_TimeEvent_MessageEv
 	// There is a risk in this cast since we are converting from uint64, but
 	// seems a good compromise since the risk of such large values are small.
 	compSize := int64(msgEvent.CompressedSize)
-	compressedSize := &jaeger.Tag{
-		Key:   messageEventCompressedSizeKey,
-		VLong: &compSize,
-		VType: jaeger.TagType_LONG,
+	compressedSize := jaeger.KeyValue{
+		Key:    messageEventCompressedSizeKey,
+		VInt64: compSize,
+		VType:  jaeger.ValueType_INT64,
 	}
 
 	uncompSize := int64(msgEvent.UncompressedSize)
-	uncompressedSize := &jaeger.Tag{
-		Key:   messageEventUncompressedSizeKey,
-		VLong: &uncompSize,
-		VType: jaeger.TagType_LONG,
+	uncompressedSize := jaeger.KeyValue{
+		Key:    messageEventUncompressedSizeKey,
+		VInt64: uncompSize,
+		VType:  jaeger.ValueType_INT64,
 	}
 
-	return []*jaeger.Tag{
+	return []jaeger.KeyValue{
 		idTag, msgType, compressedSize, uncompressedSize,
 	}
 }
 
-func truncableStringToStr(ts *tracepb.TruncatableString) string {
-	if ts == nil {
-		return ""
-	}
-	return ts.Value
-}
-
-func traceIDBytesToLowAndHigh(traceID []byte) (traceIDLow, traceIDHigh int64, err error) {
-	if traceID == nil {
-		return 0, 0, errNilTraceID
-	}
-	if len(traceID) != 16 {
-		return 0, 0, errWrongLenTraceID
-	}
-	traceIDHigh = int64(binary.BigEndian.Uint64(traceID[:8]))
-	traceIDLow = int64(binary.BigEndian.Uint64(traceID[8:]))
-	return traceIDLow, traceIDHigh, nil
-}
-
-func ocIDBytesToJaegerThriftID(b []byte) (id int64, err error) {
-	if b == nil {
-		return 0, errNilID
-	}
-	if len(b) != 8 {
-		return 0, errWrongLenID
-	}
-	id = int64(binary.BigEndian.Uint64(b))
-	return id, nil
-}
-
-func timestampToEpochMicroseconds(ts *timestamp.Timestamp) int64 {
-	if ts == nil {
-		return 0
-	}
-	return ts.GetSeconds()*1e6 + int64(ts.GetNanos()/1e3)
-}
-
-func ocSpanAttributesToJaegerThriftTags(ocAttribs *tracepb.Span_Attributes) []*jaeger.Tag {
+func ocSpanAttributesToJaegerProtoTags(ocAttribs *tracepb.Span_Attributes) []jaeger.KeyValue {
 	if ocAttribs == nil {
-		return nil
+		return make([]jaeger.KeyValue, 0)
 	}
 
 	// Pre-allocate assuming that few attributes, if any at all, are nil.
-	jTags := make([]*jaeger.Tag, 0, len(ocAttribs.AttributeMap))
+	jTags := make([]jaeger.KeyValue, 0, len(ocAttribs.AttributeMap))
 	for key, attrib := range ocAttribs.AttributeMap {
 		if attrib == nil || attrib.Value == nil {
 			continue
 		}
 
-		jTag := &jaeger.Tag{Key: key}
+		jTag := jaeger.KeyValue{Key: key}
 		switch attribValue := attrib.Value.(type) {
 		case *tracepb.AttributeValue_StringValue:
 			// Jaeger-to-OC maps binary tags to string attributes and encodes them as
 			// base64 strings. Blindingly attempting to decode base64 seems too much.
 			str := truncableStringToStr(attribValue.StringValue)
-			jTag.VStr = &str
-			jTag.VType = jaeger.TagType_STRING
+			jTag.VStr = str
+			jTag.VType = jaeger.ValueType_STRING
 		case *tracepb.AttributeValue_IntValue:
 			i := attribValue.IntValue
-			jTag.VLong = &i
-			jTag.VType = jaeger.TagType_LONG
+			jTag.VInt64 = i
+			jTag.VType = jaeger.ValueType_INT64
 		case *tracepb.AttributeValue_BoolValue:
 			b := attribValue.BoolValue
-			jTag.VBool = &b
-			jTag.VType = jaeger.TagType_BOOL
+			jTag.VBool = b
+			jTag.VType = jaeger.ValueType_BOOL
 		case *tracepb.AttributeValue_DoubleValue:
 			d := attribValue.DoubleValue
-			jTag.VDouble = &d
-			jTag.VType = jaeger.TagType_DOUBLE
+			jTag.VFloat64 = d
+			jTag.VType = jaeger.ValueType_FLOAT64
 		default:
 			str := "<Unknown OpenCensus Attribute for key \"" + key + "\">"
-			jTag.VStr = &str
-			jTag.VType = jaeger.TagType_STRING
+			jTag.VStr = str
+			jTag.VType = jaeger.ValueType_STRING
 		}
 		jTags = append(jTags, jTag)
 	}
 
 	return jTags
+}
+
+func ocTraceIDToJaegerProtoTraceID(traceID []byte) (jaeger.TraceID, error) {
+	if traceID == nil {
+		return jaeger.TraceID{}, errNilTraceID
+	}
+	if len(traceID) != 16 {
+		return jaeger.TraceID{}, errWrongLenTraceID
+	}
+
+	return jaeger.TraceID{
+		Low:  bytesToInt64(traceID[8:16]),
+		High: bytesToInt64(traceID[0:8]),
+	}, nil
+}
+
+func ocSpanIDToJaegerProtoSpanID(spanID []byte) (jaeger.SpanID, error) {
+	var jSpanID jaeger.SpanID
+	if spanID == nil {
+		return jSpanID, errNilID
+	}
+	if len(spanID) != 8 {
+		return jSpanID, errWrongLenID
+	}
+	return jaeger.SpanID(bytesToInt64(spanID[:])), nil
+}
+
+func bytesToInt64(buf []byte) uint64 {
+	u := binary.BigEndian.Uint64(buf)
+	return uint64(u)
 }

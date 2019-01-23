@@ -127,6 +127,16 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 			logger,
 			sender.HTTPTimeout(thriftHTTPSenderOpts.Timeout),
 		)
+	case builder.KinesisSenderType:
+		kinesisSenderOpts := opts.SenderConfig.(*builder.KinesisSenderCfg)
+		logger.Info("Initializing Kinesis sender",
+			zap.String("stream", kinesisSenderOpts.StreamName))
+		var err error
+		spanSender, err = sender.NewKinesisSender(kinesisSenderOpts, logger)
+		if err != nil {
+			logger.Fatal("Cannot initialize kinesis sender.", zap.Error(err))
+			return nil, err
+		}
 	default:
 		logger.Fatal("Unrecognized sender type configured")
 	}

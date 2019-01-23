@@ -29,7 +29,7 @@ import (
 	"github.com/jaegertracing/jaeger/thrift-gen/jaeger"
 )
 
-func TestJaegerFromOCProtoTraceIDRoundTrip(t *testing.T) {
+func TestJaegerThriftFromOCProtoTraceIDRoundTrip(t *testing.T) {
 	wl := int64(0x0001020304050607)
 	wh := int64(0x70605040302010FF)
 	gl, gh, err := traceIDBytesToLowAndHigh(jTraceIDToOCProtoTraceID(wh, wl))
@@ -41,9 +41,9 @@ func TestJaegerFromOCProtoTraceIDRoundTrip(t *testing.T) {
 	}
 }
 
-func TestJaegerFromOCProtoSpanIDRoundTrip(t *testing.T) {
+func TestJaegerThriftFromOCProtoSpanIDRoundTrip(t *testing.T) {
 	w := int64(0x0001020304050607)
-	g, err := ocIDBytesToJaegerID(jSpanIDToOCProtoSpanID(w))
+	g, err := ocIDBytesToJaegerThriftID(jSpanIDToOCProtoSpanID(w))
 	if err != nil {
 		t.Errorf("Error converting from OC span id: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestJaegerFromOCProtoSpanIDRoundTrip(t *testing.T) {
 	}
 }
 
-func TestInvalidOCProtoIDs(t *testing.T) {
+func TestThriftInvalidOCProtoIDs(t *testing.T) {
 	fakeTraceID := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	tests := []struct {
 		name         string
@@ -97,7 +97,7 @@ func TestInvalidOCProtoIDs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := ocSpansToJaegerSpans(tt.ocSpans)
+			_, err := ocSpansToJaegerThriftSpans(tt.ocSpans)
 			if err == nil {
 				t.Error("ocSpansToJaegerSpans() no error, want error")
 				return

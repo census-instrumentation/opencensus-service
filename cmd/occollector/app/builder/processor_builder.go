@@ -28,6 +28,8 @@ const (
 	ThriftTChannelSenderType SenderType = "jaeger-thrift-tchannel"
 	// ThriftHTTPSenderType represents a thrift-format http-transport sender
 	ThriftHTTPSenderType = "jaeger-thrift-http"
+	// KinesisSenderType represents an AWS Kinesis sender
+	KinesisSenderType = "kinesis"
 	// InvalidSenderType represents an invalid sender
 	InvalidSenderType = "invalid"
 )
@@ -59,6 +61,31 @@ type JaegerThriftHTTPSenderCfg struct {
 func NewJaegerThriftHTTPSenderCfg() *JaegerThriftHTTPSenderCfg {
 	opts := &JaegerThriftHTTPSenderCfg{
 		Timeout: 5 * time.Second,
+	}
+	return opts
+}
+
+// KinesisSenderCfg holds configuration for AWS Kinesis sender
+type KinesisSenderCfg struct {
+	StreamName              string `mapstructure:"stream-name"`
+	AWSRole                 string `mapstructure:"aws-role"`
+	AWSRegion               string `mapstructure:"aws-region"`
+	AWSKinesisEndpoint      string `mapstructure:"aws-kinesis-endpoint"`
+	KPLBatchSize            int    `mapstructure:"kpl-batch-size"`
+	KPLBatchCount           int    `mapstructure:"kpl-batch-count"`
+	KPLBacklogCount         int    `mapstructure:"kpl-backlog-count"`
+	KPLFlushIntervalSeconds int    `mapstructure:"kpl-flush-interval-seconds"`
+	Encoding                string `mapstructure:"encoding"`
+}
+
+// NewKinesisSenderCfg returns an instance of KinesisSenderCfg with default values
+func NewKinesisSenderCfg() *KinesisSenderCfg {
+	opts := &KinesisSenderCfg{
+		KPLBatchSize:            5242880,
+		KPLBatchCount:           500,
+		KPLBacklogCount:         2000,
+		KPLFlushIntervalSeconds: 5,
+		Encoding:                "jaeger-proto",
 	}
 	return opts
 }
@@ -124,6 +151,13 @@ func (qOpts *QueuedSpanProcessorCfg) InitFromViper(v *viper.Viper) *QueuedSpanPr
 			vthsOpts.Unmarshal(thsOpts)
 		}
 		qOpts.SenderConfig = thsOpts
+	case KinesisSenderType:
+		kOpts := NewKinesisSenderCfg()
+		vkOpts := v.Sub(string(KinesisSenderType))
+		if vkOpts != nil {
+			vkOpts.Unmarshal(kOpts)
+		}
+		qOpts.SenderConfig = kOpts
 	}
 	return qOpts
 }

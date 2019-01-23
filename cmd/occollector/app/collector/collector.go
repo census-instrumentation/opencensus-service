@@ -86,7 +86,7 @@ func (app *Application) execute() {
 
 	app.receivers = createReceivers(app.v, app.logger, app.processor)
 
-	err = initTelemetry(asyncErrorChannel, app.v, app.logger)
+	_, err = initTelemetry(asyncErrorChannel, app.v, app.logger)
 	if err != nil {
 		app.logger.Error("Failed to initialize telemetry", zap.Error(err))
 		os.Exit(1)
