@@ -36,8 +36,8 @@ const (
 	debugProcessorFlg = "debug-processor"
 )
 
-// BuilderFlags adds flags related to basic building of the collector application to the given flagset.
-func BuilderFlags(flags *flag.FlagSet) {
+// Flags adds flags related to basic building of the collector application to the given flagset.
+func Flags(flags *flag.FlagSet) {
 	flags.String(configCfg, "", "Path to the config file")
 	flags.Bool(jaegerReceiverFlg, false,
 		fmt.Sprintf("Flag to run the Jaeger receiver (i.e.: Jaeger Collector), default settings: %+v", *NewDefaultJaegerReceiverCfg()))
@@ -48,10 +48,12 @@ func BuilderFlags(flags *flag.FlagSet) {
 	flags.Bool(debugProcessorFlg, false, "Flag to add a debug processor (combine with log level DEBUG to log incoming spans)")
 }
 
+// GetConfigFile gets the config file from the config file flag.
 func GetConfigFile(v *viper.Viper) string {
 	return v.GetString(configCfg)
 }
 
+// DebugProcessorEnabled returns true if the debug processor is enabled, and false otherwise
 func DebugProcessorEnabled(v *viper.Viper) bool {
 	return v.GetBool(debugProcessorFlg)
 }

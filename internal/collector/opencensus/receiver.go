@@ -30,7 +30,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus"
 )
 
-// Run starts the OpenCensus receiver endpoint.
+// Start starts the OpenCensus receiver endpoint.
 func Start(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor) (receiver.TraceReceiver, error) {
 	rOpts, err := builder.NewDefaultOpenCensusReceiverCfg().InitFromViper(v)
 	if err != nil {

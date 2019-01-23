@@ -33,6 +33,7 @@ import (
 )
 
 var (
+	// App represents the collector application in its entirety
 	App = newApp()
 )
 
@@ -130,7 +131,7 @@ func (app *Application) Start() error {
 	}
 	addFlags(app.v, rootCmd,
 		telemetryFlags,
-		builder.BuilderFlags,
+		builder.Flags,
 		healthCheckFlags,
 		loggerFlags,
 	)
