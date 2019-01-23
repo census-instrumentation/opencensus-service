@@ -54,10 +54,6 @@ func newApp() *Application {
 
 func (app *Application) init() {
 	var err error
-	app.logger, err = newLogger(app.v)
-	if err != nil {
-		log.Fatalf("Failed to get logger: %v", err)
-	}
 	if file := builder.GetConfigFile(app.v); file != "" {
 		app.v.SetConfigFile(file)
 		err := app.v.ReadInConfig()
@@ -65,6 +61,10 @@ func (app *Application) init() {
 			log.Fatalf("Error loading config file %q: %v", file, err)
 			return
 		}
+	}
+	app.logger, err = newLogger(app.v)
+	if err != nil {
+		log.Fatalf("Failed to get logger: %v", err)
 	}
 }
 
@@ -102,6 +102,7 @@ func (app *Application) execute() {
 		app.logger.Info("Received kill signal from OS")
 	}
 
+	app.healthCheck.Set(healthcheck.Unavailable)
 	app.logger.Info("Starting shutdown...")
 
 	// TODO: orderly shutdown: first receivers, then flushing pipelines giving

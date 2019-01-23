@@ -24,7 +24,7 @@ const (
 func telemetryFlags(flags *flag.FlagSet) {
 	flags.String(metricsLevelCfg, "BASIC", "Output level of telemetry metrics (NONE, BASIC, NORMAL, DETAILED)")
 	// At least until we can use a generic, i.e.: OpenCensus, metrics exporter we default to Prometheus at port 8888, if not otherwise specified.
-	flags.Int(metricsPortCfg, 8888, "Port exposing collector telemetry.")
+	flags.Uint(metricsPortCfg, 8888, "Port exposing collector telemetry.")
 }
 
 func initTelemetry(asyncErrorChannel chan<- error, v *viper.Viper, logger *zap.Logger) error {

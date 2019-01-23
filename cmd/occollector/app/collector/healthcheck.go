@@ -13,7 +13,7 @@ const (
 )
 
 func healthCheckFlags(flags *flag.FlagSet) {
-	flags.Int(healthCheckHTTPPort, 13133, "Port on which to run the healthcheck http server.")
+	flags.Uint(healthCheckHTTPPort, 13133, "Port on which to run the healthcheck http server.")
 }
 
 func newHealthCheck(v *viper.Viper, logger *zap.Logger) (*healthcheck.HealthCheck, error) {

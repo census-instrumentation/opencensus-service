@@ -45,7 +45,7 @@ func Start(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor)
 	}
 	ss := processor.WrapWithSpanSink("oc", spanProc)
 	if err := ocr.StartTraceReception(context.Background(), ss); err != nil {
-		return nil, fmt.Errorf("Cannot start Zipkin receiver to address %q: %v", addr, err)
+		return nil, fmt.Errorf("Cannot bind Opencensus receiver to address %q: %v", addr, err)
 	}
 
 	logger.Info("OpenCensus receiver is running.", zap.Int("port", rOpts.Port))
