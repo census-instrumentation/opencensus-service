@@ -14,4 +14,7 @@
 
 package compression
 
-import _ "google.golang.org/grpc/encoding/gzip"
+// Compression keys for supported compression types within opencensus collector
+const (
+	Gzip = "gzip"
+)

@@ -12,18 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compression
+package grpc
 
-import (
-	"testing"
-)
-
-func TestIsSupportedCompressionType(t *testing.T) {
-	if !IsSupportedCompressionType("gzip") {
-		t.Error("gzip is marked as supported but returned unsupported")
-	}
-
-	if IsSupportedCompressionType("badType") {
-		t.Error("badType is not supported but was returned as supported")
-	}
-}
+import _ "google.golang.org/grpc/encoding/gzip"

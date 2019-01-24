@@ -12,17 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compression
+package grpc
 
-var (
-	supportedCompressionTypes = map[string]bool{
-		"gzip": true,
-	}
+import (
+	"testing"
+
+	"github.com/census-instrumentation/opencensus-service/internal/compression"
 )
 
-func IsSupportedCompressionType(compression string) bool {
-	if supported, ok := supportedCompressionTypes[compression]; ok && supported {
-		return true
+func TestGetGRPCCompressionKey(t *testing.T) {
+	if key := GetGRPCCompressionKey("gzip"); key != nil && *key != compression.Gzip {
+		t.Error("gzip is marked as supported but returned unsupported")
 	}
-	return false
+
+	if key := GetGRPCCompressionKey("Gzip"); key != nil && *key != compression.Gzip {
+		t.Error("Capitalization of Gzip should not matter")
+	}
+
+	if GetGRPCCompressionKey("badType") != nil {
+		t.Error("badType is not supported but was returned as supported")
+	}
 }
