@@ -16,6 +16,6 @@ package compression
 
 // Compression keys for supported compression types within opencensus collector
 const (
-	Unsupported = "gzip"
+	Unsupported = ""
 	Gzip        = "gzip"
 )
