@@ -70,8 +70,7 @@ func TestJaegerThriftToOCProto_Roundtrip(t *testing.T) {
 			continue
 		}
 
-		// Sort tags to help with comparison, not only for jaeger.Process but also
-		// on each span.
+		// Sort tags to help with comparison, not only for jaeger.Process but also on each span.
 		sort.Slice(gotJBatch.Process.Tags, func(i, j int) bool {
 			return gotJBatch.Process.Tags[i].Key < gotJBatch.Process.Tags[j].Key
 		})
