@@ -30,11 +30,11 @@ var (
 )
 
 // GetGRPCCompressionKey returns the grpc registered compression key if the
-// passed in compression key is supported, and returns nil otherwise.
-func GetGRPCCompressionKey(compression string) *string {
-	compressionKey := strings.ToLower(compression)
+// passed in compression key is supported, and Unsupported otherwise
+func GetGRPCCompressionKey(compressionType string) string {
+	compressionKey := strings.ToLower(compressionType)
 	if encodingKey, ok := grpcCompressionKeyMap[compressionKey]; ok {
-		return &encodingKey
+		return encodingKey
 	}
-	return nil
+	return compression.Unsupported
 }

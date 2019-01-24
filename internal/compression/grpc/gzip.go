@@ -14,4 +14,4 @@
 
 package grpc
 
-import _ "google.golang.org/grpc/encoding/gzip"
+import _ "google.golang.org/grpc/encoding/gzip" // import the gzip package with auto-registers the gzip grpc compressor

@@ -24,6 +24,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/internal"
+	"github.com/census-instrumentation/opencensus-service/internal/compression"
 	"github.com/census-instrumentation/opencensus-service/internal/compression/grpc"
 )
 
@@ -64,8 +65,8 @@ func OpenCensusTraceExportersFromYAML(config []byte) (tes []exporter.TraceExport
 
 	opts := []ocagent.ExporterOption{ocagent.WithAddress(ocac.Endpoint), ocagent.WithInsecure()}
 	if ocac.Compression != "" {
-		if compressionKey := grpc.GetGRPCCompressionKey(ocac.Compression); compressionKey != nil {
-			opts = append(opts, ocagent.UseCompressor(*compressionKey))
+		if compressionKey := grpc.GetGRPCCompressionKey(ocac.Compression); compressionKey != compression.Unsupported {
+			opts = append(opts, ocagent.UseCompressor(compressionKey))
 		} else {
 			return nil, nil, nil, fmt.Errorf("Unsupported compression type: %s", ocac.Compression)
 		}

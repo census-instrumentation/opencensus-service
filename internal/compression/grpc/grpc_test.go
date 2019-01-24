@@ -21,15 +21,15 @@ import (
 )
 
 func TestGetGRPCCompressionKey(t *testing.T) {
-	if key := GetGRPCCompressionKey("gzip"); key != nil && *key != compression.Gzip {
+	if GetGRPCCompressionKey("gzip") != compression.Gzip {
 		t.Error("gzip is marked as supported but returned unsupported")
 	}
 
-	if key := GetGRPCCompressionKey("Gzip"); key != nil && *key != compression.Gzip {
+	if GetGRPCCompressionKey("Gzip") != compression.Gzip {
 		t.Error("Capitalization of Gzip should not matter")
 	}
 
-	if GetGRPCCompressionKey("badType") != nil {
+	if GetGRPCCompressionKey("badType") != compression.Unsupported {
 		t.Error("badType is not supported but was returned as supported")
 	}
 }
