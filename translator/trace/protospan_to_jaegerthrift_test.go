@@ -32,7 +32,7 @@ import (
 func TestJaegerFromOCProtoTraceIDRoundTrip(t *testing.T) {
 	wl := int64(0x0001020304050607)
 	wh := int64(0x70605040302010FF)
-	gl, gh, err := traceIDBytesToLowAndHigh(jTraceIDToOCProtoTraceID(wh, wl))
+	gl, gh, err := traceIDBytesToLowAndHigh(traceIDToOCProtoTraceID(wh, wl))
 	if err != nil {
 		t.Errorf("Error converting from OC trace id: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestJaegerFromOCProtoTraceIDRoundTrip(t *testing.T) {
 
 func TestJaegerFromOCProtoSpanIDRoundTrip(t *testing.T) {
 	w := int64(0x0001020304050607)
-	g, err := ocIDBytesToJaegerID(jSpanIDToOCProtoSpanID(w))
+	g, err := ocIDBytesToJaegerID(spanIDToOCProtoSpanID(w))
 	if err != nil {
 		t.Errorf("Error converting from OC span id: %v", err)
 	}
