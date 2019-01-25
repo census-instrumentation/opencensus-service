@@ -34,7 +34,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prashantv/protectmem v0.0.0-20171002184600-e20412882b3a // indirect
 	github.com/prometheus/client_golang v0.8.0
-	github.com/prometheus/procfs v0.0.0-20180725123919-05ee40e3a273
 	github.com/rs/cors v1.6.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/cast v1.2.0
