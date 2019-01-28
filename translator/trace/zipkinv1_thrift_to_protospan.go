@@ -19,12 +19,14 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"net"
 
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/jaegertracing/jaeger/thrift-gen/zipkincore"
+	"github.com/pkg/errors"
 )
 
 // ZipkinV1ThriftBatchToOCProto converts Zipkin v1 spans to OC Proto.
@@ -48,12 +50,11 @@ func zipkinV1ThriftToOCSpan(zSpan *zipkincore.Span) (*tracepb.Span, *annotationP
 	// failures on the receivers in general are silent at this moment, so letting them
 	// proceed for now. We should validate the traceID, spanID and parentID are good with
 	// OC proto requirements.
-	traceID := traceIDToOCProtoTraceID(traceIDHigh, zSpan.TraceID)
-	spanID := spanIDToOCProtoSpanID(zSpan.ID)
+	traceID := jTraceIDToOCProtoTraceID(traceIDHigh, zSpan.TraceID)
+	spanID := jSpanIDToOCProtoSpanID(zSpan.ID)
 	var parentID []byte
 	if zSpan.ParentID != nil {
-		id := spanIDToOCProtoSpanID(*zSpan.ParentID)
-		parentID = id
+		parentID = jSpanIDToOCProtoSpanID(*zSpan.ParentID)
 	}
 
 	parsedAnnotations := parseZipkinV1ThriftAnnotations(zSpan.Annotations)
@@ -139,36 +140,32 @@ func zipkinV1ThriftBinAnnotationsToOCAttributes(ztBinAnnotations []*zipkincore.B
 		binAnnotationType := binaryAnnotation.AnnotationType
 		switch binaryAnnotation.AnnotationType {
 		case zipkincore.AnnotationType_BOOL:
-			vBool := bytes.Equal(binaryAnnotation.Value, trueByteSlice)
-			pbAttrib.Value = &tracepb.AttributeValue_BoolValue{BoolValue: vBool}
+			isTrue := bytes.Equal(binaryAnnotation.Value, trueByteSlice)
+			pbAttrib.Value = &tracepb.AttributeValue_BoolValue{BoolValue: isTrue}
 		case zipkincore.AnnotationType_BYTES:
 			bytesStr := base64.StdEncoding.EncodeToString(binaryAnnotation.Value)
 			pbAttrib.Value = &tracepb.AttributeValue_StringValue{
 				StringValue: &tracepb.TruncatableString{Value: bytesStr}}
 		case zipkincore.AnnotationType_DOUBLE:
-			var d float64
-			if err := bytesToNumber(binaryAnnotation.Value, &d); err != nil {
+			if d, err := bytesFloat64ToFloat64(binaryAnnotation.Value); err != nil {
 				pbAttrib.Value = strAttributeForError(err)
 			} else {
 				pbAttrib.Value = &tracepb.AttributeValue_DoubleValue{DoubleValue: d}
 			}
 		case zipkincore.AnnotationType_I16:
-			var i int16
-			if err := bytesToNumber(binaryAnnotation.Value, &i); err != nil {
+			if i, err := bytesInt16ToInt64(binaryAnnotation.Value); err != nil {
 				pbAttrib.Value = strAttributeForError(err)
 			} else {
-				pbAttrib.Value = &tracepb.AttributeValue_IntValue{IntValue: int64(i)}
+				pbAttrib.Value = &tracepb.AttributeValue_IntValue{IntValue: i}
 			}
 		case zipkincore.AnnotationType_I32:
-			var i int32
-			if err := bytesToNumber(binaryAnnotation.Value, &i); err != nil {
+			if i, err := bytesInt32ToInt64(binaryAnnotation.Value); err != nil {
 				pbAttrib.Value = strAttributeForError(err)
 			} else {
-				pbAttrib.Value = &tracepb.AttributeValue_IntValue{IntValue: int64(i)}
+				pbAttrib.Value = &tracepb.AttributeValue_IntValue{IntValue: i}
 			}
 		case zipkincore.AnnotationType_I64:
-			var i int64
-			if err := bytesToNumber(binaryAnnotation.Value, &i); err != nil {
+			if i, err := bytesInt64ToInt64(binaryAnnotation.Value); err != nil {
 				pbAttrib.Value = strAttributeForError(err)
 			} else {
 				pbAttrib.Value = &tracepb.AttributeValue_IntValue{IntValue: i}
@@ -197,9 +194,39 @@ func zipkinV1ThriftBinAnnotationsToOCAttributes(ztBinAnnotations []*zipkincore.B
 	return attributes, localComponent
 }
 
-func bytesToNumber(b []byte, number interface{}) error {
-	buf := bytes.NewReader(b)
-	return binary.Read(buf, binary.BigEndian, number)
+var errNotEnoughBytes = errors.New("not enough bytes representing the number")
+
+func bytesInt16ToInt64(b []byte) (int64, error) {
+	const minSliceLength = 2
+	if len(b) < minSliceLength {
+		return 0, errNotEnoughBytes
+	}
+	return int64(binary.BigEndian.Uint16(b[:minSliceLength])), nil
+}
+
+func bytesInt32ToInt64(b []byte) (int64, error) {
+	const minSliceLength = 4
+	if len(b) < minSliceLength {
+		return 0, errNotEnoughBytes
+	}
+	return int64(binary.BigEndian.Uint32(b[:minSliceLength])), nil
+}
+
+func bytesInt64ToInt64(b []byte) (int64, error) {
+	const minSliceLength = 8
+	if len(b) < minSliceLength {
+		return 0, errNotEnoughBytes
+	}
+	return int64(binary.BigEndian.Uint64(b[:minSliceLength])), nil
+}
+
+func bytesFloat64ToFloat64(b []byte) (float64, error) {
+	const minSliceLength = 8
+	if len(b) < minSliceLength {
+		return 0.0, errNotEnoughBytes
+	}
+	bits := binary.BigEndian.Uint64(b)
+	return math.Float64frombits(bits), nil
 }
 
 func strAttributeForError(err error) *tracepb.AttributeValue_StringValue {

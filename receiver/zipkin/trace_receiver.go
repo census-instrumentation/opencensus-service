@@ -127,6 +127,7 @@ func (zr *ZipkinReceiver) v1ToTraceSpans(blob []byte, hdr http.Header) (reqs []*
 // deserializeThrift decodes Thrift bytes to a list of spans.
 // This code comes from jaegertracing/jaeger, ideally we should have imported
 // it but this was creating many conflicts so brought the code to here.
+// https://github.com/jaegertracing/jaeger/blob/6bc0c122bfca8e737a747826ae60a22a306d7019/model/converter/thrift/zipkin/deserialize.go#L36
 func deserializeThrift(b []byte) ([]*zipkincore.Span, error) {
 	buffer := thrift.NewTMemoryBuffer()
 	buffer.Write(b)
