@@ -41,8 +41,6 @@ var (
 	errHexIDWrongLen      = errors.New("hex Id has wrong length (expected 16)")
 	errHexIDParsing       = errors.New("failed to parse hex Id")
 	errHexIDZero          = errors.New("Id is zero")
-	// Sentinel error to indicate that all spans were processed.
-	errNoMoreSpans = errors.New("no more spans")
 )
 
 // Trace translation from Zipkin V1 is a bit of special case since there is no model
@@ -90,24 +88,17 @@ func ZipkinV1JSONBatchToOCProto(blob []byte) ([]*agenttracepb.ExportTraceService
 		return nil, errors.WithMessage(err, msgZipkinV1JSONUnmarshalError)
 	}
 
-	return zipkinToOCProto(func(i int) (*tracepb.Span, *annotationParseResult, error) {
-		if i >= len(zSpans) {
-			return nil, nil, errNoMoreSpans
-		}
-
+	return zipkinToOCProto(len(zSpans), func(i int) (*tracepb.Span, *annotationParseResult, error) {
 		return zipkinV1ToOCSpan(zSpans[i])
 	})
 }
 
-func zipkinToOCProto(toOCSpan func(i int) (*tracepb.Span, *annotationParseResult, error)) ([]*agenttracepb.ExportTraceServiceRequest, error) {
+func zipkinToOCProto(numSpans int, toOCSpan func(i int) (*tracepb.Span, *annotationParseResult, error)) ([]*agenttracepb.ExportTraceServiceRequest, error) {
 	// Service to batch maps the service name to the trace request with the corresponding node.
 	svcToBatch := make(map[string]*agenttracepb.ExportTraceServiceRequest)
-	for i := 0; ; i++ {
+	for i := 0; i < numSpans; i++ {
 		ocSpan, parsedAnnotations, err := toOCSpan(i)
 		if err != nil {
-			if err == errNoMoreSpans {
-				break
-			}
 			// error from internal package function, it already wraps the error to give better context.
 			return nil, err
 		}

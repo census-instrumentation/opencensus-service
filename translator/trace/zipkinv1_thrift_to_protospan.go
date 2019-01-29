@@ -31,10 +31,7 @@ import (
 
 // ZipkinV1ThriftBatchToOCProto converts Zipkin v1 spans to OC Proto.
 func ZipkinV1ThriftBatchToOCProto(zSpans []*zipkincore.Span) ([]*agenttracepb.ExportTraceServiceRequest, error) {
-	return zipkinToOCProto(func(i int) (*tracepb.Span, *annotationParseResult, error) {
-		if i >= len(zSpans) {
-			return nil, nil, errNoMoreSpans
-		}
+	return zipkinToOCProto(len(zSpans), func(i int) (*tracepb.Span, *annotationParseResult, error) {
 		return zipkinV1ThriftToOCSpan(zSpans[i])
 	})
 }
