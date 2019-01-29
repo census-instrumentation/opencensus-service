@@ -88,23 +88,33 @@ func ZipkinV1JSONBatchToOCProto(blob []byte) ([]*agenttracepb.ExportTraceService
 		return nil, errors.WithMessage(err, msgZipkinV1JSONUnmarshalError)
 	}
 
-	return zipkinToOCProto(len(zSpans), func(i int) (*tracepb.Span, *annotationParseResult, error) {
-		return zipkinV1ToOCSpan(zSpans[i])
-	})
-}
-
-func zipkinToOCProto(numSpans int, toOCSpan func(i int) (*tracepb.Span, *annotationParseResult, error)) ([]*agenttracepb.ExportTraceServiceRequest, error) {
-	// Service to batch maps the service name to the trace request with the corresponding node.
-	svcToBatch := make(map[string]*agenttracepb.ExportTraceServiceRequest)
-	for i := 0; i < numSpans; i++ {
-		ocSpan, parsedAnnotations, err := toOCSpan(i)
+	ocSpansAndParsedAnnotations := make([]ocSpanAndParsedAnnotations, 0, len(zSpans))
+	for _, zSpan := range zSpans {
+		ocSpan, parsedAnnotations, err := zipkinV1ToOCSpan(zSpan)
 		if err != nil {
 			// error from internal package function, it already wraps the error to give better context.
 			return nil, err
 		}
+		ocSpansAndParsedAnnotations = append(ocSpansAndParsedAnnotations, ocSpanAndParsedAnnotations{
+			ocSpan:            ocSpan,
+			parsedAnnotations: parsedAnnotations,
+		})
+	}
 
-		req := getOrCreateNodeRequest(svcToBatch, parsedAnnotations.Endpoint)
-		req.Spans = append(req.Spans, ocSpan)
+	return zipkinToOCProtoBatch(ocSpansAndParsedAnnotations)
+}
+
+type ocSpanAndParsedAnnotations struct {
+	ocSpan            *tracepb.Span
+	parsedAnnotations *annotationParseResult
+}
+
+func zipkinToOCProtoBatch(ocSpansAndParsedAnnotations []ocSpanAndParsedAnnotations) ([]*agenttracepb.ExportTraceServiceRequest, error) {
+	// Service to batch maps the service name to the trace request with the corresponding node.
+	svcToBatch := make(map[string]*agenttracepb.ExportTraceServiceRequest)
+	for _, curr := range ocSpansAndParsedAnnotations {
+		req := getOrCreateNodeRequest(svcToBatch, curr.parsedAnnotations.Endpoint)
+		req.Spans = append(req.Spans, curr.ocSpan)
 	}
 
 	batches := make([]*agenttracepb.ExportTraceServiceRequest, 0, len(svcToBatch))
