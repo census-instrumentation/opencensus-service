@@ -15,7 +15,6 @@
 package collector
 
 import (
-	"io/ioutil"
 	"os"
 
 	tchReporter "github.com/jaegertracing/jaeger/cmd/agent/app/reporter/tchannel"
@@ -27,24 +26,14 @@ import (
 	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/sender"
 	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
+	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/nodebatcher"
+	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/queued"
 	"github.com/census-instrumentation/opencensus-service/internal/config"
 )
 
 func createExporters(v *viper.Viper, logger *zap.Logger) ([]func(), []exporter.TraceExporter, []exporter.MetricsExporter) {
 	// TODO: (@pjanotti) this is slightly modified from agent but in the end duplication, need to consolidate style and visibility.
-
-	cfg := builder.GetConfigFile(v)
-	if cfg == "" {
-		logger.Info("No config file, exporters can be only configured via the file.")
-		return nil, nil, nil
-	}
-
-	cfgBlob, err := ioutil.ReadFile(cfg)
-	if err != nil {
-		logger.Fatal("Cannot read config file for exporters", zap.Error(err))
-	}
-
-	traceExporters, metricsExporters, doneFns, err := config.ExportersFromYAMLConfig(logger, cfgBlob)
+	traceExporters, metricsExporters, doneFns, err := config.ExportersFromViperConfig(logger, v)
 	if err != nil {
 		logger.Fatal("Failed to create config for exporters", zap.Error(err))
 	}
@@ -63,7 +52,7 @@ func createExporters(v *viper.Viper, logger *zap.Logger) ([]func(), []exporter.T
 	return wrappedDoneFns, traceExporters, metricsExporters
 }
 
-func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProcessorCfg) (processor.SpanProcessor, error) {
+func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProcessorCfg) ([]func(), processor.SpanProcessor, error) {
 	logger.Info("Constructing queue processor with name", zap.String("name", opts.Name))
 
 	// build span batch sender from configured options
@@ -80,7 +69,7 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 		tchreporter, err := tchrepbuilder.CreateReporter(metrics.NullFactory, logger)
 		if err != nil {
 			logger.Fatal("Cannot create tchannel reporter.", zap.Error(err))
-			return nil, err
+			return nil, nil, err
 		}
 		spanSender = sender.NewJaegerThriftTChannelSender(tchreporter, logger)
 	case builder.ThriftHTTPSenderType:
@@ -93,21 +82,68 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 			logger,
 			sender.HTTPTimeout(thriftHTTPSenderOpts.Timeout),
 		)
-	default:
-		logger.Fatal("Unrecognized sender type configured")
+	}
+	doneFns, traceExporters, _ := createExporters(opts.RawConfig, logger)
+
+	if spanSender == nil && len(traceExporters) == 0 {
+		logger.Fatal("Unrecognized sender type or no exporters configured")
+	}
+
+	allSendersAndExporters := make([]processor.SpanProcessor, 0, 2)
+	if spanSender != nil {
+		allSendersAndExporters = append(allSendersAndExporters, spanSender)
+	}
+	if len(traceExporters) > 0 {
+		allSendersAndExporters = append(
+			allSendersAndExporters, processor.NewTraceExporterProcessor(traceExporters...),
+		)
+	}
+
+	sender := processor.NewMultiSpanProcessor(allSendersAndExporters)
+
+	var batchingOptions []nodebatcher.Option
+	batchingEnabled := false
+	if opts.BatchingConfig != nil && opts.BatchingConfig.Enabled {
+		batchingEnabled = true
+		cfg := opts.BatchingConfig
+		if cfg.Timeout != nil {
+			batchingOptions = append(batchingOptions, nodebatcher.WithTimeout(*cfg.Timeout))
+		}
+		if cfg.NumTickers > 0 {
+			batchingOptions = append(
+				batchingOptions, nodebatcher.WithNumTickers(cfg.NumTickers),
+			)
+		}
+		if cfg.TickTime != nil {
+			batchingOptions = append(
+				batchingOptions, nodebatcher.WithTickTime(*cfg.TickTime),
+			)
+		}
+		if cfg.SendBatchSize != nil {
+			batchingOptions = append(
+				batchingOptions, nodebatcher.WithSendBatchSize(*cfg.SendBatchSize),
+			)
+		}
+		if cfg.RemoveAfterTicks != nil {
+			batchingOptions = append(
+				batchingOptions, nodebatcher.WithRemoveAfterTicks(*cfg.RemoveAfterTicks),
+			)
+		}
 	}
 
 	// build queued span processor with underlying sender
-	queuedSpanProcessor := processor.NewQueuedSpanProcessor(
-		spanSender,
-		processor.Options.WithLogger(logger),
-		processor.Options.WithName(opts.Name),
-		processor.Options.WithNumWorkers(opts.NumWorkers),
-		processor.Options.WithQueueSize(opts.QueueSize),
-		processor.Options.WithRetryOnProcessingFailures(opts.RetryOnFailure),
-		processor.Options.WithBackoffDelay(opts.BackoffDelay),
+	queuedSpanProcessor := queued.NewQueuedSpanProcessor(
+		sender,
+		queued.Options.WithLogger(logger),
+		queued.Options.WithName(opts.Name),
+		queued.Options.WithNumWorkers(opts.NumWorkers),
+		queued.Options.WithQueueSize(opts.QueueSize),
+		queued.Options.WithRetryOnProcessingFailures(opts.RetryOnFailure),
+		queued.Options.WithBackoffDelay(opts.BackoffDelay),
+		queued.Options.WithBatching(batchingEnabled),
+		queued.Options.WithBatchingOptions(batchingOptions...),
 	)
-	return queuedSpanProcessor, nil
+	return doneFns, queuedSpanProcessor, nil
 }
 
 func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor, []func()) {
@@ -136,12 +172,13 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor
 	multiProcessorCfg := builder.NewDefaultMultiSpanProcessorCfg().InitFromViper(v)
 	for _, queuedJaegerProcessorCfg := range multiProcessorCfg.Processors {
 		logger.Info("Queued Jaeger Sender Enabled")
-		queuedJaegerProcessor, err := buildQueuedSpanProcessor(logger, queuedJaegerProcessorCfg)
+		doneFns, queuedJaegerProcessor, err := buildQueuedSpanProcessor(logger, queuedJaegerProcessorCfg)
 		if err != nil {
 			logger.Error("Failed to build the queued span processor", zap.Error(err))
 			os.Exit(1)
 		}
 		spanProcessors = append(spanProcessors, queuedJaegerProcessor)
+		closeFns = append(closeFns, doneFns...)
 	}
 
 	if len(spanProcessors) == 0 {

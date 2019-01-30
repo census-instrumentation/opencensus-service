@@ -68,10 +68,12 @@ func BenchmarkConcurrentEnqueue(b *testing.B) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	var ticked int32
+	var received int32
 	go func() {
 		for range ticker.C {
-			batcher.CloseCurrentAndTakeFirstBatch()
+			batch, _ := batcher.CloseCurrentAndTakeFirstBatch()
 			atomic.AddInt32(&ticked, 1)
+			atomic.AddInt32(&received, int32(len(batch)))
 		}
 	}()
 
@@ -84,7 +86,9 @@ func BenchmarkConcurrentEnqueue(b *testing.B) {
 	})
 
 	closedBatches := atomic.LoadInt32(&ticked)
+	<-time.After(5 * time.Second)
 	b.Logf("Closed %d batches", closedBatches)
+	b.Logf("Received %d ids", received)
 }
 
 func concurrencyTest(t *testing.T, numBatches, newBatchesInitialCapacity, batchChannelSize uint64) {

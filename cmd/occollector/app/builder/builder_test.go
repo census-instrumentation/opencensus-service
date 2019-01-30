@@ -86,6 +86,7 @@ func TestMultiAndQueuedSpanProcessorConfig(t *testing.T) {
 		DiscoveryMinPeers:         7,
 		DiscoveryConnCheckTimeout: time.Second * 7,
 	}
+	fst.RawConfig = v.Sub(queuedExportersConfigKey).Sub("proc-tchannel")
 	snd := NewDefaultQueuedSpanProcessorCfg()
 	snd.Name = "proc-http"
 	snd.RetryOnFailure = false
@@ -96,6 +97,7 @@ func TestMultiAndQueuedSpanProcessorConfig(t *testing.T) {
 		Headers:           map[string]string{"x-header-key": "00000000-0000-0000-0000-000000000001"},
 		Timeout:           time.Second * 5,
 	}
+	snd.RawConfig = v.Sub(queuedExportersConfigKey).Sub("proc-http")
 
 	wCfg := &MultiSpanProcessorCfg{
 		Processors: []*QueuedSpanProcessorCfg{fst, snd},
