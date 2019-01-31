@@ -81,7 +81,7 @@ func NewQueuedSpanProcessor(sender processor.SpanProcessor, opts ...Option) proc
 
 	if options.batchingEnabled {
 		sp.logger.Info("Using queued processor with batching.")
-		batcher := nodebatcher.NewBatcher(sp.name, sp, options.batchingOptions...)
+		batcher := nodebatcher.NewBatcher(sp.name, sp.logger, sp, options.batchingOptions...)
 		return batcher
 	}
 

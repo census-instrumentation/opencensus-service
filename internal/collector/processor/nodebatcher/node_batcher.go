@@ -67,8 +67,8 @@ type batcher struct {
 	sender  processor.SpanProcessor
 	tickers []*bucketTicker
 	name    string
+	logger  *zap.Logger
 
-	logger            *zap.Logger
 	removeAfterCycles uint32
 	sendBatchSize     uint32
 	numTickers        int
@@ -81,13 +81,13 @@ type batcher struct {
 var _ processor.SpanProcessor = (*batcher)(nil)
 
 // NewBatcher creates a new batcher that batches spans by node and resource
-func NewBatcher(name string, sender processor.SpanProcessor, opts ...Option) *batcher {
+func NewBatcher(name string, logger *zap.Logger, sender processor.SpanProcessor, opts ...Option) *batcher {
 	// Init with defaults
 	b := &batcher{
 		name:   name,
 		sender: sender,
+		logger: logger,
 
-		logger:            zap.NewNop(),
 		removeAfterCycles: defaultRemoveAfterCycles,
 		sendBatchSize:     defaultSendBatchSize,
 		numTickers:        defaultNumTickers,
@@ -115,21 +115,22 @@ func (b *batcher) ProcessSpans(request *agenttracepb.ExportTraceServiceRequest, 
 }
 
 func (b *batcher) genBucketID(node *commonpb.Node, resource *resourcepb.Resource, spanFormat string) string {
-	var nodeKey, resourceKey []byte
-	var err error
+	h := md5.New()
 	if node != nil {
-		nodeKey, err = proto.Marshal(node)
+		nodeKey, err := proto.Marshal(node)
 		if err != nil {
 			b.logger.Error("Error marshalling node to batcher mapkey.", zap.Error(err))
 		}
+		h.Write(nodeKey)
 	}
 	if resource != nil {
-		resourceKey, err = proto.Marshal(resource) // TODO: remove once resource is in span
+		resourceKey, err := proto.Marshal(resource) // TODO: remove once resource is in span
 		if err != nil {
 			b.logger.Error("Error marshalling resource to batcher mapkey.", zap.Error(err))
 		}
+		h.Write(resourceKey)
 	}
-	return fmt.Sprintf("%x%x%s", md5.Sum(nodeKey), md5.Sum(resourceKey), spanFormat)
+	return fmt.Sprintf("%x", md5.Sum([]byte(spanFormat)))
 }
 
 func (b *batcher) getBucket(bucketID string) *nodeBatcher {
@@ -392,7 +393,7 @@ func newBatch(initCapacity uint32, sendBatchSize uint32) *batch {
 	return batch
 }
 
-func (b *batch) add(spans []*tracepb.Span) (bool, bool) {
+func (b *batch) add(spans []*tracepb.Span) (cut bool, closed bool) {
 	if atomic.LoadUint32(&b.closed) == batchClosed {
 		return false, true
 	}
@@ -433,12 +434,13 @@ func (b *batch) closeBatch() {
 func (b *batch) grow(neededSize uint32) {
 	b.growMu.Lock()
 	defer b.growMu.Unlock()
-	newCap := atomic.LoadUint32(&b.currCap)
+	currCap := atomic.LoadUint32(&b.currCap)
 	// If we entered this function concurrently with another call to grow,
 	// make sure we don't needlessly re-copy items
-	if neededSize < newCap {
+	if neededSize < currCap {
 		return
 	}
+	newCap := currCap
 	for newCap < neededSize {
 		newCap = newCap * 2
 	}

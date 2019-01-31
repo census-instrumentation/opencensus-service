@@ -23,12 +23,46 @@ import (
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
+	"go.uber.org/zap"
 )
 
 type bucketIDTestInput struct {
 	node     *commonpb.Node
 	resource *resourcepb.Resource
 	format   string
+}
+
+func BenchmarkGenBucketID(b *testing.B) {
+	sender := newTestSender()
+	batcher := NewBatcher("test", zap.NewNop(), sender)
+	gens := map[string]func(*commonpb.Node, *resourcepb.Resource, string) string{
+		"composite-md5": batcher.genBucketID,
+	}
+
+	inputSmall := bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}}, nil, "oc"}
+	inputBig := bucketIDTestInput{
+		&commonpb.Node{
+			ServiceInfo: &commonpb.ServiceInfo{Name: "svc-i-am-a-cat"},
+			LibraryInfo: &commonpb.LibraryInfo{ExporterVersion: "v1.2.3", CoreLibraryVersion: "v1.2.4", Language: commonpb.LibraryInfo_GO_LANG},
+		},
+		&resourcepb.Resource{Labels: map[string]string{
+			"asdfasdfasdfasdfasdf":  "bsdfasdfasdfasdfasdf",
+			"asdfssssssssasdfasdf":  "bsdfasdfasdfasdfasdf",
+			"skarisskarisskarisdf":  "bsdfasdfasdfasdfasdf",
+			"iamacatiamacatiamacat": "bsdfasdfasdfasdfasdf",
+		}},
+		"oc",
+	}
+
+	for genName, gen := range gens {
+		for name, input := range map[string]bucketIDTestInput{"smallInput": inputSmall, "bigInput": inputBig} {
+			b.Run(genName+"-"+name, func(b *testing.B) {
+				for n := 0; n < b.N; n++ {
+					gen(input.node, input.resource, input.format)
+				}
+			})
+		}
+	}
 }
 
 func TestGenBucketID(t *testing.T) {
@@ -89,7 +123,7 @@ func TestGenBucketID(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			sender := newTestSender()
-			batcher := NewBatcher("test", sender)
+			batcher := NewBatcher("test", zap.NewNop(), sender)
 
 			key1 := batcher.genBucketID(tc.input1.node, tc.input1.resource, tc.input1.format)
 			key2 := batcher.genBucketID(tc.input2.node, tc.input2.resource, tc.input2.format)
@@ -103,7 +137,7 @@ func TestGenBucketID(t *testing.T) {
 
 func TestConcurrentNodeAdds(t *testing.T) {
 	sender := newTestSender()
-	batcher := NewBatcher("test", sender, WithTimeout(250*time.Millisecond))
+	batcher := NewBatcher("test", zap.NewNop(), sender, WithTimeout(250*time.Millisecond))
 	requestCount := 2000
 	spansPerRequest := 3
 	for requestNum := 0; requestNum < requestCount; requestNum++ {
@@ -146,6 +180,7 @@ func TestBucketRemove(t *testing.T) {
 	removeAfterTicks := 2
 	batcher := NewBatcher(
 		"test",
+		zap.NewNop(),
 		sender,
 		WithTimeout(50*time.Millisecond),
 		WithTickTime(tickTime),
@@ -183,7 +218,7 @@ func TestBucketRemove(t *testing.T) {
 
 func TestConcurrentBatchAdds(t *testing.T) {
 	sender := newTestSender()
-	batcher := NewBatcher("test", sender, WithSendBatchSize(128))
+	batcher := NewBatcher("test", zap.NewNop(), sender, WithSendBatchSize(128))
 	requestCount := 10000
 	spansPerRequest := 3
 	for requestNum := 0; requestNum < requestCount; requestNum++ {
@@ -219,9 +254,7 @@ func TestConcurrentBatchAdds(t *testing.T) {
 
 func BenchmarkConcurrentBatchAdds(b *testing.B) {
 	sender := newTestSender()
-	batcher := NewBatcher("test", sender)
-	// We will send 1001 requests with 3 spans each, which should send
-	// 250 batches of 12 spans, and 1 batch of 3 spans
+	batcher := NewBatcher("test", zap.NewNop(), sender)
 	request := &agenttracepb.ExportTraceServiceRequest{
 		Node: &commonpb.Node{
 			ServiceInfo: &commonpb.ServiceInfo{Name: "svc"},

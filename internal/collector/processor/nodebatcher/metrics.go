@@ -30,7 +30,7 @@ var (
 
 	statSendByBatchSize     = stats.Int64("batch_size_trigger_send", "Number of times the batch was sent due to a size trigger", stats.UnitDimensionless)
 	statSendByTimeout       = stats.Int64("timeout_trigger_send", "Number of times the batch was sent due to a timeout trigger", stats.UnitDimensionless)
-	statAddOnDeadNodeBucket = stats.Int64("removed_node_send", "Number of times the batch was sent due to spans being added being for a no longer active node", stats.UnitDimensionless)
+	statAddOnDeadNodeBucket = stats.Int64("removed_node_send", "Number of times the batch was sent due to spans being added for a no longer active node", stats.UnitDimensionless)
 )
 
 // MetricsViews returns the metrics views related to batching
@@ -51,7 +51,7 @@ func MetricViews(level telemetry.Level) []*view.View {
 	batchSizeView := &view.View{
 		Name:        statBatchSize.Name(),
 		Measure:     statBatchSize,
-		Description: "The size of batches being sent from the batched exporter",
+		Description: statBatchSize.Description(),
 		TagKeys:     exporterTagKeys,
 		Aggregation: batchSizeAggregation,
 	}
@@ -59,7 +59,7 @@ func MetricViews(level telemetry.Level) []*view.View {
 	addNodeBatchesView := &view.View{
 		Name:        statAddNodeBatches.Name(),
 		Measure:     statAddNodeBatches,
-		Description: "The count of new nodes added to be batched",
+		Description: statAddNodeBatches.Description(),
 		TagKeys:     exporterTagKeys,
 		Aggregation: view.Count(),
 	}
@@ -67,7 +67,7 @@ func MetricViews(level telemetry.Level) []*view.View {
 	removeNodeBatchesView := &view.View{
 		Name:        statRemoveNodeBatches.Name(),
 		Measure:     statRemoveNodeBatches,
-		Description: "The number of nodes removed from batching",
+		Description: statRemoveNodeBatches.Description(),
 		TagKeys:     exporterTagKeys,
 		Aggregation: view.Count(),
 	}
@@ -75,7 +75,7 @@ func MetricViews(level telemetry.Level) []*view.View {
 	countSendByBatchSizeView := &view.View{
 		Name:        statSendByBatchSize.Name(),
 		Measure:     statSendByBatchSize,
-		Description: "The number of times a batch was sent due to the size cap trigger",
+		Description: statSendByBatchSize.Description(),
 		TagKeys:     tagKeys,
 		Aggregation: view.Count(),
 	}
@@ -83,7 +83,7 @@ func MetricViews(level telemetry.Level) []*view.View {
 	countSendByTimeoutView := &view.View{
 		Name:        statSendByTimeout.Name(),
 		Measure:     statSendByTimeout,
-		Description: "The number of times a batch was sent due to timeout trigger",
+		Description: statSendByTimeout.Description(),
 		TagKeys:     tagKeys,
 		Aggregation: view.Count(),
 	}
@@ -91,7 +91,7 @@ func MetricViews(level telemetry.Level) []*view.View {
 	countSendByDeadNode := &view.View{
 		Name:        statAddOnDeadNodeBucket.Name(),
 		Measure:     statAddOnDeadNodeBucket,
-		Description: "The number of times a batch was sent due to spans being added for a no longer active node.",
+		Description: statAddOnDeadNodeBucket.Description(),
 		TagKeys:     tagKeys,
 		Aggregation: view.Count(),
 	}

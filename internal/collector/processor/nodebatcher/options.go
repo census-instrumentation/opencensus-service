@@ -16,8 +16,6 @@ package nodebatcher
 
 import (
 	"time"
-
-	"go.uber.org/zap"
 )
 
 // Option is an option to nodebatcher.
@@ -28,13 +26,6 @@ type Option func(b *batcher)
 func WithTimeout(timeout time.Duration) Option {
 	return func(b *batcher) {
 		b.timeout = timeout
-	}
-}
-
-// WithLogger sets the logger to use.
-func WithLogger(logger *zap.Logger) Option {
-	return func(b *batcher) {
-		b.logger = logger
 	}
 }
 

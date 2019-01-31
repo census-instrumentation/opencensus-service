@@ -103,7 +103,6 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 
 	var batchingOptions []nodebatcher.Option
 	if opts.BatchingConfig.Enabled {
-		batchingOptions = append(batchingOptions, nodebatcher.WithLogger(logger))
 		cfg := opts.BatchingConfig
 		if cfg.Timeout != nil {
 			batchingOptions = append(batchingOptions, nodebatcher.WithTimeout(*cfg.Timeout))

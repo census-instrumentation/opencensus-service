@@ -84,11 +84,6 @@ func BenchmarkConcurrentEnqueue(b *testing.B) {
 			batcher.AddToCurrentBatch(ids[0])
 		}
 	})
-
-	closedBatches := atomic.LoadInt32(&ticked)
-	<-time.After(5 * time.Second)
-	b.Logf("Closed %d batches", closedBatches)
-	b.Logf("Received %d ids", received)
 }
 
 func concurrencyTest(t *testing.T, numBatches, newBatchesInitialCapacity, batchChannelSize uint64) {
