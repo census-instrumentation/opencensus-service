@@ -102,9 +102,8 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 	sender := processor.NewMultiSpanProcessor(allSendersAndExporters)
 
 	var batchingOptions []nodebatcher.Option
-	batchingEnabled := false
-	if opts.BatchingConfig != nil && opts.BatchingConfig.Enabled {
-		batchingEnabled = true
+	if opts.BatchingConfig.Enabled {
+		batchingOptions = append(batchingOptions, nodebatcher.WithLogger(logger))
 		cfg := opts.BatchingConfig
 		if cfg.Timeout != nil {
 			batchingOptions = append(batchingOptions, nodebatcher.WithTimeout(*cfg.Timeout))
@@ -140,7 +139,7 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 		queued.Options.WithQueueSize(opts.QueueSize),
 		queued.Options.WithRetryOnProcessingFailures(opts.RetryOnFailure),
 		queued.Options.WithBackoffDelay(opts.BackoffDelay),
-		queued.Options.WithBatching(batchingEnabled),
+		queued.Options.WithBatching(opts.BatchingConfig.Enabled),
 		queued.Options.WithBatchingOptions(batchingOptions...),
 	)
 	return doneFns, queuedSpanProcessor, nil

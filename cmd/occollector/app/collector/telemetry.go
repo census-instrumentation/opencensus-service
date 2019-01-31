@@ -27,6 +27,7 @@ import (
 
 	"github.com/census-instrumentation/opencensus-service/internal"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
+	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/nodebatcher"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/queued"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/telemetry"
 )
@@ -56,6 +57,7 @@ func initTelemetry(asyncErrorChannel chan<- error, v *viper.Viper, logger *zap.L
 
 	views := processor.MetricViews(level)
 	views = append(views, queued.QueuedProcessorMetricViews(level)...)
+	views = append(views, nodebatcher.MetricViews(level)...)
 	views = append(views, internal.AllViews...)
 	processMetricsViews := telemetry.NewProcessMetricsViews()
 	views = append(views, processMetricsViews.Views()...)

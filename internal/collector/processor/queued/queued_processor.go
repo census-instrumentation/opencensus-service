@@ -19,14 +19,15 @@ import (
 	"sync"
 	"time"
 
+	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	"github.com/jaegertracing/jaeger/pkg/queue"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"go.uber.org/zap"
 
-	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
+	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/nodebatcher"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/telemetry"
 )
 
@@ -54,7 +55,8 @@ type queueItem struct {
 // in-memory queue of span batches, and sends out span batches using the
 // provided sender
 func NewQueuedSpanProcessor(sender processor.SpanProcessor, opts ...Option) processor.SpanProcessor {
-	sp := newQueuedSpanProcessor(sender, opts...)
+	options := Options.apply(opts...)
+	sp := newQueuedSpanProcessor(sender, options)
 
 	sp.queue.StartConsumers(sp.numWorkers, func(item interface{}) {
 		value := item.(*queueItem)
@@ -77,20 +79,25 @@ func NewQueuedSpanProcessor(sender processor.SpanProcessor, opts ...Option) proc
 		}
 	}(ctx)
 
+	if options.batchingEnabled {
+		sp.logger.Info("Using queued processor with batching.")
+		batcher := nodebatcher.NewBatcher(sp.name, sp, options.batchingOptions...)
+		return batcher
+	}
+
 	return sp
 }
 
-func newQueuedSpanProcessor(sender processor.SpanProcessor, opts ...Option) *queuedSpanProcessor {
-	options := Options.apply(opts...)
-	boundedQueue := queue.NewBoundedQueue(options.queueSize, func(item interface{}) {})
+func newQueuedSpanProcessor(sender processor.SpanProcessor, opts options) *queuedSpanProcessor {
+	boundedQueue := queue.NewBoundedQueue(opts.queueSize, func(item interface{}) {})
 	return &queuedSpanProcessor{
-		name:                     options.name,
+		name:                     opts.name,
 		queue:                    boundedQueue,
-		logger:                   options.logger,
-		numWorkers:               options.numWorkers,
+		logger:                   opts.logger,
+		numWorkers:               opts.numWorkers,
 		sender:                   sender,
-		retryOnProcessingFailure: options.retryOnProcessingFailure,
-		backoffDelay:             options.backoffDelay,
+		retryOnProcessingFailure: opts.retryOnProcessingFailure,
+		backoffDelay:             opts.backoffDelay,
 		stopCh:                   make(chan struct{}),
 	}
 }

@@ -1,3 +1,17 @@
+// Copyright 2019, OpenCensus Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package nodebatcher
 
 import (
@@ -75,7 +89,7 @@ func TestGenBucketID(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			sender := newTestSender()
-			batcher := NewBatcher(sender)
+			batcher := NewBatcher("test", sender)
 
 			key1 := batcher.genBucketID(tc.input1.node, tc.input1.resource, tc.input1.format)
 			key2 := batcher.genBucketID(tc.input2.node, tc.input2.resource, tc.input2.format)
@@ -89,7 +103,7 @@ func TestGenBucketID(t *testing.T) {
 
 func TestConcurrentNodeAdds(t *testing.T) {
 	sender := newTestSender()
-	batcher := NewBatcher(sender, WithTimeout(250*time.Millisecond))
+	batcher := NewBatcher("test", sender, WithTimeout(250*time.Millisecond))
 	requestCount := 2000
 	spansPerRequest := 3
 	for requestNum := 0; requestNum < requestCount; requestNum++ {
@@ -131,6 +145,7 @@ func TestBucketRemove(t *testing.T) {
 	tickTime := 50 * time.Millisecond
 	removeAfterTicks := 2
 	batcher := NewBatcher(
+		"test",
 		sender,
 		WithTimeout(50*time.Millisecond),
 		WithTickTime(tickTime),
@@ -168,7 +183,7 @@ func TestBucketRemove(t *testing.T) {
 
 func TestConcurrentBatchAdds(t *testing.T) {
 	sender := newTestSender()
-	batcher := NewBatcher(sender, WithSendBatchSize(128))
+	batcher := NewBatcher("test", sender, WithSendBatchSize(128))
 	requestCount := 10000
 	spansPerRequest := 3
 	for requestNum := 0; requestNum < requestCount; requestNum++ {
@@ -204,7 +219,7 @@ func TestConcurrentBatchAdds(t *testing.T) {
 
 func BenchmarkConcurrentBatchAdds(b *testing.B) {
 	sender := newTestSender()
-	batcher := NewBatcher(sender)
+	batcher := NewBatcher("test", sender)
 	// We will send 1001 requests with 3 spans each, which should send
 	// 250 batches of 12 spans, and 1 batch of 3 spans
 	request := &agenttracepb.ExportTraceServiceRequest{

@@ -70,19 +70,19 @@ func NewJaegerThriftHTTPSenderCfg() *JaegerThriftHTTPSenderCfg {
 // BatchingConfig
 type BatchingConfig struct {
 	// Enabled marks batching as enabled or not
-	Enabled bool `mapstructure: "enabled,omitempty"`
+	Enabled bool `mapstructure:"enabled"`
 	// Timeout sets the time after which a batch will be sent regardless of size
-	Timeout *time.Duration `mapstructure: "timeout,omitempty"`
+	Timeout *time.Duration `mapstructure:"timeout,omitempty"`
 	// NumTickers sets the number of tickers to use to divide the work of looping
 	// over batch buckets
-	NumTickers int `mapstructure: "num-tickers,omitempty"`
+	NumTickers int `mapstructure:"num-tickers,omitempty"`
 	// TickTime sets time interval at which the tickers tick
-	TickTime *time.Duration `mapstructure: "tick-time,omitempty"`
+	TickTime *time.Duration `mapstructure:"tick-time,omitempty"`
 	// SendBatchSize is the size of a batch which after hit, will trigger it to be sent.
-	SendBatchSize *int `mapstructure: "send-batch-size,omitempty"`
+	SendBatchSize *int `mapstructure:"send-batch-size,omitempty"`
 	// RemoveAfterTicks is the number of ticks that must pass without a span arriving
 	// from a node after which the batcher for that node will be deleted.
-	RemoveAfterTicks *int `mapstructure: "remove-after-ticks,omitempty"`
+	RemoveAfterTicks *int `mapstructure:"remove-after-ticks,omitempty"`
 }
 
 // QueuedSpanProcessorCfg holds configuration for the queued span processor
@@ -101,7 +101,7 @@ type QueuedSpanProcessorCfg struct {
 	SenderType   SenderType `mapstructure:"sender-type"`
 	SenderConfig interface{}
 	// BatchingConfig sets config parameters related to batching
-	BatchingConfig *BatchingConfig `mapstructure: "batching,omitempty"`
+	BatchingConfig BatchingConfig `mapstructure:"batching"`
 	RawConfig      *viper.Viper
 }
 

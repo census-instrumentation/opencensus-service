@@ -17,6 +17,7 @@ package processor
 import (
 	"context"
 
+	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
@@ -129,18 +130,22 @@ func MetricViews(level telemetry.Level) []*view.View {
 	return []*view.View{receivedBatchesView, droppedBatchesView, receivedSpansView, droppedSpansView}
 }
 
-func ServiceNameForBatch(batch *agenttracepb.ExportTraceServiceRequest) string {
+func ServiceNameForNode(node *commonpb.Node) string {
 	var serviceName string
-	if batch.Node == nil {
+	if node == nil {
 		serviceName = "<nil-batch-node>"
-	} else if batch.Node.ServiceInfo == nil {
+	} else if node.ServiceInfo == nil {
 		serviceName = "<nil-service-info>"
-	} else if batch.Node.ServiceInfo.Name == "" {
+	} else if node.ServiceInfo.Name == "" {
 		serviceName = "<empty-service-info-name>"
 	} else {
-		serviceName = batch.Node.ServiceInfo.Name
+		serviceName = node.ServiceInfo.Name
 	}
 	return serviceName
+}
+
+func ServiceNameForBatch(batch *agenttracepb.ExportTraceServiceRequest) string {
+	return ServiceNameForNode(batch.Node)
 }
 
 func StatsTagsForBatch(processorName, serviceName, spanFormat string) []tag.Mutator {
