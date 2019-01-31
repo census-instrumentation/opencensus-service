@@ -211,6 +211,8 @@ func (nb *nodeBatcher) add(spans []*tracepb.Span) {
 	closed := true
 	cut := false
 	for closed {
+		// atomic.LoadPointer only takes unsafe.Pointer interfaces. We do not use unsafe
+		// to skirt around the golang type system.
 		b = (*batch)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&nb.currBatch))))
 		cut, closed = b.add(spans)
 	}
@@ -230,6 +232,8 @@ func (nb *nodeBatcher) add(spans []*tracepb.Span) {
 
 // cutBatch cuts the provided batch, and sets a new batch on this nodeBatcher
 func (nb *nodeBatcher) cutBatch(b *batch) {
+	// atomic.CompareAndSwapPointer only takes unsafe.Pointer interfaces. We do not use unsafe
+	// to skirt around the golang type system.
 	currBatchPtr := (*unsafe.Pointer)(unsafe.Pointer(&nb.currBatch))
 	swapped := atomic.CompareAndSwapPointer(
 		currBatchPtr,
@@ -317,6 +321,8 @@ func (bt *bucketTicker) start() {
 						delete(bt.nodes, nbKey)
 						continue
 					}
+					// atomic.LoadPointer only takes unsafe.Pointer interfaces. We do not use unsafe
+					// to skirt around the golang type system.
 					ptr := (*unsafe.Pointer)(unsafe.Pointer(&nb.currBatch))
 					b := (*batch)(atomic.LoadPointer(ptr))
 					if atomic.LoadInt64(&nb.lastSent)+nb.timeout.Nanoseconds() > time.Now().UnixNano() {
@@ -414,8 +420,8 @@ func (b *batch) closeBatch() {
 	atomic.StoreUint32(&b.closed, batchClosed)
 	for {
 		// We only need to wait for goroutines currently executing `add`
-		// We are safe from closing during an add due to the second
-		// closed check after incrementing add
+		// We are safe from closing during a items mutation due to the second
+		// closed check after incrementing pending
 		pending := atomic.LoadInt32(&b.pending)
 		if pending == int32(0) {
 			return

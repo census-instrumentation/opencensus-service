@@ -67,21 +67,27 @@ func NewJaegerThriftHTTPSenderCfg() *JaegerThriftHTTPSenderCfg {
 	return opts
 }
 
-// BatchingConfig
+// BatchingConfig contains configuration around the queueing batching.
+// It contains some advanced configurations, which should not be used
+// by a typical user, but are provided as advanced features to increase
+// scalability.
 type BatchingConfig struct {
 	// Enabled marks batching as enabled or not
 	Enabled bool `mapstructure:"enabled"`
 	// Timeout sets the time after which a batch will be sent regardless of size
 	Timeout *time.Duration `mapstructure:"timeout,omitempty"`
-	// NumTickers sets the number of tickers to use to divide the work of looping
-	// over batch buckets
-	NumTickers int `mapstructure:"num-tickers,omitempty"`
-	// TickTime sets time interval at which the tickers tick
-	TickTime *time.Duration `mapstructure:"tick-time,omitempty"`
 	// SendBatchSize is the size of a batch which after hit, will trigger it to be sent.
 	SendBatchSize *int `mapstructure:"send-batch-size,omitempty"`
+
+	// NumTickers sets the number of tickers to use to divide the work of looping
+	// over batch buckets. This is an advanced configuration option.
+	NumTickers int `mapstructure:"num-tickers,omitempty"`
+	// TickTime sets time interval at which the tickers tick. This is an advanced
+	// configuration option.
+	TickTime *time.Duration `mapstructure:"tick-time,omitempty"`
 	// RemoveAfterTicks is the number of ticks that must pass without a span arriving
-	// from a node after which the batcher for that node will be deleted.
+	// from a node after which the batcher for that node will be deleted. This is an
+	// advanved configuration option.
 	RemoveAfterTicks *int `mapstructure:"remove-after-ticks,omitempty"`
 }
 
