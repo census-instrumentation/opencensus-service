@@ -262,7 +262,7 @@ func (nb *nodeBatcher) sendBatch(batch *batch) {
 	request := &agenttracepb.ExportTraceServiceRequest{
 		Node:     nb.node,
 		Resource: nb.resource,
-		Spans:    batch.getSpans(),
+		Spans:    spans,
 	}
 	_, err := nb.parent.sender.ProcessSpans(request, nb.spanFormat)
 	// Assumed that the next processor always handles a batch, and doesn't error
