@@ -426,9 +426,11 @@ func zipkinEndpointIntoAttributes(ep *zipkinmodel.Endpoint, into map[string]stri
 
 	var ipv4Key, ipv6Key, portKey, serviceNameKey string
 	if endpointType == isLocalEndpoint {
-		ipv4Key, ipv6Key, portKey, serviceNameKey = "ipv4", "ipv6", "port", "serviceName"
+		ipv4Key, ipv6Key = "ipv4", "ipv6"
+		portKey, serviceNameKey = "port", "serviceName"
 	} else {
-		ipv4Key, ipv6Key, portKey, serviceNameKey = "zipkin.remoteEndpoint.ipv4", "zipkin.remoteEndpoint.ipv6", "zipkin.remoteEndpoint.port", "zipkin.remoteEndpoint.serviceName"
+		ipv4Key, ipv6Key = "zipkin.remoteEndpoint.ipv4", "zipkin.remoteEndpoint.ipv6"
+		portKey, serviceNameKey = "zipkin.remoteEndpoint.port", "zipkin.remoteEndpoint.serviceName"
 	}
 	if ep.IPv4 != nil && !ep.IPv4.Equal(blankIP) {
 		into[ipv4Key] = ep.IPv4.String()
