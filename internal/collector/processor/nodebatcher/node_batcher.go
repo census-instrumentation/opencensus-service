@@ -81,7 +81,7 @@ type batcher struct {
 var _ processor.SpanProcessor = (*batcher)(nil)
 
 // NewBatcher creates a new batcher that batches spans by node and resource
-func NewBatcher(name string, logger *zap.Logger, sender processor.SpanProcessor, opts ...Option) *batcher {
+func NewBatcher(name string, logger *zap.Logger, sender processor.SpanProcessor, opts ...Option) processor.SpanProcessor {
 	// Init with defaults
 	b := &batcher{
 		name:   name,

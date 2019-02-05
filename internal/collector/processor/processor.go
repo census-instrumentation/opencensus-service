@@ -130,6 +130,7 @@ func MetricViews(level telemetry.Level) []*view.View {
 	return []*view.View{receivedBatchesView, droppedBatchesView, receivedSpansView, droppedSpansView}
 }
 
+// ServiceNameForNode gets the service name for a specified node. Used for metrics.
 func ServiceNameForNode(node *commonpb.Node) string {
 	var serviceName string
 	if node == nil {
@@ -144,10 +145,12 @@ func ServiceNameForNode(node *commonpb.Node) string {
 	return serviceName
 }
 
+// ServiceNameForBatch gets the service name for a specified batch. Used for metrics.
 func ServiceNameForBatch(batch *agenttracepb.ExportTraceServiceRequest) string {
 	return ServiceNameForNode(batch.Node)
 }
 
+// StatsTagsForBatch gets the stat tags based on the specified processorName, serviceName, and spanFormat.
 func StatsTagsForBatch(processorName, serviceName, spanFormat string) []tag.Mutator {
 	statsTags := []tag.Mutator{
 		tag.Upsert(TagSourceFormatKey, spanFormat),

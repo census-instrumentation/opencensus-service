@@ -56,7 +56,7 @@ func initTelemetry(asyncErrorChannel chan<- error, v *viper.Viper, logger *zap.L
 	port := v.GetInt(metricsPortCfg)
 
 	views := processor.MetricViews(level)
-	views = append(views, queued.QueuedProcessorMetricViews(level)...)
+	views = append(views, queued.MetricViews(level)...)
 	views = append(views, nodebatcher.MetricViews(level)...)
 	views = append(views, internal.AllViews...)
 	processMetricsViews := telemetry.NewProcessMetricsViews()

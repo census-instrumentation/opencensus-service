@@ -33,7 +33,7 @@ var (
 	statAddOnDeadNodeBucket = stats.Int64("removed_node_send", "Number of times the batch was sent due to spans being added for a no longer active node", stats.UnitDimensionless)
 )
 
-// MetricsViews returns the metrics views related to batching
+// MetricViews returns the metrics views related to batching
 func MetricViews(level telemetry.Level) []*view.View {
 	if level == telemetry.None {
 		return nil
