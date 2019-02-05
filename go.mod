@@ -56,13 +56,13 @@ require (
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3 // indirect
-	golang.org/x/net v0.0.0-20181102091132-c10e9556a7bc
+	golang.org/x/net v0.0.0-20181106065722-10aee1819953
 	golang.org/x/oauth2 v0.0.0-20181102170140-232e45548389 // indirect
 	golang.org/x/sys v0.0.0-20181031143558-9b800f95dbbc // indirect
 	golang.org/x/text v0.3.0
 	google.golang.org/api v0.0.0-20181102150758-04bb50b6b83d
 	google.golang.org/appengine v1.3.0 // indirect
-	google.golang.org/genproto v0.0.0-20181101192439-c830210a61df // indirect
+	google.golang.org/genproto v0.0.0-20190201180003-4b09977fb922 // indirect
 	google.golang.org/grpc v1.16.0
 	gopkg.in/DataDog/dd-trace-go.v1 v1.4.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
