@@ -17,7 +17,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -27,7 +26,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/spf13/viper"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/zpages"
 	"go.uber.org/zap"
@@ -87,10 +85,7 @@ func runOCAgent() {
 		log.Fatalf("Could not instantiate logger: %v", err)
 	}
 
-	// TODO(skaris): move the rest of the configs to use viper
-	v := viper.New()
-	v.ReadConfig(bytes.NewBuffer(yamlBlob))
-	traceExporters, metricsExporters, closeFns, err := config.ExportersFromViperConfig(logger, v)
+	traceExporters, metricsExporters, closeFns, err := config.ExportersFromYAMLConfig(logger, yamlBlob)
 	if err != nil {
 		log.Fatalf("Config: failed to create exporters from YAML: %v", err)
 	}

@@ -130,7 +130,7 @@ func (b *batcher) genBucketID(node *commonpb.Node, resource *resourcepb.Resource
 		}
 		h.Write(resourceKey)
 	}
-	return fmt.Sprintf("%x", md5.Sum([]byte(spanFormat)))
+	return fmt.Sprintf("%x", h.Sum([]byte(spanFormat)))
 }
 
 func (b *batcher) getBucket(bucketID string) *nodeBatcher {

@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"contrib.go.opencensus.io/exporter/stackdriver"
-	"github.com/spf13/viper"
 	"go.opencensus.io/trace"
 
 	"github.com/census-instrumentation/opencensus-service/data"
@@ -29,10 +28,10 @@ import (
 )
 
 type stackdriverConfig struct {
-	ProjectID     string `mapstructure:"project,omitempty"`
-	EnableTracing bool   `mapstructure:"enable_tracing,omitempty"`
-	EnableMetrics bool   `mapstructure:"enable_metrics,omitempty"`
-	MetricPrefix  string `mapstructure:"metric_prefix,omitempty"`
+	ProjectID     string `yaml:"project,omitempty"`
+	EnableTracing bool   `yaml:"enable_tracing,omitempty"`
+	EnableMetrics bool   `yaml:"enable_metrics,omitempty"`
+	MetricPrefix  string `yaml:"metric_prefix,omitempty"`
 }
 
 type stackdriverExporter struct {
@@ -41,16 +40,21 @@ type stackdriverExporter struct {
 
 var _ exporter.TraceExporter = (*stackdriverExporter)(nil)
 
-// StackdriverTraceExportersFromViper unmarshals the viper and returns an exporter.TraceExporter targeting
+// StackdriverTraceExportersFromYAML parses the yaml bytes and returns an exporter.TraceExporter targeting
 // Stackdriver according to the configuration settings.
-func StackdriverTraceExportersFromViper(v *viper.Viper) (tes []exporter.TraceExporter, mes []exporter.MetricsExporter, doneFns []func() error, err error) {
+func StackdriverTraceExportersFromYAML(config []byte) (tes []exporter.TraceExporter, mes []exporter.MetricsExporter, doneFns []func() error, err error) {
 	var cfg struct {
-		Stackdriver *stackdriverConfig `mapstructure:"stackdriver"`
+		Exporters *struct {
+			Stackdriver *stackdriverConfig `yaml:"stackdriver"`
+		} `yaml:"exporters"`
 	}
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err := yamlUnmarshal(config, &cfg); err != nil {
 		return nil, nil, nil, err
 	}
-	sc := cfg.Stackdriver
+	if cfg.Exporters == nil {
+		return nil, nil, nil, nil
+	}
+	sc := cfg.Exporters.Stackdriver
 	if sc == nil {
 		return nil, nil, nil, nil
 	}

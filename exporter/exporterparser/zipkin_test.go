@@ -28,7 +28,6 @@ import (
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	zipkinmodel "github.com/openzipkin/zipkin-go/model"
-	"github.com/spf13/viper"
 
 	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/internal/testutils"
@@ -132,7 +131,7 @@ func TestZipkinEndpointFromNode(t *testing.T) {
 //          "7::80:807f"
 //
 // The rest of the fields should match up exactly
-func TestZipkinExportersFromViper_roundtripJSON(t *testing.T) {
+func TestZipkinExportersFromYAML_roundtripJSON(t *testing.T) {
 	responseReady := make(chan bool)
 	buf := new(bytes.Buffer)
 	cst := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -143,14 +142,12 @@ func TestZipkinExportersFromViper_roundtripJSON(t *testing.T) {
 	defer cst.Close()
 
 	config := `
-zipkin:
-  upload_period: 1ms
-  endpoint: ` + cst.URL
-	v := viper.New()
-	v.SetConfigType("yaml")
-	err := v.ReadConfig(bytes.NewBuffer([]byte(config)))
-	tes, _, doneFns, err := ZipkinExportersFromViper(v)
-	if len(tes) == 0 || err != nil {
+exporters:
+    zipkin:
+      upload_period: 1ms
+      endpoint: ` + cst.URL
+	tes, _, doneFns, err := ZipkinExportersFromYAML([]byte(config))
+	if err != nil {
 		t.Fatalf("Failed to parse out exporters: %v", err)
 	}
 	defer func() {

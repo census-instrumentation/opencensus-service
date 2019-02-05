@@ -66,7 +66,6 @@ func BenchmarkGenBucketID(b *testing.B) {
 }
 
 func TestGenBucketID(t *testing.T) {
-
 	testCases := []struct {
 		name   string
 		match  bool

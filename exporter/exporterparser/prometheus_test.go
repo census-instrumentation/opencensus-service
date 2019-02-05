@@ -15,18 +15,15 @@
 package exporterparser
 
 import (
-	"bytes"
 	"context"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/spf13/viper"
-
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 func TestPrometheusExporter(t *testing.T) {
@@ -36,13 +33,14 @@ func TestPrometheusExporter(t *testing.T) {
 	}{
 		{
 			config: `
-prometheus:
-    namespace: "test"
-    const_labels: {
-        "foo": "bar",
-        "code": "one"
-    }
-    address: ":8999"
+exporters:
+    prometheus:
+        namespace: "test"
+        const_labels: {
+            "foo": "bar",
+            "code": "one"
+        }
+        address: ":8999"
 `,
 		},
 	}
@@ -50,10 +48,7 @@ prometheus:
 	for i, tt := range tests {
 		// Run it a few times to ensure that shutdowns exit cleanly.
 		for j := 0; j < 3; j++ {
-			v := viper.New()
-			v.SetConfigType("yaml")
-			v.ReadConfig(bytes.NewBuffer([]byte(tt.config)))
-			tes, mes, doneFns, err := PrometheusExportersFromViper(v)
+			tes, mes, doneFns, err := PrometheusExportersFromYAML([]byte(tt.config))
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 					t.Errorf("#%d iteration #%d: Unexpected error: %v Wanted: %v", i, j, err, tt.wantErr)
@@ -79,11 +74,10 @@ prometheus:
 
 func TestPrometheusExporter_nilDoesntCauseCrash(t *testing.T) {
 	config := []byte(`
-prometheus:`)
-	v := viper.New()
-	v.SetConfigType("yaml")
-	v.ReadConfig(bytes.NewBuffer(config))
-	tes, mes, doneFns, err := PrometheusExportersFromViper(v)
+exporters:
+    prometheus:`)
+
+	tes, mes, doneFns, err := PrometheusExportersFromYAML(config)
 	if err != nil {
 		t.Errorf("Unexpected parse error: %v", err)
 	}
@@ -100,19 +94,17 @@ prometheus:`)
 
 func TestPrometheusExporter_endToEnd(t *testing.T) {
 	config := []byte(`
-prometheus:
-    namespace: "test"
-    const_labels: {
-        "foo": "bar",
-        "code": "one"
-    }
-    address: ":7777"
+exporters:
+    prometheus:
+        namespace: "test"
+        const_labels: {
+            "foo": "bar",
+            "code": "one"
+        }
+        address: ":7777"
 `)
 
-	v := viper.New()
-	v.SetConfigType("yaml")
-	v.ReadConfig(bytes.NewBuffer(config))
-	_, mes, doneFns, err := PrometheusExportersFromViper(v)
+	_, mes, doneFns, err := PrometheusExportersFromYAML(config)
 	defer func() {
 		for _, doneFn := range doneFns {
 			doneFn()

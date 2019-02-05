@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"contrib.go.opencensus.io/exporter/ocagent"
-	"github.com/spf13/viper"
 
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
@@ -30,8 +29,8 @@ import (
 )
 
 type opencensusConfig struct {
-	Endpoint    string `mapstructure:"endpoint,omitempty"`
-	Compression string `mapstructure:"compression,omitempty"`
+	Endpoint    string `yaml:"endpoint,omitempty"`
+	Compression string `yaml:"compression,omitempty"`
 	// TODO: add insecure, service name options.
 }
 
@@ -41,16 +40,21 @@ type ocagentExporter struct {
 
 var _ exporter.TraceExporter = (*ocagentExporter)(nil)
 
-// OpenCensusTraceExportersFromViper unmarshals the viper and returns an exporter.TraceExporter targeting
+// OpenCensusTraceExportersFromYAML parses the yaml bytes and returns an exporter.TraceExporter targeting
 // OpenCensus Agent/Collector according to the configuration settings.
-func OpenCensusTraceExportersFromViper(v *viper.Viper) (tes []exporter.TraceExporter, mes []exporter.MetricsExporter, doneFns []func() error, err error) {
+func OpenCensusTraceExportersFromYAML(config []byte) (tes []exporter.TraceExporter, mes []exporter.MetricsExporter, doneFns []func() error, err error) {
 	var cfg struct {
-		OpenCensus *opencensusConfig `mapstructure:"opencensus"`
+		Exporters *struct {
+			OpenCensus *opencensusConfig `yaml:"opencensus"`
+		} `yaml:"exporters"`
 	}
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err := yamlUnmarshal(config, &cfg); err != nil {
 		return nil, nil, nil, err
 	}
-	ocac := cfg.OpenCensus
+	if cfg.Exporters == nil {
+		return nil, nil, nil, nil
+	}
+	ocac := cfg.Exporters.OpenCensus
 	if ocac == nil {
 		return nil, nil, nil, nil
 	}

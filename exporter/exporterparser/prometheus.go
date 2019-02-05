@@ -23,7 +23,6 @@ import (
 
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/exporter"
-	"github.com/spf13/viper"
 
 	// TODO: once this repository has been transferred to the
 	// official census-ecosystem location, update this import path.
@@ -34,32 +33,34 @@ import (
 
 type prometheusConfig struct {
 	// Namespace if set, exports metrics under the provided value.
-	Namespace string `mapstructure:"namespace"`
+	Namespace string `yaml:"namespace"`
 
 	// ConstLabels are values that are applied for every exported metric.
-	ConstLabels prometheus_golang.Labels `mapstructure:"const_labels"`
+	ConstLabels prometheus_golang.Labels `yaml:"const_labels"`
 
 	// The address on which the Prometheus scrape handler will be run on.
-	Address string `mapstructure:"address"`
+	Address string `yaml:"address"`
 }
 
 var errBlankPrometheusAddress = errors.New("expecting a non-blank address to run the Prometheus metrics handler")
 
-// PrometheusExportersFromViper unmarshals the viper and returns exporter.MetricsExporters
+// PrometheusExportersFromYAML parses the yaml bytes and returns exporter.MetricsExporters
 // targeting Prometheus according to the configuration settings.
 // It allows HTTP clients to scrape it on endpoint path "/metrics".
-func PrometheusExportersFromViper(v *viper.Viper) (tes []exporter.TraceExporter, mes []exporter.MetricsExporter, doneFns []func() error, err error) {
+func PrometheusExportersFromYAML(config []byte) (tes []exporter.TraceExporter, mes []exporter.MetricsExporter, doneFns []func() error, err error) {
 	var cfg struct {
-		Prometheus *prometheusConfig `mapstructure:"prometheus"`
+		Exporters *struct {
+			Prometheus *prometheusConfig `yaml:"prometheus"`
+		} `yaml:"exporters"`
 	}
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err := yamlUnmarshal(config, &cfg); err != nil {
 		return nil, nil, nil, err
 	}
-	if cfg.Prometheus == nil {
+	if cfg.Exporters == nil || cfg.Exporters.Prometheus == nil {
 		return nil, nil, nil, nil
 	}
 
-	pcfg := cfg.Prometheus
+	pcfg := cfg.Exporters.Prometheus
 	addr := strings.TrimSpace(pcfg.Address)
 	if addr == "" {
 		err = errBlankPrometheusAddress
