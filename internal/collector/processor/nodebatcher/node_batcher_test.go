@@ -259,9 +259,9 @@ func BenchmarkConcurrentBatchAdds(b *testing.B) {
 			ServiceInfo: &commonpb.ServiceInfo{Name: "svc"},
 		},
 		Spans: []*tracepb.Span{
-			&tracepb.Span{Name: getTestSpanName(0, 1)},
-			&tracepb.Span{Name: getTestSpanName(0, 2)},
-			&tracepb.Span{Name: getTestSpanName(0, 3)},
+			{Name: getTestSpanName(0, 1)},
+			{Name: getTestSpanName(0, 2)},
+			{Name: getTestSpanName(0, 3)},
 		},
 	}
 
