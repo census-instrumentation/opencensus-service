@@ -120,15 +120,17 @@ func (b *batcher) genBucketID(node *commonpb.Node, resource *resourcepb.Resource
 		nodeKey, err := proto.Marshal(node)
 		if err != nil {
 			b.logger.Error("Error marshalling node to batcher mapkey.", zap.Error(err))
+		} else {
+			h.Write(nodeKey)
 		}
-		h.Write(nodeKey)
 	}
 	if resource != nil {
 		resourceKey, err := proto.Marshal(resource) // TODO: remove once resource is in span
 		if err != nil {
 			b.logger.Error("Error marshalling resource to batcher mapkey.", zap.Error(err))
+		} else {
+			h.Write(resourceKey)
 		}
-		h.Write(resourceKey)
 	}
 	return fmt.Sprintf("%x", h.Sum([]byte(spanFormat)))
 }
