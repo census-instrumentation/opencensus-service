@@ -190,7 +190,7 @@ func newNodeBucket(
 	nb := &nodeBatcher{
 		timeout:       timeout,
 		sendBatchSize: sendBatchSize,
-		currBatch:     newBatch(initBatchCap, sendBatchSize),
+		currBatch:     newBatch(initialBatchCapacity, sendBatchSize),
 		node:          node,
 		resource:      resource,
 		spanFormat:    spanFormat,
@@ -226,7 +226,7 @@ func (nb *nodeBatcher) add(spans []*tracepb.Span) {
 		if cutBatch {
 			stats.RecordWithTags(context.Background(), statsTags, statBatchSizeTriggerSend.M(1))
 		} else {
-			stats.RecordWithTags(context.Background(), statsTags, statAddOnDeadNodeBucket.M(1))
+			stats.RecordWithTags(context.Background(), statsTags, statBatchOnDeadNode.M(1))
 		}
 		// Shoot off event so that we don't block this add on other adds
 		go nb.cutBatch(b)

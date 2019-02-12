@@ -72,7 +72,7 @@ func MetricViews(level telemetry.Level) []*view.View {
 		Aggregation: view.Count(),
 	}
 
-	countBatchingBySizeTriggerView := &view.View{
+	countBatchSizeTriggerSendView := &view.View{
 		Name:        statBatchSizeTriggerSend.Name(),
 		Measure:     statBatchSizeTriggerSend,
 		Description: statBatchSizeTriggerSend.Description(),
