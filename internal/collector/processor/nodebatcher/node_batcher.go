@@ -164,7 +164,7 @@ func (b *batcher) removeBucket(bucketID string) {
 }
 
 type nodeBatcher struct {
-	// Keep aligned for 32bit systems
+	// Please keep this field as the first element to ensure alignment for atomics on 32-bit systems
 	lastSent int64
 
 	timeout       time.Duration
