@@ -28,10 +28,9 @@ func TestReceiversEnabledByPresenceWithDefaultSettings(t *testing.T) {
 		t.Fatalf("Failed to load viper from test file: %v", err)
 	}
 
-	jaegerEnabled, opencensusEnabled, zipkinEnabled, scribeEnabled :=
-		JaegerReceiverEnabled(v), OpenCensusReceiverEnabled(v), ZipkinReceiverEnabled(v), ZipkinScribeReceiverEnabled(v)
-	if !jaegerEnabled || !opencensusEnabled || !zipkinEnabled || !scribeEnabled {
-		t.Fatalf("Some of the expected receivers were not enabled j:%v oc:%v z:%v scribe:%v", jaegerEnabled, opencensusEnabled, zipkinEnabled, scribeEnabled)
+	jaegerEnabled, opencensusEnabled, zipkinEnabled := JaegerReceiverEnabled(v), OpenCensusReceiverEnabled(v), ZipkinReceiverEnabled(v)
+	if !jaegerEnabled || !opencensusEnabled || !zipkinEnabled {
+		t.Fatalf("Some of the expected receivers were not enabled j:%v oc:%v z:%v", jaegerEnabled, opencensusEnabled, zipkinEnabled)
 	}
 
 	wj := NewDefaultJaegerReceiverCfg()
@@ -57,14 +56,6 @@ func TestReceiversEnabledByPresenceWithDefaultSettings(t *testing.T) {
 	} else if !reflect.DeepEqual(wz, gz) {
 		t.Errorf("Incorrect config for Zipkin receiver, want %v got %v", wz, gz)
 	}
-
-	wscrb := NewDefaultZipkinScribeReceiverCfg()
-	gscrb, err := wscrb.InitFromViper(v)
-	if err != nil {
-		t.Errorf("Failed to InitFromViper for Zipkin Scribe receiver: %v", err)
-	} else if !reflect.DeepEqual(wscrb, gscrb) {
-		t.Errorf("Incorrect config for Zipkin Scribe receiver, want %v got %v", wscrb, gscrb)
-	}
 }
 
 func TestReceiversDisabledByPresenceWithDefaultSettings(t *testing.T) {
@@ -73,10 +64,9 @@ func TestReceiversDisabledByPresenceWithDefaultSettings(t *testing.T) {
 		t.Fatalf("Failed to load viper from test file: %v", err)
 	}
 
-	jaegerEnabled, opencensusEnabled, zipkinEnabled, scribeEnabled :=
-		JaegerReceiverEnabled(v), OpenCensusReceiverEnabled(v), ZipkinReceiverEnabled(v), ZipkinScribeReceiverEnabled(v)
+	jaegerEnabled, opencensusEnabled, zipkinEnabled := JaegerReceiverEnabled(v), OpenCensusReceiverEnabled(v), ZipkinReceiverEnabled(v)
 	if jaegerEnabled || opencensusEnabled || zipkinEnabled {
-		t.Fatalf("Not all receivers were disabled j:%v oc:%v z:%v scribe:%v", jaegerEnabled, opencensusEnabled, zipkinEnabled, scribeEnabled)
+		t.Fatalf("Not all receivers were disabled j:%v oc:%v z:%v", jaegerEnabled, opencensusEnabled, zipkinEnabled)
 	}
 }
 
