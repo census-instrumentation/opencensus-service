@@ -28,9 +28,9 @@ var (
 	statNodesAddedToBatches     = stats.Int64("nodes_added_to_batches", "Count of nodes that are being batched.", stats.UnitDimensionless)
 	statNodesRemovedFromBatches = stats.Int64("nodes_removed_from_batches", "Number of nodes that have been removed from batching.", stats.UnitDimensionless)
 
-	statSendByBatchSize     = stats.Int64("batch_size_trigger_send", "Number of times the batch was sent due to a size trigger", stats.UnitDimensionless)
-	statSendByTimeout       = stats.Int64("timeout_trigger_send", "Number of times the batch was sent due to a timeout trigger", stats.UnitDimensionless)
-	statAddOnDeadNodeBucket = stats.Int64("removed_node_send", "Number of times the batch was sent due to spans being added for a no longer active node", stats.UnitDimensionless)
+	statBatchSizeTriggerSend = stats.Int64("batch_size_trigger_send", "Number of times the batch was sent due to a size trigger", stats.UnitDimensionless)
+	statTimeoutTriggerSend   = stats.Int64("timeout_trigger_send", "Number of times the batch was sent due to a timeout trigger", stats.UnitDimensionless)
+	statBatchOnDeadNode      = stats.Int64("removed_node_send", "Number of times the batch was sent due to spans being added for a no longer active node", stats.UnitDimensionless)
 )
 
 // MetricViews returns the metrics views related to batching
@@ -72,26 +72,26 @@ func MetricViews(level telemetry.Level) []*view.View {
 		Aggregation: view.Count(),
 	}
 
-	countSendByBatchSizeView := &view.View{
-		Name:        statSendByBatchSize.Name(),
-		Measure:     statSendByBatchSize,
-		Description: statSendByBatchSize.Description(),
+	countBatchingBySizeTriggerView := &view.View{
+		Name:        statBatchSizeTriggerSend.Name(),
+		Measure:     statBatchSizeTriggerSend,
+		Description: statBatchSizeTriggerSend.Description(),
 		TagKeys:     tagKeys,
 		Aggregation: view.Count(),
 	}
 
-	countSendByTimeoutView := &view.View{
-		Name:        statSendByTimeout.Name(),
-		Measure:     statSendByTimeout,
-		Description: statSendByTimeout.Description(),
+	countTimeoutTriggerSendView := &view.View{
+		Name:        statTimeoutTriggerSend.Name(),
+		Measure:     statTimeoutTriggerSend,
+		Description: statTimeoutTriggerSend.Description(),
 		TagKeys:     tagKeys,
 		Aggregation: view.Count(),
 	}
 
-	countSendByDeadNode := &view.View{
-		Name:        statAddOnDeadNodeBucket.Name(),
-		Measure:     statAddOnDeadNodeBucket,
-		Description: statAddOnDeadNodeBucket.Description(),
+	countBatchOnDeadNode := &view.View{
+		Name:        statBatchOnDeadNode.Name(),
+		Measure:     statBatchOnDeadNode,
+		Description: statBatchOnDeadNode.Description(),
 		TagKeys:     tagKeys,
 		Aggregation: view.Count(),
 	}
@@ -100,8 +100,8 @@ func MetricViews(level telemetry.Level) []*view.View {
 		batchSizeView,
 		nodesAddedToBatchesView,
 		nodesRemovedFromBatchesView,
-		countSendByBatchSizeView,
-		countSendByTimeoutView,
-		countSendByDeadNode,
+		countBatchSizeTriggerSendView,
+		countTimeoutTriggerSendView,
+		countBatchOnDeadNode,
 	}
 }

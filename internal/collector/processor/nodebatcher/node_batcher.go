@@ -37,7 +37,7 @@ import (
 )
 
 const (
-	initBatchCap             = uint32(1024)
+	initialBatchCapacity     = uint32(1024)
 	nodeDead                 = uint32(1)
 	batchClosed              = uint32(1)
 	tickerPendingNodesBuffer = 16
@@ -224,7 +224,7 @@ func (nb *nodeBatcher) add(spans []*tracepb.Span) {
 			nb.parent.name, processor.ServiceNameForNode(nb.node), nb.spanFormat,
 		)
 		if cutBatch {
-			stats.RecordWithTags(context.Background(), statsTags, statSendByBatchSize.M(1))
+			stats.RecordWithTags(context.Background(), statsTags, statBatchSizeTriggerSend.M(1))
 		} else {
 			stats.RecordWithTags(context.Background(), statsTags, statAddOnDeadNodeBucket.M(1))
 		}
@@ -336,7 +336,7 @@ func (bt *bucketTicker) start() {
 						statsTags := processor.StatsTagsForBatch(
 							nb.parent.name, processor.ServiceNameForNode(nb.node), nb.spanFormat,
 						)
-						stats.RecordWithTags(context.Background(), statsTags, statSendByTimeout.M(1))
+						stats.RecordWithTags(context.Background(), statsTags, statTimeoutTriggerSend.M(1))
 						nb.cutBatch(b)
 					} else {
 						cyclesUntouched := atomic.AddUint32(&nb.cyclesUntouched, 1)
