@@ -24,16 +24,16 @@ import (
 )
 
 var (
-	statBatchSize         = stats.Int64("batch_size", "Size of batches sent from the batcher (in span)", stats.UnitDimensionless)
-	statAddNodeBatches    = stats.Int64("add_node_batches", "Count of nodes that have been added to batching.", stats.UnitDimensionless)
-	statRemoveNodeBatches = stats.Int64("remove_node_batches", "Number of nodes that have been removed from batching.", stats.UnitDimensionless)
+	statBatchSize               = stats.Int64("batch_size", "Size of batches sent from the batcher (in span)", stats.UnitDimensionless)
+	statNodesAddedToBatches     = stats.Int64("nodes_added_to_batches", "Count of nodes that are being batched.", stats.UnitDimensionless)
+	statNodesRemovedFromBatches = stats.Int64("nodes_removed_from_batches", "Number of nodes that have been removed from batching.", stats.UnitDimensionless)
 
-	statSendByBatchSize     = stats.Int64("batch_size_trigger_send", "Number of times the batch was sent due to a size trigger", stats.UnitDimensionless)
-	statSendByTimeout       = stats.Int64("timeout_trigger_send", "Number of times the batch was sent due to a timeout trigger", stats.UnitDimensionless)
-	statAddOnDeadNodeBucket = stats.Int64("removed_node_send", "Number of times the batch was sent due to spans being added for a no longer active node", stats.UnitDimensionless)
+	statBatchSizeTriggerSend = stats.Int64("batch_size_trigger_send", "Number of times the batch was sent due to a size trigger", stats.UnitDimensionless)
+	statTimeoutTriggerSend   = stats.Int64("timeout_trigger_send", "Number of times the batch was sent due to a timeout trigger", stats.UnitDimensionless)
+	statBatchOnDeadNode      = stats.Int64("removed_node_send", "Number of times the batch was sent due to spans being added for a no longer active node", stats.UnitDimensionless)
 )
 
-// MetricsViews returns the metrics views related to batching
+// MetricViews returns the metrics views related to batching
 func MetricViews(level telemetry.Level) []*view.View {
 	if level == telemetry.None {
 		return nil
@@ -56,52 +56,52 @@ func MetricViews(level telemetry.Level) []*view.View {
 		Aggregation: batchSizeAggregation,
 	}
 
-	addNodeBatchesView := &view.View{
-		Name:        statAddNodeBatches.Name(),
-		Measure:     statAddNodeBatches,
-		Description: statAddNodeBatches.Description(),
+	nodesAddedToBatchesView := &view.View{
+		Name:        statNodesAddedToBatches.Name(),
+		Measure:     statNodesAddedToBatches,
+		Description: statNodesAddedToBatches.Description(),
 		TagKeys:     exporterTagKeys,
 		Aggregation: view.Count(),
 	}
 
-	removeNodeBatchesView := &view.View{
-		Name:        statRemoveNodeBatches.Name(),
-		Measure:     statRemoveNodeBatches,
-		Description: statRemoveNodeBatches.Description(),
+	nodesRemovedFromBatchesView := &view.View{
+		Name:        statNodesRemovedFromBatches.Name(),
+		Measure:     statNodesRemovedFromBatches,
+		Description: statNodesRemovedFromBatches.Description(),
 		TagKeys:     exporterTagKeys,
 		Aggregation: view.Count(),
 	}
 
-	countSendByBatchSizeView := &view.View{
-		Name:        statSendByBatchSize.Name(),
-		Measure:     statSendByBatchSize,
-		Description: statSendByBatchSize.Description(),
+	countBatchSizeTriggerSendView := &view.View{
+		Name:        statBatchSizeTriggerSend.Name(),
+		Measure:     statBatchSizeTriggerSend,
+		Description: statBatchSizeTriggerSend.Description(),
 		TagKeys:     tagKeys,
 		Aggregation: view.Count(),
 	}
 
-	countSendByTimeoutView := &view.View{
-		Name:        statSendByTimeout.Name(),
-		Measure:     statSendByTimeout,
-		Description: statSendByTimeout.Description(),
+	countTimeoutTriggerSendView := &view.View{
+		Name:        statTimeoutTriggerSend.Name(),
+		Measure:     statTimeoutTriggerSend,
+		Description: statTimeoutTriggerSend.Description(),
 		TagKeys:     tagKeys,
 		Aggregation: view.Count(),
 	}
 
-	countSendByDeadNode := &view.View{
-		Name:        statAddOnDeadNodeBucket.Name(),
-		Measure:     statAddOnDeadNodeBucket,
-		Description: statAddOnDeadNodeBucket.Description(),
+	countBatchOnDeadNode := &view.View{
+		Name:        statBatchOnDeadNode.Name(),
+		Measure:     statBatchOnDeadNode,
+		Description: statBatchOnDeadNode.Description(),
 		TagKeys:     tagKeys,
 		Aggregation: view.Count(),
 	}
 
 	return []*view.View{
 		batchSizeView,
-		addNodeBatchesView,
-		removeNodeBatchesView,
-		countSendByBatchSizeView,
-		countSendByTimeoutView,
-		countSendByDeadNode,
+		nodesAddedToBatchesView,
+		nodesRemovedFromBatchesView,
+		countBatchSizeTriggerSendView,
+		countTimeoutTriggerSendView,
+		countBatchOnDeadNode,
 	}
 }

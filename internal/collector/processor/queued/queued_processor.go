@@ -211,8 +211,8 @@ var (
 	statQueueLength = stats.Int64("queue_length", "Current length of the queue (in batches)", stats.UnitDimensionless)
 )
 
-// QueuedProcessorMetricViews return the metrics views according to given telemetry level.
-func QueuedProcessorMetricViews(level telemetry.Level) []*view.View {
+// MetricViews return the metrics views according to given telemetry level.
+func MetricViews(level telemetry.Level) []*view.View {
 	if level == telemetry.None {
 		return nil
 	}

@@ -26,23 +26,23 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/census-instrumentation/opencensus-service/translator/trace"
-
-	"go.opencensus.io/trace"
-
-	zipkinmodel "github.com/openzipkin/zipkin-go/model"
-	zipkinproto "github.com/openzipkin/zipkin-go/proto/v2"
-
+	"github.com/apache/thrift/lib/go/thrift"
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
+	"github.com/jaegertracing/jaeger/thrift-gen/zipkincore"
+	zipkinmodel "github.com/openzipkin/zipkin-go/model"
+	zipkinproto "github.com/openzipkin/zipkin-go/proto/v2"
+	"go.opencensus.io/trace"
 
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/internal"
 	"github.com/census-instrumentation/opencensus-service/receiver"
+	"github.com/census-instrumentation/opencensus-service/translator/trace"
 )
 
 // ZipkinReceiver type is used to handle spans received in the Zipkin format.
@@ -113,8 +113,44 @@ func (zr *ZipkinReceiver) StartTraceReception(ctx context.Context, spanSink rece
 }
 
 // v1ToTraceSpans parses Zipkin v1 JSON traces and converts them to OpenCensus Proto spans.
-func (zr *ZipkinReceiver) v1ToTraceSpans(blob []byte) (reqs []*agenttracepb.ExportTraceServiceRequest, err error) {
+func (zr *ZipkinReceiver) v1ToTraceSpans(blob []byte, hdr http.Header) (reqs []*agenttracepb.ExportTraceServiceRequest, err error) {
+	if hdr.Get("Content-Type") == "application/x-thrift" {
+		zSpans, err := deserializeThrift(blob)
+		if err != nil {
+			return nil, err
+		}
+
+		return tracetranslator.ZipkinV1ThriftBatchToOCProto(zSpans)
+	}
 	return tracetranslator.ZipkinV1JSONBatchToOCProto(blob)
+}
+
+// deserializeThrift decodes Thrift bytes to a list of spans.
+// This code comes from jaegertracing/jaeger, ideally we should have imported
+// it but this was creating many conflicts so brought the code to here.
+// https://github.com/jaegertracing/jaeger/blob/6bc0c122bfca8e737a747826ae60a22a306d7019/model/converter/thrift/zipkin/deserialize.go#L36
+func deserializeThrift(b []byte) ([]*zipkincore.Span, error) {
+	buffer := thrift.NewTMemoryBuffer()
+	buffer.Write(b)
+
+	transport := thrift.NewTBinaryProtocolTransport(buffer)
+	_, size, err := transport.ReadListBegin() // Ignore the returned element type
+	if err != nil {
+		return nil, err
+	}
+
+	// We don't depend on the size returned by ReadListBegin to preallocate the array because it
+	// sometimes returns a nil error on bad input and provides an unreasonably large int for size
+	var spans []*zipkincore.Span
+	for i := 0; i < size; i++ {
+		zs := &zipkincore.Span{}
+		if err = zs.Read(transport); err != nil {
+			return nil, err
+		}
+		spans = append(spans, zs)
+	}
+
+	return spans, nil
 }
 
 // v2ToTraceSpans parses Zipkin v2 JSON or Protobuf traces and converts them to OpenCensus Proto spans.
@@ -253,7 +289,7 @@ func (zr *ZipkinReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var receiverNameTag string
 	if asZipkinv1 {
-		ereqs, err = zr.v1ToTraceSpans(slurp)
+		ereqs, err = zr.v1ToTraceSpans(slurp, r.Header)
 		receiverNameTag = "zipkinV1"
 	} else {
 		ereqs, err = zr.v2ToTraceSpans(slurp, r.Header)
@@ -357,7 +393,7 @@ func nodeFromZipkinEndpoints(zs *zipkinmodel.SpanModel) *commonpb.Node {
 		node.ServiceInfo = &commonpb.ServiceInfo{
 			Name: lep.ServiceName,
 		}
-		node.Attributes = zipkinEndpointIntoAttributes(lep, node.Attributes, func(s string) string { return s })
+		node.Attributes = zipkinEndpointIntoAttributes(lep, node.Attributes, isLocalEndpoint)
 	}
 
 	// Retrieve and make use of the remote endpoint
@@ -369,30 +405,44 @@ func nodeFromZipkinEndpoints(zs *zipkinmodel.SpanModel) *commonpb.Node {
 		//      "zipkin.remoteEndpoint.port": "9000"
 		//      "zipkin.remoteEndpoint.serviceName": "backend",
 		// }
-		node.Attributes = zipkinEndpointIntoAttributes(rep, node.Attributes, func(s string) string {
-			return "zipkin.remoteEndpoint." + s
-		})
+		node.Attributes = zipkinEndpointIntoAttributes(rep, node.Attributes, isRemoteEndpoint)
 	}
 	return node
 }
 
+type zipkinDirection bool
+
+const (
+	isLocalEndpoint  zipkinDirection = true
+	isRemoteEndpoint zipkinDirection = false
+)
+
 var blankIP net.IP
 
-func zipkinEndpointIntoAttributes(ep *zipkinmodel.Endpoint, into map[string]string, prefixFunc func(string) string) map[string]string {
+func zipkinEndpointIntoAttributes(ep *zipkinmodel.Endpoint, into map[string]string, endpointType zipkinDirection) map[string]string {
 	if into == nil {
 		into = make(map[string]string)
 	}
+
+	var ipv4Key, ipv6Key, portKey, serviceNameKey string
+	if endpointType == isLocalEndpoint {
+		ipv4Key, ipv6Key = "ipv4", "ipv6"
+		portKey, serviceNameKey = "port", "serviceName"
+	} else {
+		ipv4Key, ipv6Key = "zipkin.remoteEndpoint.ipv4", "zipkin.remoteEndpoint.ipv6"
+		portKey, serviceNameKey = "zipkin.remoteEndpoint.port", "zipkin.remoteEndpoint.serviceName"
+	}
 	if ep.IPv4 != nil && !ep.IPv4.Equal(blankIP) {
-		into[prefixFunc("ipv4")] = ep.IPv4.String()
+		into[ipv4Key] = ep.IPv4.String()
 	}
 	if ep.IPv6 != nil && !ep.IPv6.Equal(blankIP) {
-		into[prefixFunc("ipv6")] = ep.IPv6.String()
+		into[ipv6Key] = ep.IPv6.String()
 	}
 	if ep.Port > 0 {
-		into[prefixFunc("port")] = fmt.Sprintf("%d", ep.Port)
+		into[portKey] = strconv.Itoa(int(ep.Port))
 	}
 	if serviceName := ep.ServiceName; serviceName != "" {
-		into[prefixFunc("serviceName")] = serviceName
+		into[serviceNameKey] = serviceName
 	}
 	return into
 }

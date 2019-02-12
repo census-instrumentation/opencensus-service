@@ -34,7 +34,7 @@ type bucketIDTestInput struct {
 
 func BenchmarkGenBucketID(b *testing.B) {
 	sender := newTestSender()
-	batcher := NewBatcher("test", zap.NewNop(), sender)
+	batcher := NewBatcher("test", zap.NewNop(), sender).(*batcher)
 	gens := map[string]func(*commonpb.Node, *resourcepb.Resource, string) string{
 		"composite-md5": batcher.genBucketID,
 	}
@@ -66,7 +66,6 @@ func BenchmarkGenBucketID(b *testing.B) {
 }
 
 func TestGenBucketID(t *testing.T) {
-
 	testCases := []struct {
 		name   string
 		match  bool
@@ -123,7 +122,7 @@ func TestGenBucketID(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			sender := newTestSender()
-			batcher := NewBatcher("test", zap.NewNop(), sender)
+			batcher := NewBatcher("test", zap.NewNop(), sender).(*batcher)
 
 			key1 := batcher.genBucketID(tc.input1.node, tc.input1.resource, tc.input1.format)
 			key2 := batcher.genBucketID(tc.input2.node, tc.input2.resource, tc.input2.format)
@@ -137,7 +136,7 @@ func TestGenBucketID(t *testing.T) {
 
 func TestConcurrentNodeAdds(t *testing.T) {
 	sender := newTestSender()
-	batcher := NewBatcher("test", zap.NewNop(), sender, WithTimeout(250*time.Millisecond))
+	batcher := NewBatcher("test", zap.NewNop(), sender, WithTimeout(250*time.Millisecond)).(*batcher)
 	requestCount := 2000
 	spansPerRequest := 3
 	for requestNum := 0; requestNum < requestCount; requestNum++ {
@@ -185,7 +184,7 @@ func TestBucketRemove(t *testing.T) {
 		WithTimeout(50*time.Millisecond),
 		WithTickTime(tickTime),
 		WithRemoveAfterTicks(removeAfterTicks),
-	)
+	).(*batcher)
 	spansPerRequest := 3
 	spans := make([]*tracepb.Span, 0, spansPerRequest)
 	for spanIndex := 0; spanIndex < spansPerRequest; spanIndex++ {
@@ -218,7 +217,7 @@ func TestBucketRemove(t *testing.T) {
 
 func TestConcurrentBatchAdds(t *testing.T) {
 	sender := newTestSender()
-	batcher := NewBatcher("test", zap.NewNop(), sender, WithSendBatchSize(128))
+	batcher := NewBatcher("test", zap.NewNop(), sender, WithSendBatchSize(128)).(*batcher)
 	requestCount := 10000
 	spansPerRequest := 3
 	for requestNum := 0; requestNum < requestCount; requestNum++ {
@@ -254,15 +253,15 @@ func TestConcurrentBatchAdds(t *testing.T) {
 
 func BenchmarkConcurrentBatchAdds(b *testing.B) {
 	sender := newTestSender()
-	batcher := NewBatcher("test", zap.NewNop(), sender)
+	batcher := NewBatcher("test", zap.NewNop(), sender).(*batcher)
 	request := &agenttracepb.ExportTraceServiceRequest{
 		Node: &commonpb.Node{
 			ServiceInfo: &commonpb.ServiceInfo{Name: "svc"},
 		},
 		Spans: []*tracepb.Span{
-			&tracepb.Span{Name: getTestSpanName(0, 1)},
-			&tracepb.Span{Name: getTestSpanName(0, 2)},
-			&tracepb.Span{Name: getTestSpanName(0, 3)},
+			{Name: getTestSpanName(0, 1)},
+			{Name: getTestSpanName(0, 2)},
+			{Name: getTestSpanName(0, 3)},
 		},
 	}
 
@@ -313,7 +312,7 @@ func (ts *testSender) waitFor(spans int, timeout time.Duration) error {
 				return nil
 			}
 		case <-time.After(timeout):
-			return fmt.Errorf("Timed out waiting for spans.")
+			return fmt.Errorf("timed out waiting for spans")
 		}
 	}
 }

@@ -37,9 +37,9 @@ import (
 )
 
 const (
-	initBatchCap             = uint32(1024)
-	nodeDead                 = uint32(1)
-	batchClosed              = uint32(1)
+	initialBatchCapacity     = uint32(1024)
+	nodeStatusDead           = uint32(1)
+	batchStatusClosed        = uint32(1)
 	tickerPendingNodesBuffer = 16
 
 	defaultRemoveAfterCycles = uint32(10)
@@ -81,7 +81,7 @@ type batcher struct {
 var _ processor.SpanProcessor = (*batcher)(nil)
 
 // NewBatcher creates a new batcher that batches spans by node and resource
-func NewBatcher(name string, logger *zap.Logger, sender processor.SpanProcessor, opts ...Option) *batcher {
+func NewBatcher(name string, logger *zap.Logger, sender processor.SpanProcessor, opts ...Option) processor.SpanProcessor {
 	// Init with defaults
 	b := &batcher{
 		name:   name,
@@ -120,17 +120,19 @@ func (b *batcher) genBucketID(node *commonpb.Node, resource *resourcepb.Resource
 		nodeKey, err := proto.Marshal(node)
 		if err != nil {
 			b.logger.Error("Error marshalling node to batcher mapkey.", zap.Error(err))
+		} else {
+			h.Write(nodeKey)
 		}
-		h.Write(nodeKey)
 	}
 	if resource != nil {
 		resourceKey, err := proto.Marshal(resource) // TODO: remove once resource is in span
 		if err != nil {
 			b.logger.Error("Error marshalling resource to batcher mapkey.", zap.Error(err))
+		} else {
+			h.Write(resourceKey)
 		}
-		h.Write(resourceKey)
 	}
-	return fmt.Sprintf("%x", md5.Sum([]byte(spanFormat)))
+	return fmt.Sprintf("%x", h.Sum([]byte(spanFormat)))
 }
 
 func (b *batcher) getBucket(bucketID string) *nodeBatcher {
@@ -144,31 +146,33 @@ func (b *batcher) getBucket(bucketID string) *nodeBatcher {
 func (b *batcher) getOrAddBucket(
 	bucketID string, node *commonpb.Node, resource *resourcepb.Resource, spanFormat string,
 ) *nodeBatcher {
-	bucket, loaded := b.buckets.LoadOrStore(
+	bucket, alreadyStored := b.buckets.LoadOrStore(
 		bucketID,
 		newNodeBucket(b, node, resource, spanFormat, b.sendBatchSize, b.timeout, b.logger),
 	)
 	// Add this bucket to a random ticker
-	if !loaded {
-		stats.Record(context.Background(), statAddNodeBatches.M(1))
+	if !alreadyStored {
+		stats.Record(context.Background(), statNodesAddedToBatches.M(1))
 		b.tickers[rand.Intn(len(b.tickers))].add(bucketID)
 	}
 	return bucket.(*nodeBatcher)
 }
 
 func (b *batcher) removeBucket(bucketID string) {
-	stats.Record(context.Background(), statRemoveNodeBatches.M(1))
+	stats.Record(context.Background(), statNodesRemovedFromBatches.M(1))
 	b.buckets.Delete(bucketID)
 }
 
 type nodeBatcher struct {
+	// Please keep this field as the first element to ensure alignment for atomics on 32-bit systems
+	lastSent int64
+
 	timeout       time.Duration
 	sendBatchSize uint32
 	currBatch     *batch
 	node          *commonpb.Node
-	resource      *resourcepb.Resource // TODO(skaris) remove when resource added to span
+	resource      *resourcepb.Resource // TODO(skaris) remove when resource is added to span
 	spanFormat    string
-	lastSent      int64
 	logger        *zap.Logger
 
 	dead            uint32
@@ -188,7 +192,7 @@ func newNodeBucket(
 	nb := &nodeBatcher{
 		timeout:       timeout,
 		sendBatchSize: sendBatchSize,
-		currBatch:     newBatch(initBatchCap, sendBatchSize),
+		currBatch:     newBatch(initialBatchCapacity, sendBatchSize),
 		node:          node,
 		resource:      resource,
 		spanFormat:    spanFormat,
@@ -210,21 +214,21 @@ func (nb *nodeBatcher) add(spans []*tracepb.Span) {
 	// we need to cut
 	var b *batch
 	closed := true
-	cut := false
+	cutBatch := false
 	for closed {
 		// atomic.LoadPointer only takes unsafe.Pointer interfaces. We do not use unsafe
 		// to skirt around the golang type system.
 		b = (*batch)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&nb.currBatch))))
-		cut, closed = b.add(spans)
+		cutBatch, closed = b.add(spans)
 	}
-	if atomic.LoadUint32(&nb.dead) == nodeDead || cut {
+	if atomic.LoadUint32(&nb.dead) == nodeStatusDead || cutBatch {
 		statsTags := processor.StatsTagsForBatch(
 			nb.parent.name, processor.ServiceNameForNode(nb.node), nb.spanFormat,
 		)
-		if cut {
-			stats.RecordWithTags(context.Background(), statsTags, statSendByBatchSize.M(1))
+		if cutBatch {
+			stats.RecordWithTags(context.Background(), statsTags, statBatchSizeTriggerSend.M(1))
 		} else {
-			stats.RecordWithTags(context.Background(), statsTags, statAddOnDeadNodeBucket.M(1))
+			stats.RecordWithTags(context.Background(), statsTags, statBatchOnDeadNode.M(1))
 		}
 		// Shoot off event so that we don't block this add on other adds
 		go nb.cutBatch(b)
@@ -334,7 +338,7 @@ func (bt *bucketTicker) start() {
 						statsTags := processor.StatsTagsForBatch(
 							nb.parent.name, processor.ServiceNameForNode(nb.node), nb.spanFormat,
 						)
-						stats.RecordWithTags(context.Background(), statsTags, statSendByTimeout.M(1))
+						stats.RecordWithTags(context.Background(), statsTags, statTimeoutTriggerSend.M(1))
 						nb.cutBatch(b)
 					} else {
 						cyclesUntouched := atomic.AddUint32(&nb.cyclesUntouched, 1)
@@ -345,7 +349,7 @@ func (bt *bucketTicker) start() {
 							// so mark this nodeBatcher as dead (for adds that have already been called and are racing)
 							// and try to cut a final batch (just in case something was added in between
 							// the above if and marking this nodeBatcher as dead)
-							atomic.StoreUint32(&nb.dead, nodeDead)
+							atomic.StoreUint32(&nb.dead, nodeStatusDead)
 							// Reload batch in case `add` loaded a new batch that was then added to.
 							currBatchPtr := (*unsafe.Pointer)(unsafe.Pointer(&nb.currBatch))
 							b = (*batch)(atomic.LoadPointer(currBatchPtr))
@@ -394,13 +398,13 @@ func newBatch(initCapacity uint32, sendBatchSize uint32) *batch {
 }
 
 func (b *batch) add(spans []*tracepb.Span) (cut bool, closed bool) {
-	if atomic.LoadUint32(&b.closed) == batchClosed {
+	if atomic.LoadUint32(&b.closed) == batchStatusClosed {
 		return false, true
 	}
 	// Add to pending and then check closed again. If closed, just return and decrement pending.
 	atomic.AddInt32(&b.pending, int32(1))
 	defer atomic.AddInt32(&b.pending, int32(-1))
-	if atomic.LoadUint32(&b.closed) == batchClosed {
+	if atomic.LoadUint32(&b.closed) == batchStatusClosed {
 		return false, true
 	}
 	openTill := atomic.AddUint32(&b.nextEmptyItem, uint32(len(spans)))
@@ -418,7 +422,7 @@ func (b *batch) add(spans []*tracepb.Span) (cut bool, closed bool) {
 }
 
 func (b *batch) closeBatch() {
-	atomic.StoreUint32(&b.closed, batchClosed)
+	atomic.StoreUint32(&b.closed, batchStatusClosed)
 	for {
 		// We only need to wait for goroutines currently executing `add`
 		// We are safe from closing during a items mutation due to the second

@@ -40,7 +40,9 @@ import (
 	"github.com/census-instrumentation/opencensus-service/receiver"
 	"github.com/census-instrumentation/opencensus-service/receiver/jaeger"
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus"
+	promreceiver "github.com/census-instrumentation/opencensus-service/receiver/prometheus"
 	"github.com/census-instrumentation/opencensus-service/receiver/zipkin"
+	"github.com/census-instrumentation/opencensus-service/receiver/zipkin/scribe"
 )
 
 var configYAMLFile string
@@ -122,6 +124,14 @@ func runOCAgent() {
 		closeFns = append(closeFns, zipkinReceiverDoneFn)
 	}
 
+	if agentConfig.ZipkinScribeReceiverEnabled() {
+		zipkinScribeDoneFn, err := runZipkinScribeReceiver(agentConfig.ZipkinScribeConfig(), commonSpanSink)
+		if err != nil {
+			log.Fatal(err)
+		}
+		closeFns = append(closeFns, zipkinScribeDoneFn)
+	}
+
 	if agentConfig.JaegerReceiverEnabled() {
 		collectorHTTPPort, collectorThriftPort := agentConfig.JaegerReceiverPorts()
 		jaegerDoneFn, err := runJaegerReceiver(collectorThriftPort, collectorHTTPPort, commonSpanSink)
@@ -129,6 +139,15 @@ func runOCAgent() {
 			log.Fatal(err)
 		}
 		closeFns = append(closeFns, jaegerDoneFn)
+	}
+
+	// If the Prometheus receiver is enabled, then run it.
+	if agentConfig.PrometheusReceiverEnabled() {
+		promDoneFn, err := runPrometheusReceiver(agentConfig.PrometheusConfiguration(), commonMetricsSink)
+		if err != nil {
+			log.Fatal(err)
+		}
+		closeFns = append(closeFns, promDoneFn)
 	}
 
 	// Always cleanup finally
@@ -246,5 +265,36 @@ func runZipkinReceiver(addr string, sr receiver.TraceReceiverSink) (doneFn func(
 		return zi.StopTraceReception(context.Background())
 	}
 	log.Printf("Running Zipkin receiver with address %q", addr)
+	return doneFn, nil
+}
+
+func runZipkinScribeReceiver(config *config.ScribeReceiverConfig, sr receiver.TraceReceiverSink) (doneFn func() error, err error) {
+	zs, err := scribe.NewReceiver(config.Address, config.Port, config.Category)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create the Zipkin Scribe receiver: %v", err)
+	}
+
+	if err := zs.StartTraceReception(context.Background(), sr); err != nil {
+		return nil, fmt.Errorf("Cannot start Zipkin Scribe receiver with %v: %v", config, err)
+	}
+	doneFn = func() error {
+		return zs.StopTraceReception(context.Background())
+	}
+	log.Printf("Running Zipkin Scribe receiver with %+v", *config)
+	return doneFn, nil
+}
+
+func runPrometheusReceiver(promConfig *promreceiver.Configuration, mr receiver.MetricsReceiverSink) (doneFn func() error, err error) {
+	pmr, err := promreceiver.New(promConfig)
+	if err != nil {
+		return nil, err
+	}
+	if err := pmr.StartMetricsReception(context.Background(), mr); err != nil {
+		return nil, err
+	}
+	doneFn = func() error {
+		return pmr.StopMetricsReception(context.Background())
+	}
+	log.Print("Running Prometheus receiver")
 	return doneFn, nil
 }

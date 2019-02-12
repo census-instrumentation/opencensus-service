@@ -25,6 +25,7 @@ import (
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/jaegertracing/jaeger/thrift-gen/zipkincore"
 	"github.com/pkg/errors"
 )
 
@@ -88,17 +89,33 @@ func ZipkinV1JSONBatchToOCProto(blob []byte) ([]*agenttracepb.ExportTraceService
 		return nil, errors.WithMessage(err, msgZipkinV1JSONUnmarshalError)
 	}
 
-	// Service to batch maps the service name to the trace request with the corresponding node.
-	svcToBatch := make(map[string]*agenttracepb.ExportTraceServiceRequest)
+	ocSpansAndParsedAnnotations := make([]ocSpanAndParsedAnnotations, 0, len(zSpans))
 	for _, zSpan := range zSpans {
 		ocSpan, parsedAnnotations, err := zipkinV1ToOCSpan(zSpan)
 		if err != nil {
 			// error from internal package function, it already wraps the error to give better context.
 			return nil, err
 		}
+		ocSpansAndParsedAnnotations = append(ocSpansAndParsedAnnotations, ocSpanAndParsedAnnotations{
+			ocSpan:            ocSpan,
+			parsedAnnotations: parsedAnnotations,
+		})
+	}
 
-		req := getOrCreateNodeRequest(svcToBatch, parsedAnnotations.Endpoint)
-		req.Spans = append(req.Spans, ocSpan)
+	return zipkinToOCProtoBatch(ocSpansAndParsedAnnotations)
+}
+
+type ocSpanAndParsedAnnotations struct {
+	ocSpan            *tracepb.Span
+	parsedAnnotations *annotationParseResult
+}
+
+func zipkinToOCProtoBatch(ocSpansAndParsedAnnotations []ocSpanAndParsedAnnotations) ([]*agenttracepb.ExportTraceServiceRequest, error) {
+	// Service to batch maps the service name to the trace request with the corresponding node.
+	svcToBatch := make(map[string]*agenttracepb.ExportTraceServiceRequest)
+	for _, curr := range ocSpansAndParsedAnnotations {
+		req := getOrCreateNodeRequest(svcToBatch, curr.parsedAnnotations.Endpoint)
+		req.Spans = append(req.Spans, curr.ocSpan)
 	}
 
 	batches := make([]*agenttracepb.ExportTraceServiceRequest, 0, len(svcToBatch))
@@ -127,7 +144,10 @@ func zipkinV1ToOCSpan(zSpan *zipkinV1Span) (*tracepb.Span, *annotationParseResul
 	}
 
 	parsedAnnotations := parseZipkinV1Annotations(zSpan.Annotations)
-	attributes := zipkinV1BinAnnotationsToOCAttributes(zSpan.BinaryAnnotations)
+	attributes, localComponent := zipkinV1BinAnnotationsToOCAttributes(zSpan.BinaryAnnotations)
+	if parsedAnnotations.Endpoint.ServiceName == unknownServiceName && localComponent != "" {
+		parsedAnnotations.Endpoint.ServiceName = localComponent
+	}
 	var startTime, endTime *timestamp.Timestamp
 	if zSpan.Timestamp == 0 {
 		startTime = parsedAnnotations.EarlyAnnotationTime
@@ -155,13 +175,17 @@ func zipkinV1ToOCSpan(zSpan *zipkinV1Span) (*tracepb.Span, *annotationParseResul
 	return ocSpan, parsedAnnotations, nil
 }
 
-func zipkinV1BinAnnotationsToOCAttributes(binAnnotations []*binaryAnnotation) *tracepb.Span_Attributes {
+func zipkinV1BinAnnotationsToOCAttributes(binAnnotations []*binaryAnnotation) (attributes *tracepb.Span_Attributes, localComponent string) {
 	if len(binAnnotations) == 0 {
-		return nil
+		return nil, ""
 	}
 
+	var fallbackServiceName string
 	attributeMap := make(map[string]*tracepb.AttributeValue)
 	for _, binAnnotation := range binAnnotations {
+		if binAnnotation.Endpoint != nil && binAnnotation.Endpoint.ServiceName != "" {
+			fallbackServiceName = binAnnotation.Endpoint.ServiceName
+		}
 		pbAttrib := &tracepb.AttributeValue{}
 		if iValue, err := strconv.ParseInt(binAnnotation.Value, 10, 64); err == nil {
 			pbAttrib.Value = &tracepb.AttributeValue_IntValue{IntValue: iValue}
@@ -171,16 +195,29 @@ func zipkinV1BinAnnotationsToOCAttributes(binAnnotations []*binaryAnnotation) *t
 			// For now all else go to string
 			pbAttrib.Value = &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: binAnnotation.Value}}
 		}
-		attributeMap[binAnnotation.Key] = pbAttrib
+
+		key := binAnnotation.Key
+		if key == zipkincore.LOCAL_COMPONENT {
+			// TODO: (@pjanotti) add reference to OpenTracing and change related tags to use them
+			key = "component"
+			localComponent = binAnnotation.Value
+		}
+		attributeMap[key] = pbAttrib
 	}
 
 	if len(attributeMap) == 0 {
-		return nil
+		return nil, ""
 	}
 
-	return &tracepb.Span_Attributes{
+	if localComponent == "" && fallbackServiceName != "" {
+		localComponent = fallbackServiceName
+	}
+
+	attributes = &tracepb.Span_Attributes{
 		AttributeMap: attributeMap,
 	}
+
+	return attributes, localComponent
 }
 
 // annotationParseResult stores the results of examining the original annotations,
@@ -193,10 +230,10 @@ type annotationParseResult struct {
 	LateAnnotationTime  *timestamp.Timestamp
 }
 
-func parseZipkinV1Annotations(annotations []*annotation) *annotationParseResult {
-	// Unknown service name works both as a default value and a flag to indicate that a valid endpoint was found.
-	const unknownServiceName = "unknown-service"
+// Unknown service name works both as a default value and a flag to indicate that a valid endpoint was found.
+const unknownServiceName = "unknown-service"
 
+func parseZipkinV1Annotations(annotations []*annotation) *annotationParseResult {
 	// Zipkin V1 annotations have a timestamp so they fit well with OC TimeEvent
 	earlyAnnotationTimestamp := int64(math.MaxInt64)
 	lateAnnotationTimestamp := int64(math.MinInt64)
