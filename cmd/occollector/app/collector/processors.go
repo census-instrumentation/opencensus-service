@@ -64,7 +64,9 @@ func createExporters(v *viper.Viper, logger *zap.Logger) ([]func(), []exporter.T
 	return wrappedDoneFns, traceExporters, metricsExporters
 }
 
-func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProcessorCfg) ([]func(), processor.SpanProcessor, error) {
+func buildQueuedSpanProcessor(
+	logger *zap.Logger, opts *builder.QueuedSpanProcessorCfg,
+) (closeFns []func(), queuedSpanProcessor processor.SpanProcessor, err error) {
 	logger.Info("Constructing queue processor with name", zap.String("name", opts.Name))
 
 	// build span batch sender from configured options
@@ -97,11 +99,11 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 	}
 
 	if spanSender == nil {
-		logger.Fatal("Unrecognized sender type or no exporters configured")
+		logger.Fatal("Unrecognized sender type or no exporters configured", zap.String("SenderType", string(opts.SenderType)))
 	}
 
 	var batchingOptions []nodebatcher.Option
-	if opts.BatchingConfig.Enabled {
+	if opts.BatchingConfig.Enable {
 		cfg := opts.BatchingConfig
 		if cfg.Timeout != nil {
 			batchingOptions = append(batchingOptions, nodebatcher.WithTimeout(*cfg.Timeout))
@@ -129,7 +131,7 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 	}
 
 	// build queued span processor with underlying sender
-	queuedSpanProcessor := queued.NewQueuedSpanProcessor(
+	queuedSpanProcessor = queued.NewQueuedSpanProcessor(
 		spanSender,
 		queued.Options.WithLogger(logger),
 		queued.Options.WithName(opts.Name),
@@ -137,7 +139,7 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 		queued.Options.WithQueueSize(opts.QueueSize),
 		queued.Options.WithRetryOnProcessingFailures(opts.RetryOnFailure),
 		queued.Options.WithBackoffDelay(opts.BackoffDelay),
-		queued.Options.WithBatching(opts.BatchingConfig.Enabled),
+		queued.Options.WithBatching(opts.BatchingConfig.Enable),
 		queued.Options.WithBatchingOptions(batchingOptions...),
 	)
 	return nil, queuedSpanProcessor, nil

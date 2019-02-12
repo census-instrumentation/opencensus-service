@@ -146,20 +146,20 @@ func (b *batcher) getBucket(bucketID string) *nodeBatcher {
 func (b *batcher) getOrAddBucket(
 	bucketID string, node *commonpb.Node, resource *resourcepb.Resource, spanFormat string,
 ) *nodeBatcher {
-	bucket, loaded := b.buckets.LoadOrStore(
+	bucket, alreadyStored := b.buckets.LoadOrStore(
 		bucketID,
 		newNodeBucket(b, node, resource, spanFormat, b.sendBatchSize, b.timeout, b.logger),
 	)
 	// Add this bucket to a random ticker
-	if !loaded {
-		stats.Record(context.Background(), statAddNodeBatches.M(1))
+	if !alreadyStored {
+		stats.Record(context.Background(), statNodesAddedToBatches.M(1))
 		b.tickers[rand.Intn(len(b.tickers))].add(bucketID)
 	}
 	return bucket.(*nodeBatcher)
 }
 
 func (b *batcher) removeBucket(bucketID string) {
-	stats.Record(context.Background(), statRemoveNodeBatches.M(1))
+	stats.Record(context.Background(), statNodesRemovedFromBatches.M(1))
 	b.buckets.Delete(bucketID)
 }
 
@@ -168,7 +168,7 @@ type nodeBatcher struct {
 	sendBatchSize uint32
 	currBatch     *batch
 	node          *commonpb.Node
-	resource      *resourcepb.Resource // TODO(skaris) remove when resource added to span
+	resource      *resourcepb.Resource // TODO(skaris) remove when resource is added to span
 	spanFormat    string
 	lastSent      int64
 	logger        *zap.Logger
@@ -212,18 +212,18 @@ func (nb *nodeBatcher) add(spans []*tracepb.Span) {
 	// we need to cut
 	var b *batch
 	closed := true
-	cut := false
+	cutBatch := false
 	for closed {
 		// atomic.LoadPointer only takes unsafe.Pointer interfaces. We do not use unsafe
 		// to skirt around the golang type system.
 		b = (*batch)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&nb.currBatch))))
-		cut, closed = b.add(spans)
+		cutBatch, closed = b.add(spans)
 	}
-	if atomic.LoadUint32(&nb.dead) == nodeDead || cut {
+	if atomic.LoadUint32(&nb.dead) == nodeDead || cutBatch {
 		statsTags := processor.StatsTagsForBatch(
 			nb.parent.name, processor.ServiceNameForNode(nb.node), nb.spanFormat,
 		)
-		if cut {
+		if cutBatch {
 			stats.RecordWithTags(context.Background(), statsTags, statSendByBatchSize.M(1))
 		} else {
 			stats.RecordWithTags(context.Background(), statsTags, statAddOnDeadNodeBucket.M(1))

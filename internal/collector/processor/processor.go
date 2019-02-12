@@ -147,6 +147,9 @@ func ServiceNameForNode(node *commonpb.Node) string {
 
 // ServiceNameForBatch gets the service name for a specified batch. Used for metrics.
 func ServiceNameForBatch(batch *agenttracepb.ExportTraceServiceRequest) string {
+	if batch == nil {
+		return ""
+	}
 	return ServiceNameForNode(batch.Node)
 }
 

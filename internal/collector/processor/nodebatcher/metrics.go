@@ -24,9 +24,9 @@ import (
 )
 
 var (
-	statBatchSize         = stats.Int64("batch_size", "Size of batches sent from the batcher (in span)", stats.UnitDimensionless)
-	statAddNodeBatches    = stats.Int64("add_node_batches", "Count of nodes that have been added to batching.", stats.UnitDimensionless)
-	statRemoveNodeBatches = stats.Int64("remove_node_batches", "Number of nodes that have been removed from batching.", stats.UnitDimensionless)
+	statBatchSize               = stats.Int64("batch_size", "Size of batches sent from the batcher (in span)", stats.UnitDimensionless)
+	statNodesAddedToBatches     = stats.Int64("nodes_added_to_batches", "Count of nodes that are being batched.", stats.UnitDimensionless)
+	statNodesRemovedFromBatches = stats.Int64("nodes_removed_from_batches", "Number of nodes that have been removed from batching.", stats.UnitDimensionless)
 
 	statSendByBatchSize     = stats.Int64("batch_size_trigger_send", "Number of times the batch was sent due to a size trigger", stats.UnitDimensionless)
 	statSendByTimeout       = stats.Int64("timeout_trigger_send", "Number of times the batch was sent due to a timeout trigger", stats.UnitDimensionless)
@@ -56,18 +56,18 @@ func MetricViews(level telemetry.Level) []*view.View {
 		Aggregation: batchSizeAggregation,
 	}
 
-	addNodeBatchesView := &view.View{
-		Name:        statAddNodeBatches.Name(),
-		Measure:     statAddNodeBatches,
-		Description: statAddNodeBatches.Description(),
+	nodesAddedToBatchesView := &view.View{
+		Name:        statNodesAddedToBatches.Name(),
+		Measure:     statNodesAddedToBatches,
+		Description: statNodesAddedToBatches.Description(),
 		TagKeys:     exporterTagKeys,
 		Aggregation: view.Count(),
 	}
 
-	removeNodeBatchesView := &view.View{
-		Name:        statRemoveNodeBatches.Name(),
-		Measure:     statRemoveNodeBatches,
-		Description: statRemoveNodeBatches.Description(),
+	nodesRemovedFromBatchesView := &view.View{
+		Name:        statNodesRemovedFromBatches.Name(),
+		Measure:     statNodesRemovedFromBatches,
+		Description: statNodesRemovedFromBatches.Description(),
 		TagKeys:     exporterTagKeys,
 		Aggregation: view.Count(),
 	}
@@ -98,8 +98,8 @@ func MetricViews(level telemetry.Level) []*view.View {
 
 	return []*view.View{
 		batchSizeView,
-		addNodeBatchesView,
-		removeNodeBatchesView,
+		nodesAddedToBatchesView,
+		nodesRemovedFromBatchesView,
 		countSendByBatchSizeView,
 		countSendByTimeoutView,
 		countSendByDeadNode,
