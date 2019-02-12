@@ -38,8 +38,8 @@ import (
 
 const (
 	initialBatchCapacity     = uint32(1024)
-	nodeDead                 = uint32(1)
-	batchClosed              = uint32(1)
+	nodeStatusDead           = uint32(1)
+	batchStatusClosed        = uint32(1)
 	tickerPendingNodesBuffer = 16
 
 	defaultRemoveAfterCycles = uint32(10)
@@ -219,7 +219,7 @@ func (nb *nodeBatcher) add(spans []*tracepb.Span) {
 		b = (*batch)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&nb.currBatch))))
 		cutBatch, closed = b.add(spans)
 	}
-	if atomic.LoadUint32(&nb.dead) == nodeDead || cutBatch {
+	if atomic.LoadUint32(&nb.dead) == nodeStatusDead || cutBatch {
 		statsTags := processor.StatsTagsForBatch(
 			nb.parent.name, processor.ServiceNameForNode(nb.node), nb.spanFormat,
 		)
@@ -347,7 +347,7 @@ func (bt *bucketTicker) start() {
 							// so mark this nodeBatcher as dead (for adds that have already been called and are racing)
 							// and try to cut a final batch (just in case something was added in between
 							// the above if and marking this nodeBatcher as dead)
-							atomic.StoreUint32(&nb.dead, nodeDead)
+							atomic.StoreUint32(&nb.dead, nodeStatusDead)
 							// Reload batch in case `add` loaded a new batch that was then added to.
 							currBatchPtr := (*unsafe.Pointer)(unsafe.Pointer(&nb.currBatch))
 							b = (*batch)(atomic.LoadPointer(currBatchPtr))
@@ -396,13 +396,13 @@ func newBatch(initCapacity uint32, sendBatchSize uint32) *batch {
 }
 
 func (b *batch) add(spans []*tracepb.Span) (cut bool, closed bool) {
-	if atomic.LoadUint32(&b.closed) == batchClosed {
+	if atomic.LoadUint32(&b.closed) == batchStatusClosed {
 		return false, true
 	}
 	// Add to pending and then check closed again. If closed, just return and decrement pending.
 	atomic.AddInt32(&b.pending, int32(1))
 	defer atomic.AddInt32(&b.pending, int32(-1))
-	if atomic.LoadUint32(&b.closed) == batchClosed {
+	if atomic.LoadUint32(&b.closed) == batchStatusClosed {
 		return false, true
 	}
 	openTill := atomic.AddUint32(&b.nextEmptyItem, uint32(len(spans)))
@@ -420,7 +420,7 @@ func (b *batch) add(spans []*tracepb.Span) (cut bool, closed bool) {
 }
 
 func (b *batch) closeBatch() {
-	atomic.StoreUint32(&b.closed, batchClosed)
+	atomic.StoreUint32(&b.closed, batchStatusClosed)
 	for {
 		// We only need to wait for goroutines currently executing `add`
 		// We are safe from closing during a items mutation due to the second
