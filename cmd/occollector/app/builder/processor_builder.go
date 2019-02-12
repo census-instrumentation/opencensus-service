@@ -72,7 +72,7 @@ func NewJaegerThriftHTTPSenderCfg() *JaegerThriftHTTPSenderCfg {
 // by a typical user, but are provided as advanced features to increase
 // scalability.
 type BatchingConfig struct {
-	// Enable marks batching as enable or not
+	// Enable marks batching as enabled or not
 	Enable bool `mapstructure:"enable"`
 	// Timeout sets the time after which a batch will be sent regardless of size
 	Timeout *time.Duration `mapstructure:"timeout,omitempty"`
