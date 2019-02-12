@@ -15,6 +15,7 @@ install:
   - go version
   - go env
   - choco install make
+  - choco install bzr
 
 build: false
 deploy: false
