@@ -16,6 +16,7 @@ install:
   - go env
   - choco install make
   - choco install bzr
+  - refreshenv
 
 build: false
 deploy: false
