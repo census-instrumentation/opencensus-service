@@ -164,13 +164,15 @@ func (b *batcher) removeBucket(bucketID string) {
 }
 
 type nodeBatcher struct {
+	// Keep aligned for 32bit systems
+	lastSent int64
+
 	timeout       time.Duration
 	sendBatchSize uint32
 	currBatch     *batch
 	node          *commonpb.Node
 	resource      *resourcepb.Resource // TODO(skaris) remove when resource is added to span
 	spanFormat    string
-	lastSent      int64
 	logger        *zap.Logger
 
 	dead            uint32
