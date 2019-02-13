@@ -11,13 +11,12 @@ environment:
   CGO_ENABLED: '0' # See: https://github.com/appveyor/ci/issues/2613
 
 install:
-  - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
-  - go version
-  - go env
   - choco install make
   - choco install bzr
-  - refreshenv
-
+  - set PATH=%GOPATH%\bin;c:\go\bin;C:\Program Files (x86)\Bazaar\;%PATH%
+  - go version
+  - go env
+  
 build: false
 deploy: false
 
