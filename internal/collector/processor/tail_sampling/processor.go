@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package processor
+package tailsampling
 
 import (
 	"context"
@@ -24,13 +24,12 @@ import (
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"go.uber.org/zap"
 
+	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/idbatcher"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/sampling"
-	"github.com/census-instrumentation/opencensus-service/internal/collector/telemetry"
 )
 
 // Policy combines a sampling policy evaluator with the destinations to be
@@ -41,7 +40,7 @@ type Policy struct {
 	// Evaluator that decides if a trace is sampled or not by this policy instance.
 	Evaluator sampling.PolicyEvaluator
 	// Destination is the consumer of the traces selected to be sampled.
-	Destination SpanProcessor
+	Destination processor.SpanProcessor
 	// ctx used to carry metric tags of each policy.
 	ctx context.Context
 }
@@ -65,7 +64,7 @@ type tailSamplingSpanProcessor struct {
 	numTracesOnMap  uint64
 }
 
-var _ SpanProcessor = (*tailSamplingSpanProcessor)(nil)
+var _ processor.SpanProcessor = (*tailSamplingSpanProcessor)(nil)
 
 // NewTailSamplingSpanProcessor creates a TailSamplingSpanProcessor with the given policies.
 // It will keep maxNumTraces on memory and will attempt to wait until decisionWait before evaluating if
@@ -75,7 +74,7 @@ func NewTailSamplingSpanProcessor(
 	policies []*Policy,
 	maxNumTraces, expectedNewTracesPerSec uint64,
 	decisionWait time.Duration,
-	logger *zap.Logger) (SpanProcessor, error) {
+	logger *zap.Logger) (processor.SpanProcessor, error) {
 
 	numDecisionBatches := uint64(decisionWait.Seconds())
 	inBatcher, err := idbatcher.New(numDecisionBatches, expectedNewTracesPerSec, uint64(2*runtime.NumCPU()))
@@ -340,92 +339,3 @@ func (pt *policyTicker) Stop() {
 }
 
 var _ tTicker = (*policyTicker)(nil)
-
-// Variables related to metrics specific to queued processor.
-var (
-	tagPolicyKey, _ = tag.NewKey("policy")
-
-	statDecisionLatencyMicroSec  = stats.Int64("sampling_decision_latency", "Latency (in microseconds) of a given sampling policy", "µs")
-	statOverallDecisionLatencyµs = stats.Int64("sampling_decision_timer_latency", "Latency (in microseconds) of each run of the sampling decision timer", "µs")
-
-	statTraceRemovalAgeSec           = stats.Int64("sampling_trace_removal_age", "Time (in seconds) from arrival of a new trace until its removal from memory", "s")
-	statLateSpanArrivalAfterDecision = stats.Int64("sampling_late_span_age", "Time (in seconds) from the sampling decision was taken and the arrival of a late span", "s")
-
-	statPolicyEvaluationErrorCount = stats.Int64("sampling_policy_evaluation_error", "Count of sampling policy evaluation errors", stats.UnitDimensionless)
-
-	statDroppedTooEarlyCount    = stats.Int64("sampling_trace_dropped_too_early", "Count of traces that needed to be dropped the configured wait time", stats.UnitDimensionless)
-	statNewTraceIDReceivedCount = stats.Int64("new_trace_id_received", "Counts the arrival of new traces", stats.UnitDimensionless)
-	statTracesOnMemoryGauge     = stats.Int64("sampling_traces_on_memory", "Tracks the number of traces current on memory", stats.UnitDimensionless)
-)
-
-// SamplingProcessorMetricViews return the metrics views according to given telemetry level.
-func SamplingProcessorMetricViews(level telemetry.Level) []*view.View {
-	if level == telemetry.None {
-		return nil
-	}
-
-	policyTagKeys := []tag.Key{tagPolicyKey}
-
-	latencyDistributionAggregation := view.Distribution(1, 2, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 2000, 3000, 4000, 5000, 10000, 20000, 30000, 50000)
-	ageDistributionAggregation := view.Distribution(1, 2, 5, 10, 20, 30, 40, 50, 60, 90, 120, 180, 300, 600, 1800, 3600, 7200)
-
-	decisionLatencyView := &view.View{
-		Name:        statDecisionLatencyMicroSec.Name(),
-		Measure:     statDecisionLatencyMicroSec,
-		Description: statDecisionLatencyMicroSec.Description(),
-		TagKeys:     policyTagKeys,
-		Aggregation: latencyDistributionAggregation,
-	}
-	overallDecisionLatencyView := &view.View{
-		Name:        statOverallDecisionLatencyµs.Name(),
-		Measure:     statOverallDecisionLatencyµs,
-		Description: statOverallDecisionLatencyµs.Description(),
-		Aggregation: latencyDistributionAggregation,
-	}
-	traceRemovalAgeView := &view.View{
-		Name:        statTraceRemovalAgeSec.Name(),
-		Measure:     statTraceRemovalAgeSec,
-		Description: statTraceRemovalAgeSec.Description(),
-		Aggregation: ageDistributionAggregation,
-	}
-	lateSpanArrivalView := &view.View{
-		Name:        statLateSpanArrivalAfterDecision.Name(),
-		Measure:     statLateSpanArrivalAfterDecision,
-		Description: statLateSpanArrivalAfterDecision.Description(),
-		Aggregation: ageDistributionAggregation,
-	}
-	countPolicyEvaluationErrorView := &view.View{
-		Name:        statPolicyEvaluationErrorCount.Name(),
-		Measure:     statPolicyEvaluationErrorCount,
-		Description: statPolicyEvaluationErrorCount.Description(),
-		Aggregation: view.Sum(),
-	}
-	countTraceDroppedTooEarlyView := &view.View{
-		Name:        statDroppedTooEarlyCount.Name(),
-		Measure:     statDroppedTooEarlyCount,
-		Description: statDroppedTooEarlyCount.Description(),
-		Aggregation: view.Sum(),
-	}
-	countTraceIDArrivalView := &view.View{
-		Name:        statNewTraceIDReceivedCount.Name(),
-		Measure:     statNewTraceIDReceivedCount,
-		Description: statNewTraceIDReceivedCount.Description(),
-		Aggregation: view.Sum(),
-	}
-	trackTracesOnMemorylView := &view.View{
-		Name:        statTracesOnMemoryGauge.Name(),
-		Measure:     statTracesOnMemoryGauge,
-		Description: statTracesOnMemoryGauge.Description(),
-		Aggregation: view.LastValue(),
-	}
-
-	return []*view.View{
-		decisionLatencyView,
-		overallDecisionLatencyView,
-		traceRemovalAgeView,
-		lateSpanArrivalView,
-		countPolicyEvaluationErrorView,
-		countTraceDroppedTooEarlyView,
-		countTraceIDArrivalView,
-		trackTracesOnMemorylView}
-}

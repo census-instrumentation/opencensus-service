@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package processor
+package tailsampling
 
 import (
 	"encoding/binary"
@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/idbatcher"
 
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
@@ -273,6 +274,18 @@ func (s *syncIDBatcher) CloseCurrentAndTakeFirstBatch() (idbatcher.Batch, bool) 
 	return firstBatch, true
 }
 func (s *syncIDBatcher) Stop() {
+}
+
+type mockSpanProcessor struct {
+	TotalSpans int
+}
+
+var _ processor.SpanProcessor = &mockSpanProcessor{}
+
+func (p *mockSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
+	batchSize := len(batch.Spans)
+	p.TotalSpans += batchSize
+	return 0, nil
 }
 
 func indexToTraceID(low int) []byte {

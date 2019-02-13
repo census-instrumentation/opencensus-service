@@ -31,6 +31,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/nodebatcher"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/queued"
+	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/tail_sampling"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/sampling"
 	"github.com/census-instrumentation/opencensus-service/internal/config"
 )
@@ -149,10 +150,10 @@ func buildQueuedSpanProcessor(
 }
 
 func buildSamplingProcessor(cfg *builder.SamplingCfg, nameToSpanProcessor map[string]processor.SpanProcessor, v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor, error) {
-	var policies []*processor.Policy
+	var policies []*tailsampling.Policy
 	seenExporter := make(map[string]bool)
 	for _, polCfg := range cfg.Policies {
-		policy := &processor.Policy{
+		policy := &tailsampling.Policy{
 			Name: string(polCfg.Name),
 		}
 
@@ -206,7 +207,7 @@ func buildSamplingProcessor(cfg *builder.SamplingCfg, nameToSpanProcessor map[st
 	}
 
 	tailCfg := builder.NewDefaultTailBasedCfg().InitFromViper(v)
-	tailSamplingProcessor, err := processor.NewTailSamplingSpanProcessor(
+	tailSamplingProcessor, err := tailsampling.NewTailSamplingSpanProcessor(
 		policies,
 		tailCfg.NumTraces,
 		128,
@@ -271,7 +272,7 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor
 			os.Exit(1)
 		}
 	} else if builder.DebugTailSamplingEnabled(v) {
-		policy := []*processor.Policy{
+		policy := []*tailsampling.Policy{
 			{
 				Name:        "tail-always-sampling",
 				Evaluator:   sampling.NewAlwaysSample(),
@@ -279,7 +280,7 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor
 			},
 		}
 		var err error
-		tailSamplingProcessor, err = processor.NewTailSamplingSpanProcessor(policy, 50000, 128, 10*time.Second, logger)
+		tailSamplingProcessor, err = tailsampling.NewTailSamplingSpanProcessor(policy, 50000, 128, 10*time.Second, logger)
 		if err != nil {
 			logger.Error("Falied to build the debug tail-sampling processor", zap.Error(err))
 			os.Exit(1)
