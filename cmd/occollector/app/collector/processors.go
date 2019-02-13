@@ -16,7 +16,6 @@ package collector
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
