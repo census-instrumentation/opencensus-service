@@ -92,7 +92,10 @@ func buildQueuedSpanProcessor(
 	doneFns, traceExporters, _ := createExporters(opts.RawConfig, logger)
 
 	if spanSender == nil && len(traceExporters) == 0 {
-		logger.Fatal("Unrecognized sender type or no exporters configured")
+		if opts.SenderType != "" {
+			logger.Fatal("Unrecognized sender type", zap.String("SenderType", string(opts.SenderType)))
+		}
+		logger.Fatal("No senders or exporters configured.")
 	}
 
 	allSendersAndExporters := make([]processor.SpanProcessor, 0, 1+len(traceExporters))
