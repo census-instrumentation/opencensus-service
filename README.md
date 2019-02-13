@@ -317,29 +317,29 @@ sampling:
   # amount of time from seeing the first span in a trace until making the sampling decision
   decision-wait: 10s
   # maximum number of traces kept in the memory
-  num-traces: 500
+  num-traces: 10000
   policies:
     # user-defined policy name
-    my-rate-limiting:
+    my-string-tag-filter:
       # exporters the policy applies to
       exporters:
         - jaeger
         - omnition
-      policy: rate-limiting
+      policy: string-tag-filter
       configuration:
-        spans-per-second: 10
-#      policy: string-tag-filter
-#      configuration:
-#        tag: <tag-name>
-#        values:
-#          - value1
-#          - value2
-#      policy: numeric-tag-filter
-#      configuration:
-#        tag: <tag-name>
-#        min-value: 0
-#        max-value: 100
-#      policy: always-sample
+        tag: tag1
+        values:
+          - value1
+          - value2
+    my-numeric-tag-filter:
+      exporters:
+        - jaeger
+        - omnition
+      policy: numeric-tag-filter
+      configuration:
+        tag: <tag-name>
+        min-value: 0
+        max-value: 100
 ```
 
 ### <a name="collector-usage"></a>Usage
