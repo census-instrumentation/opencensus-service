@@ -52,7 +52,9 @@ func createExporters(v *viper.Viper, logger *zap.Logger) ([]func(), []exporter.T
 	return wrappedDoneFns, traceExporters, metricsExporters
 }
 
-func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProcessorCfg) ([]func(), processor.SpanProcessor, error) {
+func buildQueuedSpanProcessor(
+	logger *zap.Logger, opts *builder.QueuedSpanProcessorCfg,
+) (closeFns []func(), queuedSpanProcessor processor.SpanProcessor, err error) {
 	logger.Info("Constructing queue processor with name", zap.String("name", opts.Name))
 
 	// build span batch sender from configured options
@@ -89,17 +91,15 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 		logger.Fatal("Unrecognized sender type or no exporters configured")
 	}
 
-	allSendersAndExporters := make([]processor.SpanProcessor, 0, 2)
+	allSendersAndExporters := make([]processor.SpanProcessor, 0, 1+len(traceExporters))
 	if spanSender != nil {
 		allSendersAndExporters = append(allSendersAndExporters, spanSender)
 	}
-	if len(traceExporters) > 0 {
+	for _, traceExporter := range traceExporters {
 		allSendersAndExporters = append(
-			allSendersAndExporters, processor.NewTraceExporterProcessor(traceExporters...),
+			allSendersAndExporters, processor.NewTraceExporterProcessor(traceExporter),
 		)
 	}
-
-	sender := processor.NewMultiSpanProcessor(allSendersAndExporters)
 
 	var batchingOptions []nodebatcher.Option
 	if opts.BatchingConfig.Enable {
@@ -129,19 +129,25 @@ func buildQueuedSpanProcessor(logger *zap.Logger, opts *builder.QueuedSpanProces
 		}
 	}
 
-	// build queued span processor with underlying sender
-	queuedSpanProcessor := queued.NewQueuedSpanProcessor(
-		sender,
-		queued.Options.WithLogger(logger),
-		queued.Options.WithName(opts.Name),
-		queued.Options.WithNumWorkers(opts.NumWorkers),
-		queued.Options.WithQueueSize(opts.QueueSize),
-		queued.Options.WithRetryOnProcessingFailures(opts.RetryOnFailure),
-		queued.Options.WithBackoffDelay(opts.BackoffDelay),
-		queued.Options.WithBatching(opts.BatchingConfig.Enable),
-		queued.Options.WithBatchingOptions(batchingOptions...),
-	)
-	return doneFns, queuedSpanProcessor, nil
+	queuedProcessors := make([]processor.SpanProcessor, 0, len(allSendersAndExporters))
+	for _, senderOrExporter := range allSendersAndExporters {
+		// build queued span processor with underlying sender
+		queuedProcessors = append(
+			queuedProcessors,
+			queued.NewQueuedSpanProcessor(
+				senderOrExporter,
+				queued.Options.WithLogger(logger),
+				queued.Options.WithName(opts.Name),
+				queued.Options.WithNumWorkers(opts.NumWorkers),
+				queued.Options.WithQueueSize(opts.QueueSize),
+				queued.Options.WithRetryOnProcessingFailures(opts.RetryOnFailure),
+				queued.Options.WithBackoffDelay(opts.BackoffDelay),
+				queued.Options.WithBatching(opts.BatchingConfig.Enable),
+				queued.Options.WithBatchingOptions(batchingOptions...),
+			),
+		)
+	}
+	return doneFns, processor.NewMultiSpanProcessor(queuedProcessors), nil
 }
 
 func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor, []func()) {
