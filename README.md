@@ -337,7 +337,7 @@ sampling:
         - omnition
       policy: numeric-tag-filter
       configuration:
-        tag: <tag-name>
+        tag: tag1
         min-value: 0
         max-value: 100
 ```

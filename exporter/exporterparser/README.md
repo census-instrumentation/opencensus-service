@@ -23,18 +23,30 @@ sampling:
       policy: rate-limiting
       configuration:
         spans-per-second: 1000
-#      policy: string-tag-filter
-#      configuration:
-#        tag: <tag-name>
-#        values:
-#          - value1
-#          - value2
-#      policy: numeric-tag-filter
-#      configuration:
-#        tag: <tag-name>
-#        min-value: 0
-#        max-value: 100
-#      policy: always-sample
+    my-string-tag-filter:
+      exporters:
+        - jaeger
+        - omnition
+      policy: string-tag-filter
+      configuration:
+        tag: tag1
+        values:
+          - value1
+          - value2
+    my-numeric-tag-filter:
+      exporters:
+        - jaeger
+        - omnition
+      policy: numeric-tag-filter
+      configuration:
+        tag: tag1
+        min-value: 0
+        max-value: 100
+    my-always-sample:
+      exporters:
+        - jaeger
+        - omnition
+      policy: always-sample
 ```
 
 ### Queued Exporters
