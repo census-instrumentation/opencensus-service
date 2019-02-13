@@ -122,7 +122,7 @@ func (tsp *tailSamplingSpanProcessor) samplingPolicyOnTick() {
 			decision, err := policy.Evaluator.Evaluate(id, trace)
 			stats.Record(
 				policy.ctx,
-				statDecisionLatencyµs.M(int64(time.Since(policyEvaluateStartTime)/time.Microsecond)))
+				statDecisionLatencyMicroSec.M(int64(time.Since(policyEvaluateStartTime)/time.Microsecond)))
 			if err != nil {
 				trace.Decision[i] = sampling.NotSampled
 				evaluateErrorCount++
@@ -229,7 +229,8 @@ func (tsp *tailSamplingSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTra
 			// If decision is pending, we want to add the new spans still under the lock, so the decision doesn't happen
 			// in between the transition from pending.
 			if actualDecision == sampling.Pending {
-				// Add the spans to the trace, but only once
+				// Add the spans to the trace, but only once for all policies, otherwise same spans will
+				// be duplicated in the final trace.
 				traceBatch := prepareTraceBatch(spans, singleTrace, batch)
 				actualData.ReceivedBatches = append(actualData.ReceivedBatches, traceBatch)
 				actualData.Unlock()
@@ -271,6 +272,7 @@ func (tsp *tailSamplingSpanProcessor) dropTrace(traceID traceKey, deletionTime t
 	if d, ok := tsp.idToTrace.Load(traceID); ok {
 		trace = d.(*sampling.TraceData)
 		tsp.idToTrace.Delete(traceID)
+		// Subtract one from numTracesOnMap per https://godoc.org/sync/atomic#AddUint64
 		atomic.AddUint64(&tsp.numTracesOnMap, ^uint64(0))
 	}
 	if trace == nil {
@@ -343,7 +345,7 @@ var _ tTicker = (*policyTicker)(nil)
 var (
 	tagPolicyKey, _ = tag.NewKey("policy")
 
-	statDecisionLatencyµs        = stats.Int64("sampling_decision_latency", "Latency (in microseconds) of a given sampling policy", "µs")
+	statDecisionLatencyMicroSec  = stats.Int64("sampling_decision_latency", "Latency (in microseconds) of a given sampling policy", "µs")
 	statOverallDecisionLatencyµs = stats.Int64("sampling_decision_timer_latency", "Latency (in microseconds) of each run of the sampling decision timer", "µs")
 
 	statTraceRemovalAgeSec           = stats.Int64("sampling_trace_removal_age", "Time (in seconds) from arrival of a new trace until its removal from memory", "s")
@@ -368,9 +370,9 @@ func SamplingProcessorMetricViews(level telemetry.Level) []*view.View {
 	ageDistributionAggregation := view.Distribution(1, 2, 5, 10, 20, 30, 40, 50, 60, 90, 120, 180, 300, 600, 1800, 3600, 7200)
 
 	decisionLatencyView := &view.View{
-		Name:        statDecisionLatencyµs.Name(),
-		Measure:     statDecisionLatencyµs,
-		Description: statDecisionLatencyµs.Description(),
+		Name:        statDecisionLatencyMicroSec.Name(),
+		Measure:     statDecisionLatencyMicroSec,
+		Description: statDecisionLatencyMicroSec.Description(),
 		TagKeys:     policyTagKeys,
 		Aggregation: latencyDistributionAggregation,
 	}

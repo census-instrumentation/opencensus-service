@@ -158,7 +158,7 @@ func buildSamplingProcessor(cfg *builder.SamplingCfg, nameToSpanProcessor map[st
 
 		// As the number of sampling policies grow this should be changed to a map.
 		switch polCfg.Type {
-		case builder.AlwaysSamplePolicy:
+		case builder.AlwaysSample:
 			policy.Evaluator = sampling.NewAlwaysSample()
 		case builder.NumericTagFilter:
 			numTagFilterCfg := polCfg.Configuration.(*builder.NumericTagFilterCfg)

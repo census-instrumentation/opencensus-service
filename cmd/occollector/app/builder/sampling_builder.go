@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	modeTag     string = "mode"
-	policiesTag        = "policies"
-	samplingTag        = "sampling"
+	modeTag     = "mode"
+	policiesTag = "policies"
+	samplingTag = "sampling"
 )
 
 // Mode indicates the sampling mode
@@ -35,23 +35,23 @@ const (
 	NoSampling Mode = "no-sampling"
 	// TailSampling is the mode in which trace data is temporarily retained until an evaluation
 	// if the trace should be sampled is performed.
-	TailSampling = "tail"
+	TailSampling Mode = "tail"
 )
 
 // PolicyType indicates the type of sampling policy.
 type PolicyType string
 
 const (
-	// AlwaysSamplePolicy samples all traces, typically used for debugging.
-	AlwaysSamplePolicy PolicyType = "always-sample"
+	// AlwaysSample samples all traces, typically used for debugging.
+	AlwaysSample PolicyType = "always-sample"
 	// NumericTagFilter sample traces that have a given numberic tag in a specified
 	// range, e.g.: tag "http.status_code" >= 399 and <= 999.
-	NumericTagFilter = "numeric-tag-filter"
+	NumericTagFilter PolicyType = "numeric-tag-filter"
 	// StringTagFilter sample traces that a tag, of type string, matching
 	// one of the listed values.
-	StringTagFilter = "string-tag-filter"
+	StringTagFilter PolicyType = "string-tag-filter"
 	// RateLimiting allows all traces until the specified limits are satisfied.
-	RateLimiting = "rate-limiting"
+	RateLimiting PolicyType = "rate-limiting"
 )
 
 // PolicyCfg holds the common configuration to all policies.
@@ -60,8 +60,8 @@ type PolicyCfg struct {
 	Name string
 	// Type of the policy this will be used to match the proper configuration of the policy.
 	Type PolicyType
-	// Exporters holds the name of exporters that the policy evaluator is going to be used to
-	// make decisions about sending, or not, the traces.
+	// Exporters hold the name of the exporters that the policy evaluator uses to make decisions
+	// about whether or not sending the traces.
 	Exporters []string
 	// Configuration holds the settings specific to the policy.
 	Configuration interface{}
@@ -178,7 +178,7 @@ func (tCfg *TailBasedCfg) InitFromViper(v *viper.Viper) *TailBasedCfg {
 	if tv == nil {
 		return tCfg
 	}
-	if tv == nil || tv.GetString(modeTag) != TailSampling {
+	if tv == nil || tv.GetString(modeTag) != string(TailSampling) {
 		return tCfg
 	}
 
