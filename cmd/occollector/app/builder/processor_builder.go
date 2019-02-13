@@ -28,6 +28,8 @@ const (
 	ThriftTChannelSenderType SenderType = "jaeger-thrift-tchannel"
 	// ThriftHTTPSenderType represents a thrift-format http-transport sender
 	ThriftHTTPSenderType = "jaeger-thrift-http"
+	// ProtoGRPCSenderType represents a proto-format grpc-transport sender
+	ProtoGRPCSenderType = "jaeger-proto-grpc"
 	// InvalidSenderType represents an invalid sender
 	InvalidSenderType = "invalid"
 )
@@ -89,6 +91,17 @@ type BatchingConfig struct {
 	// from a node after which the batcher for that node will be deleted. This is an
 	// advanved configuration option.
 	RemoveAfterTicks *int `mapstructure:"remove-after-ticks,omitempty"`
+}
+
+// JaegerProtoGRPCSenderCfg holds configuration for Jaeger Proto GRPC sender
+type JaegerProtoGRPCSenderCfg struct {
+	CollectorEndpoint string            `mapstructure:"collector-endpoint"`
+	Headers           map[string]string `mapstructure:"headers"`
+}
+
+// NewJaegerProtoGRPCSenderCfg returns an instance of JaegerProtoGRPCSenderCfg with default values
+func NewJaegerProtoGRPCSenderCfg() *JaegerProtoGRPCSenderCfg {
+	return &JaegerProtoGRPCSenderCfg{}
 }
 
 // QueuedSpanProcessorCfg holds configuration for the queued span processor
@@ -155,6 +168,12 @@ func (qOpts *QueuedSpanProcessorCfg) InitFromViper(v *viper.Viper) *QueuedSpanPr
 			vthsOpts.Unmarshal(thsOpts)
 		}
 		qOpts.SenderConfig = thsOpts
+	case ProtoGRPCSenderType:
+		pgopts := NewJaegerProtoGRPCSenderCfg()
+		vpgopts := v.Sub(string(ProtoGRPCSenderType))
+		if vpgopts != nil {
+			vpgopts.Unmarshal(pgopts)
+		}
 	}
 	qOpts.RawConfig = v
 	return qOpts
