@@ -17,6 +17,7 @@ package exporterparser
 import (
 	"context"
 	"fmt"
+	"math/rand"
 
 	"contrib.go.opencensus.io/exporter/ocagent"
 	"github.com/spf13/viper"
@@ -33,11 +34,16 @@ type opencensusConfig struct {
 	Endpoint    string `mapstructure:"endpoint,omitempty"`
 	Compression string `mapstructure:"compression,omitempty"`
 	// TODO: add insecure, service name options.
+	NumWorkers int `mapstructure:"num-workers,omitempty"`
 }
 
 type ocagentExporter struct {
-	exporter *ocagent.Exporter
+	exporters []*ocagent.Exporter
 }
+
+const (
+	defaultNumWorkers int = 2
+)
 
 var _ exporter.TraceExporter = (*ocagentExporter)(nil)
 
@@ -68,28 +74,38 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tes []exporter.TraceExpo
 		}
 	}
 
-	sde, serr := ocagent.NewExporter(opts...)
-	if serr != nil {
-		return nil, nil, nil, fmt.Errorf("Cannot configure OpenCensus Trace exporter: %v", serr)
+	numWorkers := defaultNumWorkers
+	if ocac.NumWorkers > 0 {
+		numWorkers = ocac.NumWorkers
 	}
 
-	oexp := &ocagentExporter{exporter: sde}
+	exporters := make([]*ocagent.Exporter, 0, numWorkers)
+	for exporterIndex := 0; exporterIndex < numWorkers; exporterIndex++ {
+		exporter, serr := ocagent.NewExporter(opts...)
+		if serr != nil {
+			return nil, nil, nil, fmt.Errorf("Cannot configure OpenCensus Trace exporter: %v", serr)
+		}
+		exporters = append(exporters, exporter)
+		doneFns = append(doneFns, func() error {
+			exporter.Flush()
+			return nil
+		})
+	}
+
+	oexp := &ocagentExporter{exporters: exporters}
 	tes = append(tes, oexp)
 
 	// TODO: (@odeke-em, @songya23) implement ExportMetrics for OpenCensus.
 	// mes = append(mes, oexp)
-	doneFns = append(doneFns, func() error {
-		sde.Flush()
-		return nil
-	})
 	return tes, mes, doneFns, nil
 }
 
-func (sde *ocagentExporter) ExportSpans(ctx context.Context, td data.TraceData) error {
-	err := sde.exporter.ExportTraceServiceRequest(
+func (oce *ocagentExporter) ExportSpans(ctx context.Context, td data.TraceData) error {
+	err := oce.exporters[rand.Intn(len(oce.exporters))].ExportTraceServiceRequest(
 		&agenttracepb.ExportTraceServiceRequest{
-			Spans: td.Spans,
-			Node:  td.Node,
+			Spans:    td.Spans,
+			Resource: td.Resource,
+			Node:     td.Node,
 		},
 	)
 	if err != nil {
