@@ -31,8 +31,9 @@ import (
 )
 
 type opencensusConfig struct {
-	Endpoint    string `mapstructure:"endpoint,omitempty"`
-	Compression string `mapstructure:"compression,omitempty"`
+	Endpoint    string            `mapstructure:"endpoint,omitempty"`
+	Compression string            `mapstructure:"compression,omitempty"`
+	Headers     map[string]string `mapstructure:"headers,omitempty"`
 	// TODO: add insecure, service name options.
 	NumWorkers int `mapstructure:"num-workers,omitempty"`
 }
@@ -72,6 +73,9 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tes []exporter.TraceExpo
 		} else {
 			return nil, nil, nil, fmt.Errorf("Unsupported compression type: %s", ocac.Compression)
 		}
+	}
+	if len(ocac.Headers) > 0 {
+		opts = append(opts, ocagent.WithHeaders(ocac.Headers))
 	}
 
 	numWorkers := defaultNumWorkers
