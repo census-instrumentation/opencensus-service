@@ -15,7 +15,6 @@
 package exporterparser
 
 import (
-	"bytes"
 	"context"
 	"io/ioutil"
 	"net/http"
@@ -23,10 +22,10 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/spf13/viper"
 
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
+	viperutils "github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
 )
 
 func TestPrometheusExporter(t *testing.T) {
@@ -50,9 +49,7 @@ prometheus:
 	for i, tt := range tests {
 		// Run it a few times to ensure that shutdowns exit cleanly.
 		for j := 0; j < 3; j++ {
-			v := viper.New()
-			v.SetConfigType("yaml")
-			v.ReadConfig(bytes.NewBuffer([]byte(tt.config)))
+			v, _ := viperutils.ViperFromYAMLBytes([]byte(tt.config))
 			tes, mes, doneFns, err := PrometheusExportersFromViper(v)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
@@ -80,9 +77,7 @@ prometheus:
 func TestPrometheusExporter_nilDoesntCauseCrash(t *testing.T) {
 	config := []byte(`
 prometheus:`)
-	v := viper.New()
-	v.SetConfigType("yaml")
-	v.ReadConfig(bytes.NewBuffer(config))
+	v, _ := viperutils.ViperFromYAMLBytes([]byte(config))
 	tes, mes, doneFns, err := PrometheusExportersFromViper(v)
 	if err != nil {
 		t.Errorf("Unexpected parse error: %v", err)
@@ -109,9 +104,7 @@ prometheus:
     address: ":7777"
 `)
 
-	v := viper.New()
-	v.SetConfigType("yaml")
-	v.ReadConfig(bytes.NewBuffer(config))
+	v, _ := viperutils.ViperFromYAMLBytes([]byte(config))
 	_, mes, doneFns, err := PrometheusExportersFromViper(v)
 	defer func() {
 		for _, doneFn := range doneFns {

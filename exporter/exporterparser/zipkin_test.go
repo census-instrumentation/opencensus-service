@@ -28,9 +28,9 @@ import (
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	zipkinmodel "github.com/openzipkin/zipkin-go/model"
-	"github.com/spf13/viper"
 
 	"github.com/census-instrumentation/opencensus-service/exporter"
+	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
 	"github.com/census-instrumentation/opencensus-service/internal/testutils"
 	"github.com/census-instrumentation/opencensus-service/receiver/zipkin"
 )
@@ -146,9 +146,7 @@ func TestZipkinExportersFromViper_roundtripJSON(t *testing.T) {
 zipkin:
   upload_period: 1ms
   endpoint: ` + cst.URL
-	v := viper.New()
-	v.SetConfigType("yaml")
-	err := v.ReadConfig(bytes.NewBuffer([]byte(config)))
+	v, _ := viperutils.ViperFromYAMLBytes([]byte(config))
 	tes, _, doneFns, err := ZipkinExportersFromViper(v)
 	if len(tes) == 0 || err != nil {
 		t.Fatalf("Failed to parse out exporters: %v", err)

@@ -17,7 +17,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -27,7 +26,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/spf13/viper"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/zpages"
 	"go.uber.org/zap"
@@ -37,6 +35,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/internal"
 	"github.com/census-instrumentation/opencensus-service/internal/config"
+	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
 	"github.com/census-instrumentation/opencensus-service/receiver"
 	"github.com/census-instrumentation/opencensus-service/receiver/jaeger"
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensus"
@@ -90,8 +89,10 @@ func runOCAgent() {
 	}
 
 	// TODO(skaris): move the rest of the configs to use viper
-	v := viper.New()
-	v.ReadConfig(bytes.NewBuffer(yamlBlob))
+	v, err := viperutils.ViperFromYAMLBytes([]byte(yamlBlob))
+	if err != nil {
+		log.Fatalf("Config: failed to create viper from YAML: %v", err)
+	}
 	traceExporters, metricsExporters, closeFns, err := config.ExportersFromViperConfig(logger, v)
 	if err != nil {
 		log.Fatalf("Config: failed to create exporters from YAML: %v", err)
