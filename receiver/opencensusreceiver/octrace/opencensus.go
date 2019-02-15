@@ -24,7 +24,6 @@ import (
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
-	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/internal"
 	"github.com/census-instrumentation/opencensus-service/receiver"
@@ -50,7 +49,7 @@ func New(sr receiver.TraceReceiverSink, opts ...Option) (*Receiver, error) {
 		numWorkers: defaultNumWorkers,
 	}
 	for _, opt := range opts {
-		opt.WithReceiver(oci)
+		opt(oci)
 	}
 	return oci, nil
 }
@@ -81,17 +80,19 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 		return err
 	}
 
-	messageChan := make(chan *data.TraceData, 128)
-	workers = make([]*receiverWorkers, 0, oci.numWorkers)
+	messageChan := make(chan *data.TraceData, 64)
+	workers := make([]*receiverWorker, 0, oci.numWorkers)
 	for index := 0; index < oci.numWorkers; index++ {
-		worker := &receiverWorker{
-			receiver:     oci,
-			tes:          tes,
-			longLivedCtx: ctxWithReceiverName,
-		}
-		worker.listenOn(messageChan)
-		receiverWorkers = append(receiverWorkers, )
+		worker := newReceiverWorker(ctxWithReceiverName, oci, tes)
+		go worker.listenOn(messageChan)
+		workers = append(workers)
 	}
+
+	defer func() {
+		for _, worker := range workers {
+			worker.stopListening()
+		}
+	}()
 
 	// Check the condition that the first message has a non-nil Node.
 	if recv.Node == nil {
@@ -113,13 +114,13 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 			resource = recv.Resource
 		}
 
-		td := *data.TraceData{
-			Node:lastNonNilNode,
+		td := &data.TraceData{
+			Node:     lastNonNilNode,
 			Resource: resource,
-			Spans: recv.Spans,
+			Spans:    recv.Spans,
 		}
 
-		td -> messageChan
+		messageChan <- td
 
 		recv, err = tes.Recv()
 		if err != nil {
@@ -140,15 +141,30 @@ type receiverWorker struct {
 	cancel       chan struct{}
 }
 
+func newReceiverWorker(
+	ctx context.Context, receiver *Receiver, tes agenttracepb.TraceService_ExportServer,
+) *receiverWorker {
+	return &receiverWorker{
+		receiver:     receiver,
+		tes:          tes,
+		longLivedCtx: ctx,
+		cancel:       make(chan struct{}),
+	}
+}
+
 func (rw *receiverWorker) listenOn(cn chan *data.TraceData) {
 	for {
 		select {
 		case td := <-cn:
 			rw.export(td)
-		case <-cancel:
+		case <-rw.cancel:
 			return
 		}
 	}
+}
+
+func (rw *receiverWorker) stopListening() {
+	close(rw.cancel)
 }
 
 func (rw *receiverWorker) export(tracedata *data.TraceData) {
@@ -173,7 +189,7 @@ func (rw *receiverWorker) export(tracedata *data.TraceData) {
 	// spansAndNode list unfurling then send spans grouped per node
 
 	// If the starting RPC has a parent span, then add it as a parent link.
-	internal.SetParentLink(longLivedCtx, span)
+	internal.SetParentLink(rw.longLivedCtx, span)
 
 	rw.receiver.spanSink.ReceiveTraceData(ctx, *tracedata)
 
