@@ -279,10 +279,27 @@ func TestExportMultiplexing(t *testing.T) {
 		nodeToKey(node2):          append(sL2, append(sLn2a, sLn2b...)...),
 	}
 
-	gotBlob, _ := json.Marshal(resultsMapping)
-	wantBlob, _ := json.Marshal(wantContents)
-	if !bytes.Equal(gotBlob, wantBlob) {
-		t.Errorf("Unequal serialization results\nGot:\n\t%s\nWant:\n\t%s\n", gotBlob, wantBlob)
+	for nodeKey, wantSpans := range wantContents {
+		gotSpans, ok := resultsMapping[nodeKey]
+		if !ok {
+			t.Errorf("Wanted to find a node that was not found for key: %s", nodeKey)
+		}
+		if len(gotSpans) != len(wantSpans) {
+			t.Errorf("Unequal number of spans for nodeKey: %s", nodeKey)
+		}
+		for _, wantSpan := range wantSpans {
+			found := false
+			for _, gotSpan := range gotSpans {
+				wantStr, _ := json.Marshal(wantSpan)
+				gotStr, _ := json.Marshal(gotSpan)
+				if bytes.Equal(wantStr, gotStr) {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("Unequal span serialization\nGot:\n\t%s\nWant:\n\t%s\n", gotSpans, wantSpans)
+			}
+		}
 	}
 }
 
