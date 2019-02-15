@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	defaultNumWorkers = 4
+	defaultNumWorkers = 1
 )
 
 // Receiver is the type used to handle spans from OpenCensus exporters.
