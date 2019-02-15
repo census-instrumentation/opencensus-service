@@ -64,7 +64,7 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tes []exporter.TraceExpo
 	}
 
 	if ocac.Endpoint == "" {
-		return nil, nil, nil, fmt.Errorf("OpenCensus config requires an Endpoint")
+		return nil, nil, nil, fmt.Errorf("openCensus config requires an Endpoint")
 	}
 
 	opts := []ocagent.ExporterOption{ocagent.WithAddress(ocac.Endpoint), ocagent.WithInsecure()}
@@ -72,7 +72,7 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tes []exporter.TraceExpo
 		if compressionKey := grpc.GetGRPCCompressionKey(ocac.Compression); compressionKey != compression.Unsupported {
 			opts = append(opts, ocagent.UseCompressor(compressionKey))
 		} else {
-			return nil, nil, nil, fmt.Errorf("Unsupported compression type: %s", ocac.Compression)
+			return nil, nil, nil, fmt.Errorf("unsupported compression type: %s", ocac.Compression)
 		}
 	}
 	if len(ocac.Headers) > 0 {
@@ -88,7 +88,7 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tes []exporter.TraceExpo
 	for exporterIndex := 0; exporterIndex < numWorkers; exporterIndex++ {
 		exporter, serr := ocagent.NewExporter(opts...)
 		if serr != nil {
-			return nil, nil, nil, fmt.Errorf("Cannot configure OpenCensus Trace exporter: %v", serr)
+			return nil, nil, nil, fmt.Errorf("cannot configure OpenCensus Trace exporter: %v", serr)
 		}
 		exporters = append(exporters, exporter)
 		doneFns = append(doneFns, func() error {
