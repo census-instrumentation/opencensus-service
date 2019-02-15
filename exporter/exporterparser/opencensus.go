@@ -17,7 +17,7 @@ package exporterparser
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"sync/atomic"
 
 	"contrib.go.opencensus.io/exporter/ocagent"
 	"github.com/spf13/viper"
@@ -39,6 +39,7 @@ type opencensusConfig struct {
 }
 
 type ocagentExporter struct {
+	counter   uint32
 	exporters []*ocagent.Exporter
 }
 
@@ -105,7 +106,9 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tes []exporter.TraceExpo
 }
 
 func (oce *ocagentExporter) ExportSpans(ctx context.Context, td data.TraceData) error {
-	err := oce.exporters[rand.Intn(len(oce.exporters))].ExportTraceServiceRequest(
+	// Get an exporter worker round-robin
+	exporter := oce.exporters[atomic.AddUint32(&oce.counter, 1)%uint32(len(oce.exporters))]
+	err := exporter.ExportTraceServiceRequest(
 		&agenttracepb.ExportTraceServiceRequest{
 			Spans:    td.Spans,
 			Resource: td.Resource,

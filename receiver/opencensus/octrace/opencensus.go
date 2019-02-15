@@ -93,7 +93,7 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 			resource = recv.Resource
 		}
 
-		go oci.export(ctxWithReceiverName, tes.Context(), lastNonNilNode, resource, recv.Spans)
+		go oci.export(ctxWithReceiverName, tes, lastNonNilNode, resource, recv.Spans)
 
 		recv, err = tes.Recv()
 		if err != nil {
