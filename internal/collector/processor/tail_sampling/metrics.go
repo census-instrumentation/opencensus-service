@@ -24,7 +24,8 @@ import (
 
 // Variables related to metrics specific to tail sampling.
 var (
-	tagPolicyKey, _ = tag.NewKey("policy")
+	tagPolicyKey, _  = tag.NewKey("policy")
+	tagSampledKey, _ = tag.NewKey("sampled")
 
 	statDecisionLatencyMicroSec  = stats.Int64("sampling_decision_latency", "Latency (in microseconds) of a given sampling policy", "µs")
 	statOverallDecisionLatencyµs = stats.Int64("sampling_decision_timer_latency", "Latency (in microseconds) of each run of the sampling decision timer", "µs")
@@ -34,8 +35,7 @@ var (
 
 	statPolicyEvaluationErrorCount = stats.Int64("sampling_policy_evaluation_error", "Count of sampling policy evaluation errors", stats.UnitDimensionless)
 
-	statCountTracesSampled    = stats.Int64("count_traces_sampled", "Count of traces that were sampled", stats.UnitDimensionless)
-	statCountTracesNotSampled = stats.Int64("count_traces_not_sampled", "Count of traces that were not sampled", stats.UnitDimensionless)
+	statCountTracesSampled = stats.Int64("count_traces_sampled", "Count of traces that were sampled or not", stats.UnitDimensionless)
 
 	statDroppedTooEarlyCount    = stats.Int64("sampling_trace_dropped_too_early", "Count of traces that needed to be dropped the configured wait time", stats.UnitDimensionless)
 	statNewTraceIDReceivedCount = stats.Int64("new_trace_id_received", "Counts the arrival of new traces", stats.UnitDimensionless)
@@ -87,18 +87,12 @@ func SamplingProcessorMetricViews(level telemetry.Level) []*view.View {
 		Aggregation: view.Sum(),
 	}
 
+	sampledTagKeys := []tag.Key{tagPolicyKey, tagSampledKey}
 	countTracesSampledView := &view.View{
 		Name:        statCountTracesSampled.Name(),
 		Measure:     statCountTracesSampled,
 		Description: statCountTracesSampled.Description(),
-		TagKeys:     policyTagKeys,
-		Aggregation: view.Sum(),
-	}
-	countTracesNotSampledView := &view.View{
-		Name:        statCountTracesNotSampled.Name(),
-		Measure:     statCountTracesNotSampled,
-		Description: statCountTracesNotSampled.Description(),
-		TagKeys:     policyTagKeys,
+		TagKeys:     sampledTagKeys,
 		Aggregation: view.Sum(),
 	}
 
@@ -131,7 +125,6 @@ func SamplingProcessorMetricViews(level telemetry.Level) []*view.View {
 		countPolicyEvaluationErrorView,
 
 		countTracesSampledView,
-		countTracesNotSampledView,
 
 		countTraceDroppedTooEarlyView,
 		countTraceIDArrivalView,

@@ -133,7 +133,11 @@ func (tsp *tailSamplingSpanProcessor) samplingPolicyOnTick() {
 
 			switch decision {
 			case sampling.Sampled:
-				stats.Record(policy.ctx, statCountTracesSampled.M(int64(1)))
+				stats.RecordWithTags(
+					policy.ctx,
+					[]tag.Mutator{tag.Insert(tagSampledKey, "true")},
+					statCountTracesSampled.M(int64(1)),
+				)
 				decisionSampled++
 
 				trace.Lock()
@@ -144,7 +148,11 @@ func (tsp *tailSamplingSpanProcessor) samplingPolicyOnTick() {
 					policy.Destination.ProcessSpans(traceBatches[j], "tail-sampling")
 				}
 			case sampling.NotSampled:
-				stats.Record(policy.ctx, statCountTracesNotSampled.M(int64(1)))
+				stats.RecordWithTags(
+					policy.ctx,
+					[]tag.Mutator{tag.Insert(tagSampledKey, "false")},
+					statCountTracesSampled.M(int64(1)),
+				)
 				decisionNotSampled++
 			}
 		}
