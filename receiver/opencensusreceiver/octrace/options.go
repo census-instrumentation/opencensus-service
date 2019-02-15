@@ -17,6 +17,10 @@ package octrace
 // Option interface defines for configuration settings to be applied to receivers.
 //
 // WithReceiver applies the configuration to the given receiver.
-type Option interface {
-	WithReceiver(*Receiver)
+type Option func(*Receiver)
+
+func WithWorkerCount(workerCount int) Option {
+	return func(r *Receiver) {
+		r.numWorkers = workerCount
+	}
 }
