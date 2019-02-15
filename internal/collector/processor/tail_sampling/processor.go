@@ -251,11 +251,9 @@ func (tsp *tailSamplingSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTra
 						zap.Uint64("failCount", failCount),
 						zap.Error(err))
 				}
-				stats.Record(policyAndDests.ctx, statCountTracesSampled.M(int64(1)))
 				fallthrough // so OnLateArrivingSpans is also called for decision Sampled.
 			case sampling.NotSampled:
 				policyAndDests.Evaluator.OnLateArrivingSpans(actualDecision, spans)
-				stats.Record(policyAndDests.ctx, statCountTracesNotSampled.M(int64(1)))
 				stats.Record(tsp.ctx, statLateSpanArrivalAfterDecision.M(int64(time.Since(actualData.DecisionTime)/time.Second)))
 
 			default:
