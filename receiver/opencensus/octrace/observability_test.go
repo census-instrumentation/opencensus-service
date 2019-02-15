@@ -33,7 +33,6 @@ import (
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/internal"
-	"github.com/census-instrumentation/opencensus-service/receiver/opencensus/octrace"
 )
 
 // Ensure that if we add a metrics exporter that our target metrics
@@ -48,7 +47,7 @@ func TestEnsureRecordedMetrics(t *testing.T) {
 
 	sappender := newSpanAppender()
 
-	_, port, doneFn := ocReceiverOnGRPCServer(t, sappender, octrace.WithSpanBufferPeriod(2*time.Millisecond))
+	_, port, doneFn := ocReceiverOnGRPCServer(t, sappender)
 	defer doneFn()
 
 	// Now the opencensus-agent exporter.
@@ -119,7 +118,7 @@ func TestEnsureRecordedMetrics_zeroLengthSpansSender(t *testing.T) {
 	)
 	sappender := newSpanAppender()
 
-	_, port, doneFn := ocReceiverOnGRPCServer(t, sappender, octrace.WithSpanBufferPeriod(2*time.Millisecond))
+	_, port, doneFn := ocReceiverOnGRPCServer(t, sappender)
 	defer doneFn()
 
 	// Now the opencensus-agent exporter.
@@ -191,7 +190,7 @@ func TestExportSpanLinkingMaintainsParentLink(t *testing.T) {
 
 	spanSink := newSpanAppender()
 	spansBufferPeriod := 10 * time.Millisecond
-	_, port, doneFn := ocReceiverOnGRPCServer(t, spanSink, octrace.WithSpanBufferPeriod(spansBufferPeriod))
+	_, port, doneFn := ocReceiverOnGRPCServer(t, spanSink)
 	defer doneFn()
 
 	traceSvcClient, traceSvcDoneFn, err := makeTraceServiceClient(port)

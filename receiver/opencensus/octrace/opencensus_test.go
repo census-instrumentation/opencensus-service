@@ -49,7 +49,7 @@ func TestReceiver_endToEnd(t *testing.T) {
 
 	sappender := newSpanAppender()
 
-	_, port, doneFn := ocReceiverOnGRPCServer(t, sappender, octrace.WithSpanBufferPeriod(100*time.Millisecond))
+	_, port, doneFn := ocReceiverOnGRPCServer(t, sappender)
 	defer doneFn()
 
 	// Now the opencensus-agent exporter.
@@ -172,7 +172,7 @@ func TestReceiver_endToEnd(t *testing.T) {
 func TestExportMultiplexing(t *testing.T) {
 	spanSink := newSpanAppender()
 
-	_, port, doneFn := ocReceiverOnGRPCServer(t, spanSink, octrace.WithSpanBufferPeriod(90*time.Millisecond))
+	_, port, doneFn := ocReceiverOnGRPCServer(t, spanSink)
 	defer doneFn()
 
 	traceClient, traceClientDoneFn, err := makeTraceServiceClient(port)
@@ -291,7 +291,7 @@ func TestExportMultiplexing(t *testing.T) {
 func TestExportProtocolViolations_nodelessFirstMessage(t *testing.T) {
 	spanSink := newSpanAppender()
 
-	_, port, doneFn := ocReceiverOnGRPCServer(t, spanSink, octrace.WithSpanBufferPeriod(90*time.Millisecond))
+	_, port, doneFn := ocReceiverOnGRPCServer(t, spanSink)
 	defer doneFn()
 
 	traceClient, traceClientDoneFn, err := makeTraceServiceClient(port)
@@ -359,7 +359,7 @@ func TestExportProtocolViolations_nodelessFirstMessage(t *testing.T) {
 func TestExportProtocolConformation_spansInFirstMessage(t *testing.T) {
 	spanSink := newSpanAppender()
 
-	_, port, doneFn := ocReceiverOnGRPCServer(t, spanSink, octrace.WithSpanBufferPeriod(70*time.Millisecond))
+	_, port, doneFn := ocReceiverOnGRPCServer(t, spanSink)
 	defer doneFn()
 
 	traceClient, traceClientDoneFn, err := makeTraceServiceClient(port)
