@@ -2,6 +2,7 @@ module github.com/census-instrumentation/opencensus-service
 
 require (
 	cloud.google.com/go v0.32.0 // indirect
+	contrib.go.opencensus.io/exporter/aws v0.0.0-20181029163544-2befc13012d0
 	contrib.go.opencensus.io/exporter/ocagent v0.4.4
 	contrib.go.opencensus.io/exporter/stackdriver v0.9.1
 	git.apache.org/thrift.git v0.0.0-20181101003639-92be4f312b88 // indirect
@@ -16,6 +17,8 @@ require (
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/census-instrumentation/opencensus-proto v0.1.0-0.20181214143942-ba49f56771b8
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+	github.com/facebookgo/limitgroup v0.0.0-20150612190941-6abd8d71ec01 // indirect
+	github.com/facebookgo/muster v0.0.0-20150708232844-fd3d7953fd52 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/gogo/googleapis v1.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect
@@ -31,6 +34,8 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.0 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.0 // indirect
 	github.com/hashicorp/serf v0.8.2 // indirect
+	github.com/honeycombio/libhoney-go v1.8.2 // indirect
+	github.com/honeycombio/opencensus-exporter v0.0.0-20181101214123-9be2bb327b5a
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jaegertracing/jaeger v1.8.2
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
@@ -77,6 +82,7 @@ require (
 	google.golang.org/genproto v0.0.0-20181101192439-c830210a61df // indirect
 	google.golang.org/grpc v1.17.0
 	gopkg.in/DataDog/dd-trace-go.v1 v1.4.0 // indirect
+	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/fsnotify/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
