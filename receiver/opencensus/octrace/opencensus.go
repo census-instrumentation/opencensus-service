@@ -109,14 +109,14 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 
 func (oci *Receiver) export(
 	longLivedCtx context.Context,
-	tesCtx context.Context,
+	tes agenttracepb.TraceService_ExportServer,
 	node *commonpb.Node,
 	resource *resourcepb.Resource,
 	spans []*tracepb.Span,
 ) {
 	tracedata := data.TraceData{Node: node, Resource: resource, Spans: spans}
 	// We MUST unconditionally record metrics from this reception.
-	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(tesCtx, receiverName)
+	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(tes.Context(), receiverName)
 	spansMetricsFn(tracedata.Node, tracedata.Spans)
 
 	if len(tracedata.Spans) == 0 {
