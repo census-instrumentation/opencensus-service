@@ -89,6 +89,14 @@ func buildQueuedSpanProcessor(
 			logger,
 			sender.HTTPTimeout(thriftHTTPSenderOpts.Timeout),
 		)
+	case builder.ProtoGRPCSenderType:
+		protoGRPCSenderOpts := opts.SenderConfig.(*builder.JaegerProtoGRPCSenderCfg)
+		logger.Info("Initializing proto-GRPC sender",
+			zap.String("url", protoGRPCSenderOpts.CollectorEndpoint))
+		spanSender = sender.NewJaegerProtoGRPCSender(
+			protoGRPCSenderOpts.CollectorEndpoint,
+			logger,
+		)
 	}
 	doneFns, traceExporters, _ := createExporters(opts.RawConfig, logger)
 

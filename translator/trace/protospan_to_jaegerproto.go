@@ -40,7 +40,7 @@ func OCProtoToJaegerProto(ocBatch *agenttracepb.ExportTraceServiceRequest) (jaeg
 		return nil, err
 	}
 
-	jb := &jaeger.Batch{
+	jb := jaeger.Batch{
 		Process: ocNodeToJaegerProcess(ocBatch.Node),
 		Spans:   jSpans,
 	}
@@ -49,7 +49,7 @@ func OCProtoToJaegerProto(ocBatch *agenttracepb.ExportTraceServiceRequest) (jaeg
 }
 
 // Replica of protospan_to_jaegerthrift.ocNodeToJaegerProcess
-func ocNodeToJaegerProcess(node *commonpb.Node) jaeger.Process {
+func ocNodeToJaegerProcess(node *commonpb.Node) *jaeger.Process {
 	if node == nil {
 		return nil
 	}
