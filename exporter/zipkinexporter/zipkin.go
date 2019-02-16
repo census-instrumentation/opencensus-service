@@ -30,7 +30,6 @@ import (
 	"go.opencensus.io/trace"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
-	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/internal"
@@ -193,18 +192,13 @@ func (ze *zipkinExporter) stop() error {
 }
 
 func (ze *zipkinExporter) ExportSpans(ctx context.Context, td data.TraceData) (zerr error) {
-	ctx, span := trace.StartSpan(ctx,
-		"opencensus.service.exporter.zipkin.ExportTrace",
-		trace.WithSampler(trace.NeverSample()))
+	var nGoodSpans int64
 
-	defer func() {
-		if zerr != nil {
-			span.SetStatus(trace.Status{Code: trace.StatusCodeInternal, Message: zerr.Error()})
-		}
-		span.End()
-	}()
+	observabilityRecorder := internal.NewExporterEventRecorder("zipkin")
 
-	goodSpans := make([]*tracepb.Span, 0, len(td.Spans))
+	ctx = observabilityRecorder.Start(ctx, td.Node)
+	defer observabilityRecorder.End(ctx, nGoodSpans, zerr)
+
 	for _, span := range td.Spans {
 		sd, err := tracetranslator.ProtoSpanToOCSpanData(span)
 		if err != nil {
@@ -217,13 +211,9 @@ func (ze *zipkinExporter) ExportSpans(ctx context.Context, td data.TraceData) (z
 			ze.mu.Lock()
 			ze.reporter.Send(zs)
 			ze.mu.Unlock()
-			goodSpans = append(goodSpans, span)
+			nGoodSpans++
 		}
 	}
-
-	// And finally record metrics on the number of exported spans.
-	nSpansCounter := internal.NewExportedSpansRecorder("zipkin")
-	nSpansCounter(ctx, td.Node, goodSpans)
 
 	return nil
 }

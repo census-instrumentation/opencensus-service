@@ -267,13 +267,17 @@ func zlibUncompressedbody(r io.Reader) io.Reader {
 // The ZipkinReceiver receives spans from endpoint /api/v2 as JSON,
 // unmarshals them and sends them along to the spansink.Sink.
 func (zr *ZipkinReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Trace this method
-	ctx, span := trace.StartSpan(context.Background(), "ZipkinReceiver.Export")
-	defer span.End()
+	var err error
+	var nSpans int64
+
+	observabilityRecorder := internal.NewExporterEventRecorder("zipkin")
+
+	ctx := observabilityRecorder.Start(context.Background(), nil)
+	defer observabilityRecorder.End(ctx, nSpans, err)
 
 	// If the starting RPC has a parent span, then add it as a parent link.
 	parentCtx := r.Context()
-	internal.SetParentLink(parentCtx, span)
+	internal.SetParentLink(parentCtx, observabilityRecorder.UnderlyingSpan())
 
 	pr := processBodyIfNecessary(r)
 	slurp, err := ioutil.ReadAll(pr)
@@ -296,21 +300,23 @@ func (zr *ZipkinReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		receiverNameTag = "zipkinV2"
 	}
 
+	if span := observabilityRecorder.UnderlyingSpan(); span != nil {
+		span.Annotate([]trace.Attribute{
+			trace.StringAttribute("zipkin_version", receiverNameTag),
+		}, "Zipkin type conversion done")
+	}
+
 	if err != nil {
-		span.SetStatus(trace.Status{
-			Code:    trace.StatusCodeInvalidArgument,
-			Message: err.Error(),
-		})
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(ctx, receiverNameTag)
 	// Now translate them into TraceData
 	for _, ereq := range ereqs {
-		zr.spanSink.ReceiveTraceData(ctx, data.TraceData{Node: ereq.Node, Spans: ereq.Spans})
-		// We MUST unconditionally record metrics from this reception.
-		spansMetricsFn(ereq.Node, ereq.Spans)
+		ack, _ := zr.spanSink.ReceiveTraceData(ctx, data.TraceData{Node: ereq.Node, Spans: ereq.Spans})
+		if ack != nil {
+			nSpans += int64(ack.SavedSpans)
+		}
 	}
 
 	// Finally send back the response "Accepted" as

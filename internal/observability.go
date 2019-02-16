@@ -20,6 +20,7 @@ package internal
 
 import (
 	"context"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -30,12 +31,13 @@ import (
 	"go.opencensus.io/trace"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
-	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 )
 
 var (
 	tagKeyReceiverName, _ = tag.NewKey("opencensus_receiver")
 	tagKeyExporterName, _ = tag.NewKey("opencensus_exporter")
+	tagKeyError, _        = tag.NewKey("opencensus_error")
+	tagKeyStatus, _       = tag.NewKey("opencensus_status")
 )
 
 var mReceivedSpans = stats.Int64("oc.io/receiver/received_spans", "Counts the number of spans received by the receiver", "1")
@@ -65,42 +67,111 @@ var ViewExportedSpans = &view.View{
 	TagKeys:     []tag.Key{tagKeyExporterName},
 }
 
+var mLatencyMs = stats.Float64("oc.io/latency", "The latency of the various actions in milliseconds", "ms")
+
+var latencyDistribution = view.Distribution(
+	0, 0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80,
+	100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 5000, 10000, 20000, 50000, 100000,
+)
+
+// VIewLatency defines the view to extract the latencies for various actions.
+var ViewLatency = &view.View{
+	Name:        mLatencyMs.Name(),
+	Description: mLatencyMs.Description(),
+	Measure:     mLatencyMs,
+	Aggregation: latencyDistribution,
+	TagKeys:     []tag.Key{tagKeyReceiverName, tagKeyExporterName},
+}
+
 // AllViews has the views for the metrics provided by the agent.
 var AllViews = []*view.View{
 	ViewReceivedSpansReceiver,
 	ViewExportedSpans,
+	ViewLatency,
 }
 
-// ContextWithReceiverName adds the tag "opencensus_receiver" and the name of the
-// receiver as the value, and returns the newly created context.
-func ContextWithReceiverName(ctx context.Context, receiverName string) context.Context {
-	ctx, _ = tag.New(ctx, tag.Upsert(tagKeyReceiverName, receiverName))
-	return ctx
-}
-
-// NewReceivedSpansRecorderStreaming creates a function that uses a context created
-// from the name of the receiver to record the number of the spans received
-// by the receiver.
-func NewReceivedSpansRecorderStreaming(lifetimeCtx context.Context, receiverName string) func(*commonpb.Node, []*tracepb.Span) {
-	// We create and reuse this context because for streaming RPCs e.g. with gRPC
-	// the context doesn't change, so it is more useful for avoid expensively adding
-	// keys on each invocation. We can create the context once and then reuse it
-	// when recording measurements.
-	ctx := ContextWithReceiverName(lifetimeCtx, receiverName)
-
-	return func(ni *commonpb.Node, spans []*tracepb.Span) {
-		// TODO: (@odeke-em) perhaps also record information from the node?
-		stats.Record(ctx, mReceivedSpans.M(int64(len(spans))))
+// NewReceiverEventRecorder creates a helper function that'll add the name of the
+// creating exporter as a tag value in the context that will be used to count the
+// the number of spans exported, but it will also create a span to mark the duration
+// of activeness of the caller.
+func NewReceiverEventRecorder(receiverName string) SpansObservabilityRecorder {
+	return &spansRecorder{
+		predefinedSpanName: "opencensus.service.receiver." + receiverName + ".Receive",
+		startTime:          time.Now(),
+		receiverName:       receiverName,
 	}
 }
 
-// NewExportedSpansRecorder creates a helper function that'll add the name of the
+// SpansObservabilityRecorder is a helper that is started when
+type SpansObservabilityRecorder interface {
+	Start(ctx context.Context, ni *commonpb.Node) context.Context
+	End(ctx context.Context, nItems int64, err error) context.Context
+	UnderlyingSpan() *trace.Span
+}
+
+type spansRecorder struct {
+	predefinedSpanName string
+	span               *trace.Span
+	receiverName       string
+	exporterName       string
+	startTime          time.Time
+}
+
+var _ SpansObservabilityRecorder = (*spansRecorder)(nil)
+
+func (sr *spansRecorder) Start(ctx context.Context, ni *commonpb.Node) context.Context {
+	sr.startTime = time.Now()
+	ctx, sr.span = trace.StartSpan(ctx, sr.predefinedSpanName, trace.WithSampler(trace.NeverSample()))
+
+	if sr.receiverName != "" {
+		ctx, _ = tag.New(ctx, tag.Upsert(tagKeyReceiverName, sr.receiverName))
+	} else {
+		ctx, _ = tag.New(ctx, tag.Upsert(tagKeyExporterName, sr.exporterName))
+	}
+
+	return ctx
+}
+
+func (sr *spansRecorder) End(ctx context.Context, nItems int64, err error) context.Context {
+	var measurements []stats.Measurement
+	var tagMutators []tag.Mutator
+
+	if sr.receiverName != "" {
+		tagMutators = append(tagMutators, tag.Upsert(tagKeyReceiverName, sr.receiverName))
+		measurements = append(measurements, mReceivedSpans.M(nItems))
+	} else {
+		tagMutators = append(tagMutators, tag.Upsert(tagKeyExporterName, sr.exporterName))
+		measurements = append(measurements, mExportedSpans.M(nItems))
+	}
+
+	if err == nil {
+		tagMutators = append(tagMutators, tag.Upsert(tagKeyStatus, "OK"))
+	} else {
+		tagMutators = append(tagMutators, tag.Upsert(tagKeyStatus, "ERROR"), tag.Upsert(tagKeyError, err.Error()))
+	}
+
+	latencyMs := float64(time.Since(sr.startTime) / time.Millisecond)
+	measurements = append(measurements, mLatencyMs.M(latencyMs))
+	ctx, _ = tag.New(ctx, tagMutators...)
+	stats.Record(ctx, measurements...)
+	sr.span.End()
+
+	return ctx
+}
+
+func (sr *spansRecorder) UnderlyingSpan() *trace.Span {
+	return sr.span
+}
+
+// NewExporterRecorder creates a helper function that'll add the name of the
 // creating exporter as a tag value in the context that will be used to count the
-// the number of spans exported.
-func NewExportedSpansRecorder(exporterName string) func(context.Context, *commonpb.Node, []*tracepb.Span) {
-	return func(ctx context.Context, ni *commonpb.Node, spans []*tracepb.Span) {
-		ctx, _ = tag.New(ctx, tag.Upsert(tagKeyExporterName, exporterName))
-		stats.Record(ctx, mExportedSpans.M(int64(len(spans))))
+// the number of spans exported, but it will also create a span to mark the duration
+// of activeness of the caller.
+func NewExporterEventRecorder(exporterName string) SpansObservabilityRecorder {
+	return &spansRecorder{
+		predefinedSpanName: "opencensus.service.exporter." + exporterName + ".Export",
+		startTime:          time.Now(),
+		exporterName:       exporterName,
 	}
 }
 

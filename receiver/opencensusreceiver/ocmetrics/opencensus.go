@@ -21,8 +21,6 @@ import (
 
 	"google.golang.org/api/support/bundler"
 
-	"go.opencensus.io/trace"
-
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agentmetricspb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
@@ -59,12 +57,17 @@ const receiverName = "opencensus_metrics"
 
 // Export is the gRPC method that receives streamed metrics from
 // OpenCensus-metricproto compatible libraries/applications.
-func (ocr *Receiver) Export(mes agentmetricspb.MetricsService_ExportServer) error {
+func (ocr *Receiver) Export(mes agentmetricspb.MetricsService_ExportServer) (err error) {
+	var nReceivedMessages int64
+
 	// The bundler will receive batches of metrics i.e. []*metricspb.Metric
 	// We need to ensure that it propagates the receiver name as a tag
-	ctxWithReceiverName := internal.ContextWithReceiverName(mes.Context(), receiverName)
+	observabilityRecorder := internal.NewReceiverEventRecorder(receiverName)
+	ctx := observabilityRecorder.Start(mes.Context(), nil)
+	defer observabilityRecorder.End(ctx, nReceivedMessages, err)
+
 	metricsBundler := bundler.NewBundler((*data.MetricsData)(nil), func(payload interface{}) {
-		ocr.batchMetricExporting(ctxWithReceiverName, payload)
+		ocr.batchMetricExporting(ctx, payload)
 	})
 
 	metricBufferPeriod := ocr.metricBufferPeriod
@@ -112,6 +115,9 @@ func (ocr *Receiver) Export(mes agentmetricspb.MetricsService_ExportServer) erro
 		if err != nil {
 			return err
 		}
+
+		// Otherwise mark this as a received messages.
+		nReceivedMessages++
 	}
 }
 
@@ -129,24 +135,21 @@ func (ocr *Receiver) batchMetricExporting(longLivedRPCCtx context.Context, paylo
 		return
 	}
 
-	// Trace this method
-	ctx, span := trace.StartSpan(context.Background(), "OpenCensusMetricsReceiver.Export")
-	defer span.End()
-
 	// TODO: (@odeke-em) investigate if it is necessary
 	// to group nodes with their respective metrics during
 	// bundledMetrics list unfurling then send metrics grouped per node
 
-	// If the starting RPC has a parent span, then add it as a parent link.
-	internal.SetParentLink(longLivedRPCCtx, span)
-
-	nMetrics := int64(0)
 	for _, md := range mds {
-		ocr.metricSink.ReceiveMetricsData(ctx, *md)
-		nMetrics += int64(len(md.Metrics))
-	}
+		metricsRecorder := internal.NewReceiverEventRecorder(receiverName)
+                ctx := metricsRecorder.Start(longLivedRPCCtx, md.Node)
+		// If the starting RPC has a parent span, then add it as a parent link.
+		internal.SetParentLink(longLivedRPCCtx, metricsRecorder.UnderlyingSpan())
 
-	span.Annotate([]trace.Attribute{
-		trace.Int64Attribute("num_metrics", nMetrics),
-	}, "")
+		ack, err := ocr.metricSink.ReceiveMetricsData(ctx, *md)
+		var nItems int64
+		if ack != nil {
+			nItems = int64(ack.SavedMetrics)
+		}
+		metricsRecorder.End(ctx, nItems, err)
+	}
 }

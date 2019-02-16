@@ -226,9 +226,15 @@ func (jr *jReceiver) stopTraceReceptionLocked(ctx context.Context) error {
 }
 
 func (jr *jReceiver) SubmitBatches(ctx thrift.Context, batches []*jaeger.Batch) ([]*jaeger.BatchSubmitResponse, error) {
-	jbsr := make([]*jaeger.BatchSubmitResponse, 0, len(batches))
-	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(ctx, "jaeger-collector")
+	var err error
+	var nSpans int64
 
+	observabilityRecorder := internal.NewExporterEventRecorder("jaeger-collector")
+
+	octx := observabilityRecorder.Start(ctx, nil)
+	defer observabilityRecorder.End(octx, nSpans, err)
+
+	jbsr := make([]*jaeger.BatchSubmitResponse, 0, len(batches))
 	for _, batch := range batches {
 		octrace, err := tracetranslator.JaegerThriftBatchToOCProto(batch)
 		// TODO: (@odeke-em) add this error for Jaeger observability
@@ -236,9 +242,10 @@ func (jr *jReceiver) SubmitBatches(ctx thrift.Context, batches []*jaeger.Batch) 
 
 		if err == nil && octrace != nil {
 			ok = true
-			jr.spanSink.ReceiveTraceData(ctx, data.TraceData{Node: octrace.Node, Spans: octrace.Spans})
-			// We MUST unconditionally record metrics from this reception.
-			spansMetricsFn(octrace.Node, octrace.Spans)
+			ack, _ := jr.spanSink.ReceiveTraceData(ctx, data.TraceData{Node: octrace.Node, Spans: octrace.Spans})
+			if ack != nil {
+				nSpans += int64(ack.SavedSpans)
+			}
 		}
 
 		jbsr = append(jbsr, &jaeger.BatchSubmitResponse{
@@ -259,18 +266,23 @@ func (jr *jReceiver) EmitZipkinBatch(spans []*zipkincore.Span) error {
 
 // EmitBatch implements cmd/agent/reporter.Reporter and it forwards
 // Jaeger spans received by the Jaeger agent processor.
-func (jr *jReceiver) EmitBatch(batch *jaeger.Batch) error {
+func (jr *jReceiver) EmitBatch(batch *jaeger.Batch) (err error) {
+	var nSpans int64
+
+	observabilityRecorder := internal.NewExporterEventRecorder("jaeger-agent")
+
+	ctx := observabilityRecorder.Start(context.Background(), nil)
+	defer observabilityRecorder.End(ctx, nSpans, err)
+
 	octrace, err := tracetranslator.JaegerThriftBatchToOCProto(batch)
 	if err != nil {
-		// TODO: (@odeke-em) add this error for Jaeger observability metrics
 		return err
 	}
 
-	ctx := context.Background()
-	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(ctx, "jaeger-agent")
-	_, err = jr.spanSink.ReceiveTraceData(ctx, data.TraceData{Node: octrace.Node, Spans: octrace.Spans})
-	// We MUST unconditionally record metrics from this reception.
-	spansMetricsFn(octrace.Node, octrace.Spans)
+	ack, err := jr.spanSink.ReceiveTraceData(ctx, data.TraceData{Node: octrace.Node, Spans: octrace.Spans})
+	if ack != nil {
+		nSpans += int64(ack.SavedSpans)
+	}
 
 	return err
 }

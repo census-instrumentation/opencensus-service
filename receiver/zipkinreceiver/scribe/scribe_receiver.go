@@ -127,6 +127,14 @@ var _ scribe.Scribe = (*scribeCollector)(nil)
 
 // Log is the function that receives the messages sent to the scribe server. It is required
 func (sc *scribeCollector) Log(messages []*scribe.LogEntry) (r scribe.ResultCode, err error) {
+	var nZSpans int64
+
+	tracesRecorder := internal.NewReceiverEventRecorder("zipkin_scribe-log")
+	ctx := tracesRecorder.Start(context.Background(), nil)
+	// If the starting RPC has a parent span, then add it as a parent link.
+	internal.SetParentLink(ctx, tracesRecorder.UnderlyingSpan())
+	defer tracesRecorder.End(ctx, nZSpans, err)
+
 	zSpans := make([]*zipkincore.Span, 0, len(messages))
 	for _, logEntry := range messages {
 		if sc.category != logEntry.Category {
@@ -147,6 +155,7 @@ func (sc *scribeCollector) Log(messages []*scribe.LogEntry) (r scribe.ResultCode
 		}
 
 		zSpans = append(zSpans, zs)
+		nZSpans++
 	}
 
 	if len(zSpans) == 0 {
@@ -158,12 +167,17 @@ func (sc *scribeCollector) Log(messages []*scribe.LogEntry) (r scribe.ResultCode
 		return scribe.ResultCode_OK, err
 	}
 
-	ctx := context.Background()
-	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(ctx, "zipkin-scribe")
-
 	for _, ocBatch := range ocBatches {
-		sc.traceSink.ReceiveTraceData(ctx, data.TraceData{Node: ocBatch.Node, Spans: ocBatch.Spans})
-		spansMetricsFn(ocBatch.Node, ocBatch.Spans)
+		node := ocBatch.Node
+		tracesRecorder := internal.NewReceiverEventRecorder("zipkin_scribe")
+		childCtx := tracesRecorder.Start(ctx, node)
+
+		ack, cerr := sc.traceSink.ReceiveTraceData(ctx, data.TraceData{Node: node, Spans: ocBatch.Spans})
+		var nSpans int64
+		if ack != nil {
+			nSpans = int64(ack.SavedSpans)
+		}
+		tracesRecorder.End(childCtx, nSpans, cerr)
 	}
 
 	return scribe.ResultCode_OK, nil

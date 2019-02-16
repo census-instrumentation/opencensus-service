@@ -105,20 +105,19 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tes []exporter.TraceExpo
 	return tes, mes, doneFns, nil
 }
 
-func (oce *ocagentExporter) ExportSpans(ctx context.Context, td data.TraceData) error {
+func (oce *ocagentExporter) ExportSpans(ctx context.Context, td data.TraceData) (err error) {
+	observabilityRecorder := internal.NewExporterEventRecorder("ocagent")
+
+	ctx = observabilityRecorder.Start(ctx, td.Node)
+	defer observabilityRecorder.End(ctx, int64(len(td.Spans)), err)
+
 	// Get an exporter worker round-robin
 	exporter := oce.exporters[atomic.AddUint32(&oce.counter, 1)%uint32(len(oce.exporters))]
-	err := exporter.ExportTraceServiceRequest(
+	return exporter.ExportTraceServiceRequest(
 		&agenttracepb.ExportTraceServiceRequest{
 			Spans:    td.Spans,
 			Resource: td.Resource,
 			Node:     td.Node,
 		},
 	)
-	if err != nil {
-		return err
-	}
-	nSpansCounter := internal.NewExportedSpansRecorder("ocagent")
-	nSpansCounter(ctx, td.Node, td.Spans)
-	return nil
 }

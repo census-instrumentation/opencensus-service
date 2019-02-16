@@ -19,8 +19,6 @@ import (
 	"errors"
 	"io"
 
-	"go.opencensus.io/trace"
-
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
@@ -64,8 +62,6 @@ const receiverName = "opencensus_trace"
 // Export is the gRPC method that receives streamed traces from
 // OpenCensus-traceproto compatible libraries/applications.
 func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
-	// We need to ensure that it propagates the receiver name as a tag
-	ctxWithReceiverName := internal.ContextWithReceiverName(tes.Context(), receiverName)
 
 	// The first message MUST have a non-nil Node.
 	recv, err := tes.Recv()
@@ -93,7 +89,7 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 			resource = recv.Resource
 		}
 
-		go oci.export(ctxWithReceiverName, tes, lastNonNilNode, resource, recv.Spans)
+		go oci.export(tes.Context(), tes, lastNonNilNode, resource, recv.Spans)
 
 		recv, err = tes.Recv()
 		if err != nil {
@@ -113,30 +109,32 @@ func (oci *Receiver) export(
 	node *commonpb.Node,
 	resource *resourcepb.Resource,
 	spans []*tracepb.Span,
-) {
+) (err error) {
 	tracedata := data.TraceData{Node: node, Resource: resource, Spans: spans}
-	// We MUST unconditionally record metrics from this reception.
-	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(tes.Context(), receiverName)
-	spansMetricsFn(tracedata.Node, tracedata.Spans)
+
+	var nItems int64
+
+	tracesRecorder := internal.NewReceiverEventRecorder(receiverName)
+	ctx := tracesRecorder.Start(longLivedCtx, node)
+	// If the starting RPC has a parent span, then add it as a parent link.
+	internal.SetParentLink(longLivedCtx, tracesRecorder.UnderlyingSpan())
+	defer tracesRecorder.End(ctx, nItems, err)
 
 	if len(tracedata.Spans) == 0 {
 		return
 	}
-
-	// Trace this method
-	ctx, span := trace.StartSpan(context.Background(), "OpenCensusTraceReceiver.Export")
-	defer span.End()
 
 	// TODO: (@odeke-em) investigate if it is necessary
 	// to group nodes with their respective spans during
 	// spansAndNode list unfurling then send spans grouped per node
 
 	// If the starting RPC has a parent span, then add it as a parent link.
-	internal.SetParentLink(longLivedCtx, span)
+	internal.SetParentLink(longLivedCtx, tracesRecorder.UnderlyingSpan())
 
-	oci.spanSink.ReceiveTraceData(ctx, tracedata)
+	ack, err := oci.spanSink.ReceiveTraceData(ctx, tracedata)
+	if ack != nil {
+		nItems = int64(ack.SavedSpans)
+	}
 
-	span.Annotate([]trace.Attribute{
-		trace.Int64Attribute("num_spans", int64(len(tracedata.Spans))),
-	}, "")
+	return err
 }

@@ -26,7 +26,6 @@ import (
 
 	"go.opencensus.io/trace"
 
-	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/internal"
 	tracetranslator "github.com/census-instrumentation/opencensus-service/translator/trace"
@@ -43,28 +42,19 @@ import (
 // get those exporters converted to directly receive
 // OpenCensus Proto TraceData.
 func OcProtoSpansToOCSpanDataInstrumented(ctx context.Context, exporterName string, te trace.Exporter, td data.TraceData) (aerr error) {
-	ctx, span := trace.StartSpan(ctx,
-		"opencensus.service.exporter."+exporterName+".ExportTrace",
-		trace.WithSampler(trace.NeverSample()))
+	var nGoodSpans int64
 
-	span.Annotate([]trace.Attribute{
-		trace.Int64Attribute("n_spans", int64(len(td.Spans))),
-	}, "")
+	observabilityRecorder := internal.NewExporterEventRecorder(exporterName)
 
-	defer func() {
-		if aerr != nil {
-			span.SetStatus(trace.Status{Code: trace.StatusCodeInternal, Message: aerr.Error()})
-		}
-		span.End()
-	}()
+	ctx = observabilityRecorder.Start(ctx, td.Node)
+	defer observabilityRecorder.End(ctx, nGoodSpans, aerr)
 
 	var errs []error
-	var goodSpans []*tracepb.Span
 	for _, span := range td.Spans {
 		sd, err := tracetranslator.ProtoSpanToOCSpanData(span)
 		if err == nil {
 			te.ExportSpan(sd)
-			goodSpans = append(goodSpans, span)
+			nGoodSpans++
 		} else {
 			errs = append(errs, err)
 		}
