@@ -211,6 +211,8 @@ zpages:
 
 The ocagent can be run directly from sources, binary, or a Docker image.
 
+It is recommended that you use the latest [release](https://github.com/census-instrumentation/opencensus-service/releases).
+
 The minimum Go version required for this project is Go 1.11.4.
 
 1. Run from sources:
