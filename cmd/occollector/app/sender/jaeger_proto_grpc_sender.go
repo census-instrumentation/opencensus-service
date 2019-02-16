@@ -15,43 +15,38 @@
 package sender
 
 import (
-	"bytes"
+	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
+	jaegerproto "github.com/jaegertracing/jaeger/proto-gen/api_v2"
+
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
-	"github.com/census-instrumentation/opencensus-service/translator/trace"
+	tracetranslator "github.com/census-instrumentation/opencensus-service/translator/trace"
 )
 
 // JaegerProtoGRPCSender forwards spans encoded in the jaeger proto
 // format to a grpc server
 type JaegerProtoGRPCSender struct {
-	ctx    context.Context
 	client *grpc.ClientConn
 	logger *zap.Logger
 }
 
 // NewJaegerProtoGRPCSender returns a new GRPC-backend span sender.
-func NewJaegerProtoGRPCSender(
-	headers map[string]string,
-	zlogger *zap.Logger,
-) *JaegerProtoGRPCSender {
+// The collector endpoint should be of the form "hostname:14250"
+func NewJaegerProtoGRPCSender(collectorEndpoint string, zlogger *zap.Logger) *JaegerProtoGRPCSender {
+	client := grpc.Dial(collectorEndpoint, grpc.WithInsecure())
 	s := &JaegerProtoGRPCSender{
-		headers: headers,
-		client:  &grpc.ClientConn{},
-		logger:  zlogger,
+		client: client,
+		logger: zlogger,
 	}
 
 	return s
 }
 
-// ProcessSpans sends the received data to the configured Jaeger Thrift end-point.
+// ProcessSpans sends the received data to the configured Jaeger Proto-GRPC end-point.
 func (s *JaegerProtoGRPCSender) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
 	if batch == nil {
 		return 0, fmt.Errorf("Jaeger sender received nil batch")
@@ -62,34 +57,11 @@ func (s *JaegerProtoGRPCSender) ProcessSpans(batch *agenttracepb.ExportTraceServ
 		return uint64(len(batch.Spans)), err
 	}
 
-	mSpans := pBatch.Spans
-	body, err := serializeProto(pBatch)
+	collectorServiceClient := jaegerproto.NewCollectorServiceClient(s.client)
+	_, err := collectorServiceClient.PostSpans(context.Background(), &jaegerproto.PostSpansRequest{Batch: protoBatch})
 	if err != nil {
-		return uint64(len(mSpans)), err
+		return 0, err
 	}
-
-	// FIXME
-	req, err := grpc.ClientConn.Invoke("POST", s.url, body)
-	if err != nil {
-		return uint64(len(mSpans)), err
-	}
-	req.Header.Set("Content-Type", "application/x-thrift")
-	for k, v := range s.headers {
-		req.Header.Set(k, v)
-	}
-	io.Copy(ioutil.Discard, resp.Body)
-	resp.Body.Close()
-	if resp.StatusCode >= http.StatusBadRequest {
-		return uint64(len(mSpans)), fmt.Errorf("Jaeger Thirft HTTP sender error: %d", resp.StatusCode)
-	}
-	return 0, nil
-}
-
-func serializeProto() (*bytes.Buffer, error) {
-	t := thrift.NewTMemoryBuffer()
-	p := thrift.NewTBinaryProtocolTransport(t)
-	if err := obj.Write(p); err != nil {
-		return nil, err
-	}
-	return t.Buffer, nil
+	
+	return protoBatch.len(), nil
 }

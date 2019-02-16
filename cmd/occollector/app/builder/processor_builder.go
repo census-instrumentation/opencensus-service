@@ -96,7 +96,6 @@ type BatchingConfig struct {
 // JaegerProtoGRPCSenderCfg holds configuration for Jaeger Proto GRPC sender
 type JaegerProtoGRPCSenderCfg struct {
 	CollectorEndpoint string            `mapstructure:"collector-endpoint"`
-	Headers           map[string]string `mapstructure:"headers"`
 }
 
 // NewJaegerProtoGRPCSenderCfg returns an instance of JaegerProtoGRPCSenderCfg with default values
@@ -174,6 +173,7 @@ func (qOpts *QueuedSpanProcessorCfg) InitFromViper(v *viper.Viper) *QueuedSpanPr
 		if vpgopts != nil {
 			vpgopts.Unmarshal(pgopts)
 		}
+		qOpts.SenderConfig = pgopts
 	}
 	qOpts.RawConfig = v
 	return qOpts
