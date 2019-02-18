@@ -143,6 +143,7 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 	}
 }
 
+// Stop stops this receivers workers
 func (oci *Receiver) Stop() {
 	for _, worker := range oci.workers {
 		worker.stopListening()
