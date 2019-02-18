@@ -55,25 +55,25 @@ func New(sr receiver.TraceReceiverSink, opts ...Option) (*Receiver, error) {
 	}
 
 	messageChan := make(chan *traceDataWithCtx, messageChannelSize)
-	oci := &Receiver{
+	ocr := &Receiver{
 		spanSink:    sr,
 		numWorkers:  defaultNumWorkers,
 		messageChan: messageChan,
 	}
 	for _, opt := range opts {
-		opt(oci)
+		opt(ocr)
 	}
 
 	// Setup and startup worker pool
-	workers := make([]*receiverWorker, 0, oci.numWorkers)
-	for index := 0; index < oci.numWorkers; index++ {
-		worker := newReceiverWorker(oci)
+	workers := make([]*receiverWorker, 0, ocr.numWorkers)
+	for index := 0; index < ocr.numWorkers; index++ {
+		worker := newReceiverWorker(ocr)
 		go worker.listenOn(messageChan)
 		workers = append(workers, worker)
 	}
-	oci.workers = workers
+	ocr.workers = workers
 
-	return oci, nil
+	return ocr, nil
 }
 
 var _ agenttracepb.TraceServiceServer = (*Receiver)(nil)
@@ -81,7 +81,7 @@ var _ agenttracepb.TraceServiceServer = (*Receiver)(nil)
 var errUnimplemented = errors.New("unimplemented")
 
 // Config handles configuration messages.
-func (oci *Receiver) Config(tcs agenttracepb.TraceService_ConfigServer) error {
+func (ocr *Receiver) Config(tcs agenttracepb.TraceService_ConfigServer) error {
 	// TODO: Implement when we define the config receiver/sender.
 	return errUnimplemented
 }
@@ -92,7 +92,7 @@ const receiverName = "opencensus_trace"
 
 // Export is the gRPC method that receives streamed traces from
 // OpenCensus-traceproto compatible libraries/applications.
-func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
+func (ocr *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 	// We need to ensure that it propagates the receiver name as a tag
 	ctxWithReceiverName := internal.ContextWithReceiverName(tes.Context(), receiverName)
 	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(tes.Context(), receiverName)
@@ -129,7 +129,7 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 			Spans:    recv.Spans,
 		}
 
-		oci.messageChan <- &traceDataWithCtx{data: td, ctx: ctxWithReceiverName}
+		ocr.messageChan <- &traceDataWithCtx{data: td, ctx: ctxWithReceiverName}
 
 		spansMetricsFn(td.Node, td.Spans)
 
@@ -146,8 +146,8 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 }
 
 // Stop the receiver and its workers
-func (oci *Receiver) Stop() {
-	for _, worker := range oci.workers {
+func (ocr *Receiver) Stop() {
+	for _, worker := range ocr.workers {
 		worker.stopListening()
 	}
 }
@@ -165,7 +165,7 @@ func newReceiverWorker(receiver *Receiver) *receiverWorker {
 	}
 }
 
-func (rw *receiverWorker) listenOn(cn chan *traceDataWithCtx) {
+func (rw *receiverWorker) listenOn(cn <-chan *traceDataWithCtx) {
 	for {
 		select {
 		case tdWithCtx := <-cn:
