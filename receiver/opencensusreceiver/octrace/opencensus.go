@@ -31,6 +31,8 @@ import (
 
 const (
 	defaultNumWorkers = 4
+
+	messageChannelSize = 64
 )
 
 // Receiver is the type used to handle spans from OpenCensus exporters.
@@ -52,7 +54,7 @@ func New(sr receiver.TraceReceiverSink, opts ...Option) (*Receiver, error) {
 		return nil, errors.New("needs a non-nil receiver.TraceReceiverSink")
 	}
 
-	messageChan := make(chan *traceDataWithCtx, 64)
+	messageChan := make(chan *traceDataWithCtx, messageChannelSize)
 	oci := &Receiver{
 		spanSink:    sr,
 		numWorkers:  defaultNumWorkers,
@@ -67,7 +69,7 @@ func New(sr receiver.TraceReceiverSink, opts ...Option) (*Receiver, error) {
 	for index := 0; index < oci.numWorkers; index++ {
 		worker := newReceiverWorker(oci)
 		go worker.listenOn(messageChan)
-		workers = append(workers)
+		workers = append(workers, worker)
 	}
 	oci.workers = workers
 
@@ -143,7 +145,7 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 	}
 }
 
-// Stop stops this receivers workers
+// Stop the receiver and its workers
 func (oci *Receiver) Stop() {
 	for _, worker := range oci.workers {
 		worker.stopListening()
