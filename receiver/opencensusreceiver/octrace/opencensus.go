@@ -30,13 +30,20 @@ import (
 )
 
 const (
-	defaultNumWorkers = 1
+	defaultNumWorkers = 4
 )
 
 // Receiver is the type used to handle spans from OpenCensus exporters.
 type Receiver struct {
-	spanSink   receiver.TraceReceiverSink
-	numWorkers int
+	spanSink    receiver.TraceReceiverSink
+	numWorkers  int
+	workers     []*receiverWorker
+	messageChan chan *traceDataWithCtx
+}
+
+type traceDataWithCtx struct {
+	data *data.TraceData
+	ctx  context.Context
 }
 
 // New creates a new opencensus.Receiver reference.
@@ -44,13 +51,26 @@ func New(sr receiver.TraceReceiverSink, opts ...Option) (*Receiver, error) {
 	if sr == nil {
 		return nil, errors.New("needs a non-nil receiver.TraceReceiverSink")
 	}
+
+	messageChan := make(chan *traceDataWithCtx, 64)
 	oci := &Receiver{
-		spanSink:   sr,
-		numWorkers: defaultNumWorkers,
+		spanSink:    sr,
+		numWorkers:  defaultNumWorkers,
+		messageChan: messageChan,
 	}
 	for _, opt := range opts {
 		opt(oci)
 	}
+
+	// Setup and startup worker pool
+	workers := make([]*receiverWorker, 0, oci.numWorkers)
+	for index := 0; index < oci.numWorkers; index++ {
+		worker := newReceiverWorker(oci)
+		go worker.listenOn(messageChan)
+		workers = append(workers)
+	}
+	oci.workers = workers
+
 	return oci, nil
 }
 
@@ -73,26 +93,13 @@ const receiverName = "opencensus_trace"
 func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 	// We need to ensure that it propagates the receiver name as a tag
 	ctxWithReceiverName := internal.ContextWithReceiverName(tes.Context(), receiverName)
+	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(tes.Context(), receiverName)
 
 	// The first message MUST have a non-nil Node.
 	recv, err := tes.Recv()
 	if err != nil {
 		return err
 	}
-
-	messageChan := make(chan *data.TraceData, 64)
-	workers := make([]*receiverWorker, 0, oci.numWorkers)
-	for index := 0; index < oci.numWorkers; index++ {
-		worker := newReceiverWorker(ctxWithReceiverName, oci, tes)
-		go worker.listenOn(messageChan)
-		workers = append(workers)
-	}
-
-	defer func() {
-		for _, worker := range workers {
-			worker.stopListening()
-		}
-	}()
 
 	// Check the condition that the first message has a non-nil Node.
 	if recv.Node == nil {
@@ -120,7 +127,9 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 			Spans:    recv.Spans,
 		}
 
-		messageChan <- td
+		oci.messageChan <- &traceDataWithCtx{data: td, ctx: ctxWithReceiverName}
+
+		spansMetricsFn(td.Node, td.Spans)
 
 		recv, err = tes.Recv()
 		if err != nil {
@@ -134,29 +143,30 @@ func (oci *Receiver) Export(tes agenttracepb.TraceService_ExportServer) error {
 	}
 }
 
-type receiverWorker struct {
-	receiver     *Receiver
-	tes          agenttracepb.TraceService_ExportServer
-	longLivedCtx context.Context
-	cancel       chan struct{}
-}
-
-func newReceiverWorker(
-	ctx context.Context, receiver *Receiver, tes agenttracepb.TraceService_ExportServer,
-) *receiverWorker {
-	return &receiverWorker{
-		receiver:     receiver,
-		tes:          tes,
-		longLivedCtx: ctx,
-		cancel:       make(chan struct{}),
+func (oci *Receiver) Stop() {
+	for _, worker := range oci.workers {
+		worker.stopListening()
 	}
 }
 
-func (rw *receiverWorker) listenOn(cn chan *data.TraceData) {
+type receiverWorker struct {
+	receiver *Receiver
+	tes      agenttracepb.TraceService_ExportServer
+	cancel   chan struct{}
+}
+
+func newReceiverWorker(receiver *Receiver) *receiverWorker {
+	return &receiverWorker{
+		receiver: receiver,
+		cancel:   make(chan struct{}),
+	}
+}
+
+func (rw *receiverWorker) listenOn(cn chan *traceDataWithCtx) {
 	for {
 		select {
-		case td := <-cn:
-			rw.export(td)
+		case tdWithCtx := <-cn:
+			rw.export(tdWithCtx.ctx, tdWithCtx.data)
 		case <-rw.cancel:
 			return
 		}
@@ -167,14 +177,10 @@ func (rw *receiverWorker) stopListening() {
 	close(rw.cancel)
 }
 
-func (rw *receiverWorker) export(tracedata *data.TraceData) {
+func (rw *receiverWorker) export(longLivedCtx context.Context, tracedata *data.TraceData) {
 	if tracedata == nil {
 		return
 	}
-
-	// We MUST unconditionally record metrics from this reception.
-	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(rw.tes.Context(), receiverName)
-	spansMetricsFn(tracedata.Node, tracedata.Spans)
 
 	if len(tracedata.Spans) == 0 {
 		return
@@ -189,7 +195,7 @@ func (rw *receiverWorker) export(tracedata *data.TraceData) {
 	// spansAndNode list unfurling then send spans grouped per node
 
 	// If the starting RPC has a parent span, then add it as a parent link.
-	internal.SetParentLink(rw.longLivedCtx, span)
+	internal.SetParentLink(longLivedCtx, span)
 
 	rw.receiver.spanSink.ReceiveTraceData(ctx, *tracedata)
 
