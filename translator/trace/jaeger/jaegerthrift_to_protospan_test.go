@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tracetranslator
+package jaeger
 
 import (
 	"bytes"
@@ -31,7 +31,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/internal/testutils"
 )
 
-func TestJaegerThriftToOCProto_Roundtrip(t *testing.T) {
+func TestFromThrift_Roundtrip(t *testing.T) {
 	const numOfFiles = 2
 	for i := 0; i < numOfFiles; i++ {
 		// Jaeger binary tags do not round trip from Jaeger -> OCProto -> Jaeger.
@@ -52,13 +52,13 @@ func TestJaegerThriftToOCProto_Roundtrip(t *testing.T) {
 		}
 		wantJBatch.Process.Tags = cleanTags
 
-		ocBatch, err := JaegerThriftBatchToOCProto(wantJBatch)
+		ocBatch, err := FromThrift(wantJBatch)
 		if err != nil {
 			t.Errorf("Failed to read to read Jaeger Thrift from %q: %v", thriftFile, err)
 			continue
 		}
 
-		gotJBatch, err := OCProtoToJaegerThrift(ocBatch)
+		gotJBatch, err := ToThrift(ocBatch)
 		if err != nil {
 			t.Errorf("Failed to translate OC batch to Jaeger Thrift: %v", err)
 			continue
@@ -105,7 +105,7 @@ func TestJaegerThriftToOCProto_Roundtrip(t *testing.T) {
 	}
 }
 
-func TestJaegerThriftBatchToOCProto(t *testing.T) {
+func TestFromThrift(t *testing.T) {
 	const numOfFiles = 2
 	for i := 1; i <= 2; i++ {
 		thriftInFile := fmt.Sprintf("./testdata/thrift_batch_%02d.json", i)
@@ -115,7 +115,7 @@ func TestJaegerThriftBatchToOCProto(t *testing.T) {
 			continue
 		}
 
-		octrace, err := JaegerThriftBatchToOCProto(jb)
+		octrace, err := FromThrift(jb)
 		if err != nil {
 			t.Errorf("Failed to handled Jaeger Thrift Batch from %q. Error: %v", thriftInFile, err)
 			continue
@@ -243,7 +243,7 @@ func TestConservativeConversions(t *testing.T) {
 
 	var got []*agenttracepb.ExportTraceServiceRequest
 	for i, batch := range batches {
-		gb, err := JaegerThriftBatchToOCProto(batch)
+		gb, err := FromThrift(batch)
 		if err != nil {
 			t.Errorf("#%d: Unexpected error: %v", i, err)
 			continue

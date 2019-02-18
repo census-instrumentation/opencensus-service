@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tracetranslator_test
+package spandata_test
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ import (
 
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/internal"
-	tracetranslator "github.com/census-instrumentation/opencensus-service/translator/trace"
+	"github.com/census-instrumentation/opencensus-service/translator/trace/spandata"
 )
 
 func TestProtoSpanToOCSpanData_endToEnd(t *testing.T) {
@@ -103,7 +103,7 @@ func TestProtoSpanToOCSpanData_endToEnd(t *testing.T) {
 		},
 	}
 
-	gotOCSpanData, err := tracetranslator.ProtoSpanToOCSpanData(protoSpan)
+	gotOCSpanData, err := spandata.ProtoSpanToOCSpanData(protoSpan)
 	if err != nil {
 		t.Fatalf("Failed to convert from ProtoSpan to OCSpanData: %v", err)
 	}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tracetranslator
+package jaeger
 
 import (
 	"encoding/json"
@@ -133,12 +133,12 @@ func TestNilOCProtoNode(t *testing.T) {
 	}
 }
 
-func TestOCProtoToJaegerThrift(t *testing.T) {
+func TestToThrift(t *testing.T) {
 	const numOfFiles = 2
 	for i := 0; i < numOfFiles; i++ {
 		ocBatch := ocBatches[i]
 
-		gotJBatch, err := OCProtoToJaegerThrift(ocBatch)
+		gotJBatch, err := ToThrift(ocBatch)
 		if err != nil {
 			t.Errorf("Failed to translate OC batch to Jaeger Thrift: %v", err)
 			continue
