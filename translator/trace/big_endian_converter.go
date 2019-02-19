@@ -19,7 +19,7 @@ import (
 )
 
 // Int64TraceIDToByteTraceID takes a long representaition of a trace id
-// and converts it to a []byte representation
+// and converts it to a []byte representation.
 func Int64TraceIDToByteTraceID(high, low int64) []byte {
 	if high == 0 && low == 0 {
 		return nil
@@ -31,7 +31,7 @@ func Int64TraceIDToByteTraceID(high, low int64) []byte {
 }
 
 // Int64SpanIDToByteSpanID takes a long represenation of a span id and
-// converts it to a []byte representation
+// converts it to a []byte representation.
 func Int64SpanIDToByteSpanID(id int64) []byte {
 	if id == 0 {
 		return nil
