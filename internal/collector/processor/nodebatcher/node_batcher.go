@@ -237,7 +237,6 @@ func (nb *nodeBatcher) add(spans []*tracepb.Span) {
 
 // cutBatch cuts the provided batch, and sets a new batch on this nodeBatcher
 func (nb *nodeBatcher) cutBatch(b *batch) {
-	currBatchPtr := (*unsafe.Pointer)(unsafe.Pointer(&nb.currBatch))
 	initialCap := b.getCurrentCap()
 	currSize := b.getCurrentItemCount()
 	for currSize < initialCap>>1 && initialCap>>1 > initialBatchCapacity {
@@ -245,6 +244,7 @@ func (nb *nodeBatcher) cutBatch(b *batch) {
 	}
 	// atomic.CompareAndSwapPointer only takes unsafe.Pointer interfaces. We do not use unsafe
 	// to skirt around the golang type system.
+	currBatchPtr := (*unsafe.Pointer)(unsafe.Pointer(&nb.currBatch))
 	swapped := atomic.CompareAndSwapPointer(
 		currBatchPtr,
 		unsafe.Pointer(b),
