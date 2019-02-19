@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/zpages"
@@ -34,6 +35,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/internal"
 	"github.com/census-instrumentation/opencensus-service/internal/config"
 	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
+	"github.com/census-instrumentation/opencensus-service/internal/pprofserver"
 	"github.com/census-instrumentation/opencensus-service/processor"
 	"github.com/census-instrumentation/opencensus-service/receiver/jaegerreceiver"
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensusreceiver"
@@ -43,9 +45,6 @@ import (
 )
 
 var configYAMLFile string
-var ocReceiverPort int
-
-const zipkinRoute = "/api/v2/spans"
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
@@ -78,11 +77,18 @@ func runOCAgent() {
 		log.Fatalf("Could not instantiate logger: %v", err)
 	}
 
+	var asyncErrorChan = make(chan error)
+	err = pprofserver.SetupPerFlags(asyncErrorChan, logger)
+	if err != nil {
+		log.Fatalf("Failed to start net/http/pprof: %v", err)
+	}
+
 	// TODO(skaris): move the rest of the configs to use viper
 	v, err := viperutils.ViperFromYAMLBytes([]byte(yamlBlob))
 	if err != nil {
 		log.Fatalf("Config: failed to create viper from YAML: %v", err)
 	}
+
 	traceExporters, metricsExporters, closeFns, err := config.ExportersFromViperConfig(logger, v)
 	if err != nil {
 		log.Fatalf("Config: failed to create exporters from YAML: %v", err)
@@ -150,11 +156,15 @@ func runOCAgent() {
 		}
 	}()
 
-	signalsChan := make(chan os.Signal)
-	signal.Notify(signalsChan, os.Interrupt)
+	signalsChan := make(chan os.Signal, 1)
+	signal.Notify(signalsChan, os.Interrupt, syscall.SIGTERM)
 
-	// Wait for the closing signal
-	<-signalsChan
+	select {
+	case err = <-asyncErrorChan:
+		log.Fatalf("Asynchronous error %q, terminating process", err)
+	case s := <-signalsChan:
+		log.Printf("Received %q signal from OS, terminating process", s)
+	}
 }
 
 func runZPages(port int) func() error {
