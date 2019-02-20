@@ -21,6 +21,7 @@ import (
 
 	"contrib.go.opencensus.io/exporter/ocagent"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc/credentials"
 
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
@@ -34,8 +35,10 @@ type opencensusConfig struct {
 	Endpoint    string            `mapstructure:"endpoint,omitempty"`
 	Compression string            `mapstructure:"compression,omitempty"`
 	Headers     map[string]string `mapstructure:"headers,omitempty"`
+	NumWorkers  int               `mapstructure:"num-workers,omitempty"`
+	CertPemFile string            `mapstructure:"cert-pem-file,omitempty"`
+
 	// TODO: add insecure, service name options.
-	NumWorkers int `mapstructure:"num-workers,omitempty"`
 }
 
 type ocagentExporter struct {
@@ -67,13 +70,22 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceDa
 		return nil, nil, nil, fmt.Errorf("openCensus config requires an Endpoint")
 	}
 
-	opts := []ocagent.ExporterOption{ocagent.WithAddress(ocac.Endpoint), ocagent.WithInsecure()}
+	opts := []ocagent.ExporterOption{ocagent.WithAddress(ocac.Endpoint)}
 	if ocac.Compression != "" {
 		if compressionKey := grpc.GetGRPCCompressionKey(ocac.Compression); compressionKey != compression.Unsupported {
 			opts = append(opts, ocagent.UseCompressor(compressionKey))
 		} else {
 			return nil, nil, nil, fmt.Errorf("unsupported compression type: %s", ocac.Compression)
 		}
+	}
+	if ocac.CertPemFile != "" {
+		creds, err := credentials.NewClientTLSFromFile(ocac.CertPemFile, "")
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to get credentials from provided pem file %s. err: %s", ocac.CertPemFile, err)
+		}
+		opts = append(opts, ocagent.WithTLSCredentials(creds))
+	} else {
+		opts = append(opts, ocagent.WithInsecure())
 	}
 	if len(ocac.Headers) > 0 {
 		opts = append(opts, ocagent.WithHeaders(ocac.Headers))
