@@ -9,6 +9,7 @@ environment:
   GOVERSION: '1.11'
   GO111MODULE: 'on'
   CGO_ENABLED: '0' # See: https://github.com/appveyor/ci/issues/2613
+  GOTEST_OPT: '-v -timeout 30s' # No -race because cgo is disabled
 
 install:
   - set PATH=%GOPATH%\bin;c:\go\bin;%PATH%
@@ -22,5 +23,4 @@ deploy: false
 test_script:
   - cd %APPVEYOR_BUILD_FOLDER%
   - make install-tools
-  - go build -v .\...
-  - go test -v .\... # No -race because cgo is disabled
+  - make
