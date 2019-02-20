@@ -25,3 +25,6 @@ test_script:
   - make install-tools
   - go build -v .\...
   - go test -v .\... # No -race because cgo is disabled
+
+on_finish:
+  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
