@@ -22,31 +22,27 @@ import (
 )
 
 // A debug processor that does not sends the data to any destination but logs debugging messages.
-type debugTraceDataProcessor struct{ logger *zap.Logger }
+type debugProcessor struct{ logger *zap.Logger }
 
-var _ TraceDataProcessor = (*debugTraceDataProcessor)(nil)
+var _ TraceDataProcessor = (*debugProcessor)(nil)
+var _ MetricsDataProcessor = (*debugProcessor)(nil)
 
-func (sp *debugTraceDataProcessor) ProcessTraceData(ctx context.Context, td data.TraceData) error {
+func (sp *debugProcessor) ProcessTraceData(ctx context.Context, td data.TraceData) error {
 	sp.logger.Debug("debugTraceDataProcessor", zap.Int("#spans", len(td.Spans)))
+	return nil
+}
+
+func (sp *debugProcessor) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
+	sp.logger.Debug("debugMetricsDataProcessor", zap.Int("#metrics", len(md.Metrics)))
 	return nil
 }
 
 // NewDebugTraceDataProcessor creates an TraceDataProcessor that just drops the received data and logs debugging messages.
 func NewDebugTraceDataProcessor(logger *zap.Logger) TraceDataProcessor {
-	return &debugTraceDataProcessor{logger: logger}
-}
-
-// A debug processor that does not sends the data to any destination but logs debugging messages.
-type debugMetricsDataProcessor struct{ logger *zap.Logger }
-
-var _ MetricsDataProcessor = (*debugMetricsDataProcessor)(nil)
-
-func (sp *debugMetricsDataProcessor) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
-	sp.logger.Debug("debugMetricsDataProcessor", zap.Int("#metrics", len(md.Metrics)))
-	return nil
+	return &debugProcessor{logger: logger}
 }
 
 // NewDebugMetricsDataProcessor creates an MetricsDataProcessor that just drops the received data and logs debugging messages.
 func NewDebugMetricsDataProcessor(logger *zap.Logger) MetricsDataProcessor {
-	return &debugMetricsDataProcessor{logger: logger}
+	return &debugProcessor{logger: logger}
 }
