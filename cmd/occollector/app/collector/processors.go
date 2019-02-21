@@ -25,14 +25,14 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"
-	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/sender"
-	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/nodebatcher"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/queued"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/tail_sampling"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/sampling"
 	"github.com/census-instrumentation/opencensus-service/internal/config"
+	"github.com/census-instrumentation/opencensus-service/internal/sender"
+	"github.com/census-instrumentation/opencensus-service/pkg/exporter"
 )
 
 func createExporters(v *viper.Viper, logger *zap.Logger) ([]func(), []exporter.TraceExporter, []exporter.MetricsExporter) {

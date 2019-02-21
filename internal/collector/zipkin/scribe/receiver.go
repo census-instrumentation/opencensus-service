@@ -25,8 +25,8 @@ import (
 
 	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
-	"github.com/census-instrumentation/opencensus-service/receiver"
-	"github.com/census-instrumentation/opencensus-service/receiver/zipkinreceiver/scribe"
+	"github.com/census-instrumentation/opencensus-service/pkg/receiver"
+	"github.com/census-instrumentation/opencensus-service/pkg/receiver/zipkinreceiver/scribe"
 )
 
 // Start starts the Zipkin Scribe receiver endpoint.

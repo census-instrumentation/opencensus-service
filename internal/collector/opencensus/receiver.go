@@ -26,8 +26,8 @@ import (
 
 	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
-	"github.com/census-instrumentation/opencensus-service/receiver"
-	"github.com/census-instrumentation/opencensus-service/receiver/opencensusreceiver"
+	"github.com/census-instrumentation/opencensus-service/pkg/receiver"
+	"github.com/census-instrumentation/opencensus-service/pkg/receiver/opencensusreceiver"
 )
 
 // Start starts the OpenCensus receiver endpoint.

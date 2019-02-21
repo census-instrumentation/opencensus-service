@@ -31,16 +31,16 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/internal"
 	"github.com/census-instrumentation/opencensus-service/internal/config"
 	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
-	"github.com/census-instrumentation/opencensus-service/processor"
-	"github.com/census-instrumentation/opencensus-service/receiver/jaegerreceiver"
-	"github.com/census-instrumentation/opencensus-service/receiver/opencensusreceiver"
-	"github.com/census-instrumentation/opencensus-service/receiver/prometheusreceiver"
-	"github.com/census-instrumentation/opencensus-service/receiver/zipkinreceiver"
-	"github.com/census-instrumentation/opencensus-service/receiver/zipkinreceiver/scribe"
+	"github.com/census-instrumentation/opencensus-service/pkg/exporter"
+	"github.com/census-instrumentation/opencensus-service/pkg/processor"
+	"github.com/census-instrumentation/opencensus-service/pkg/receiver/jaegerreceiver"
+	"github.com/census-instrumentation/opencensus-service/pkg/receiver/opencensusreceiver"
+	"github.com/census-instrumentation/opencensus-service/pkg/receiver/prometheusreceiver"
+	"github.com/census-instrumentation/opencensus-service/pkg/receiver/zipkinreceiver"
+	"github.com/census-instrumentation/opencensus-service/pkg/receiver/zipkinreceiver/scribe"
 )
 
 var configYAMLFile string

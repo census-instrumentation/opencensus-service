@@ -27,7 +27,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
 	zipkinreceiver "github.com/census-instrumentation/opencensus-service/internal/collector/zipkin"
 	zipkinscribereceiver "github.com/census-instrumentation/opencensus-service/internal/collector/zipkin/scribe"
-	"github.com/census-instrumentation/opencensus-service/receiver"
+	"github.com/census-instrumentation/opencensus-service/pkg/receiver"
 )
 
 func createReceivers(v *viper.Viper, logger *zap.Logger, spanProcessor processor.SpanProcessor) []receiver.TraceReceiver {

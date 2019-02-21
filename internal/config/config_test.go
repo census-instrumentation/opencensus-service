@@ -19,8 +19,8 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/census-instrumentation/opencensus-service/exporter/zipkinexporter"
 	"github.com/census-instrumentation/opencensus-service/internal/config"
+	"github.com/census-instrumentation/opencensus-service/pkg/exporter/zipkinexporter"
 )
 
 // Issue #233: Zipkin receiver and exporter loopback detection

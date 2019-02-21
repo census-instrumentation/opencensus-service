@@ -119,7 +119,7 @@ A receiver is how you get data into the OpenCensus Service. One or more receiver
 the `opencensus` receiver is enabled on the Collector and required as a defined receiver for the Agent.
 
 A basic example of all available receivers is provided below. For detailed receiver configuration,
-please see the [receiver README.md](receiver/README.md).
+please see the [receiver README.md](pkg/receiver/README.md).
 ```yaml
 receivers:
   opencensus:
@@ -147,7 +147,7 @@ An exporter is how you send data to one or more backends/destinations. One or mo
 By default, no exporters are configured on the OpenCensus Service (either the Agent or Collector).
 
 A basic example of all available exporters is provided below. For detailed exporter configuration,
-please see the [exporter README.md](exporter/exporterparser/README.md).
+please see the [exporter README.md](pkg/exporter/exporterparser/README.md).
 ```yaml
 exporters:
   opencensus:

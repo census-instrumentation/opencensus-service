@@ -18,8 +18,8 @@ import (
 	"context"
 
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
-	"github.com/census-instrumentation/opencensus-service/data"
-	"github.com/census-instrumentation/opencensus-service/exporter"
+	"github.com/census-instrumentation/opencensus-service/pkg/data"
+	"github.com/census-instrumentation/opencensus-service/pkg/exporter"
 )
 
 type exporterSpanProcessor struct {

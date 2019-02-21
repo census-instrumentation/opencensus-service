@@ -18,8 +18,8 @@ import (
 	"context"
 
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
-	"github.com/census-instrumentation/opencensus-service/data"
-	"github.com/census-instrumentation/opencensus-service/processor"
+	"github.com/census-instrumentation/opencensus-service/pkg/data"
+	"github.com/census-instrumentation/opencensus-service/pkg/processor"
 )
 
 type protoProcessorSink struct {
