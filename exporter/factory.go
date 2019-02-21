@@ -31,9 +31,9 @@ type TraceDataExporter interface {
 	GetExportFormat() string
 }
 
-// TraceExporterFactory is an interface that builds a new TraceDataExporter based on
+// TraceDataExporterFactory is an interface that builds a new TraceDataExporter based on
 // some viper.Viper configuration.
-type TraceExporterFactory interface {
+type TraceDataExporterFactory interface {
 	// GetType gets the type of the TraceDataExporter created by this factory.
 	GetType() string
 	// NewFromViper takes a viper.Viper config and creates a new TraceDataExporter.
