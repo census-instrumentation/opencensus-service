@@ -23,18 +23,18 @@ import (
 )
 
 type exporterSpanProcessor struct {
-	tes processor.TraceDataProcessor
+	tdp processor.TraceDataProcessor
 }
 
 var _ SpanProcessor = (*exporterSpanProcessor)(nil)
 
 // NewTraceExporterProcessor creates processor that feeds SpanData to the given trace exporters.
 func NewTraceExporterProcessor(traceExporters ...processor.TraceDataProcessor) SpanProcessor {
-	return &exporterSpanProcessor{tes: processor.NewMultiTraceDataProcessor(traceExporters)}
+	return &exporterSpanProcessor{tdp: processor.NewMultiTraceDataProcessor(traceExporters)}
 }
 
 func (sp *exporterSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
-	err := sp.tes.ProcessTraceData(context.Background(), data.TraceData{Node: batch.Node, Resource: batch.Resource, Spans: batch.Spans})
+	err := sp.tdp.ProcessTraceData(context.Background(), data.TraceData{Node: batch.Node, Resource: batch.Resource, Spans: batch.Spans})
 	if err != nil {
 		// TODO: determine if the number of dropped spans is needed because it was wrong anyway.
 		return 0, err
