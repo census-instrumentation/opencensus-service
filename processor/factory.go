@@ -27,3 +27,15 @@ type TraceDataProcessorFactory interface {
 	// created by this factory.
 	GetDefaultConfig() *viper.Viper
 }
+
+// MetricsDataProcessorFactory is an interface that builds a new MetricsDataProcessor based on
+// some viper.Viper configuration.
+type MetricsDataProcessorFactory interface {
+	// GetType gets the type of the MetricsDataProcessor created by this factory.
+	GetType() string
+	// NewFromViper takes a viper.Viper config and creates a new MetricsDataProcessor.
+	NewFromViper(cfg *viper.Viper) (MetricsDataProcessor, error)
+	// GetDefaultConfig returns the default configuration for MetricsDataProcessors
+	// created by this factory.
+	GetDefaultConfig() *viper.Viper
+}

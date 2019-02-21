@@ -42,3 +42,26 @@ type TraceDataExporterFactory interface {
 	// created by this factory.
 	GetDefaultConfig() *viper.Viper
 }
+
+// MetricsDataExporter inherits functions from MetricsDataProcessor, and additionally
+// adds some exporter-specific functions. This helps the collector core to
+// identify which MetricsDataProcessors are Exporters and which are internal
+// processing components, so that better validation of pipelines can be done.
+type MetricsDataExporter interface {
+	processor.MetricsDataProcessor
+
+	// GetExportFormat gets the name of the format in which this exporter sends its data.
+	GetExportFormat() string
+}
+
+// MetricsDataExporterFactory is an interface that builds a new MetricsDataExporter based on
+// some viper.Viper configuration.
+type MetricsDataExporterFactory interface {
+	// GetType gets the type of the MetricsDataExporter created by this factory.
+	GetType() string
+	// NewFromViper takes a viper.Viper config and creates a new MetricsDataExporter.
+	NewFromViper(cfg *viper.Viper) (MetricsDataExporter, error)
+	// GetDefaultConfig returns the default configuration for MetricsDataExporter
+	// created by this factory.
+	GetDefaultConfig() *viper.Viper
+}

@@ -29,3 +29,15 @@ type TraceReceiverFactory interface {
 	// created by this factory.
 	GetDefaultConfig() *viper.Viper
 }
+
+// MetricsReceiverFactory is an interface that builds a new MetricsReceiver based on
+// some viper.Viper configuration.
+type MetricsReceiverFactory interface {
+	// GetType gets the type of the MetricsReceiver created by this factory.
+	GetType() string
+	// NewFromViper takes a viper.Viper config and creates a new MetricsReceiver.
+	NewFromViper(cfg *viper.Viper) (MetricsReceiver, error)
+	// GetDefaultConfig returns the default configuration for MetricsReceivers
+	// created by this factory.
+	GetDefaultConfig() *viper.Viper
+}
