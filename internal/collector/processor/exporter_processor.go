@@ -19,18 +19,18 @@ import (
 
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
-	"github.com/census-instrumentation/opencensus-service/exporter"
+	"github.com/census-instrumentation/opencensus-service/processor"
 )
 
 type exporterSpanProcessor struct {
-	tes exporter.TraceExporterSink
+	tes processor.TraceDataProcessor
 }
 
 var _ SpanProcessor = (*exporterSpanProcessor)(nil)
 
 // NewTraceExporterProcessor creates processor that feeds SpanData to the given trace exporters.
-func NewTraceExporterProcessor(traceExporters ...exporter.TraceExporter) SpanProcessor {
-	return &exporterSpanProcessor{tes: exporter.MultiTraceExporters(traceExporters...)}
+func NewTraceExporterProcessor(traceExporters ...processor.TraceDataProcessor) SpanProcessor {
+	return &exporterSpanProcessor{tes: processor.NewMultiTraceDataProcessor(traceExporters)}
 }
 
 func (sp *exporterSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
