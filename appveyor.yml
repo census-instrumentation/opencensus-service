@@ -22,6 +22,7 @@ deploy: false
 
 test_script:
   - cd %APPVEYOR_BUILD_FOLDER%
+  - echo %cd%
   - make install-tools
   - go build -v .\...
   - go test -v .\... # No -race because cgo is disabled
