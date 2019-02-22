@@ -27,20 +27,20 @@ import (
 type TraceDataExporter interface {
 	processor.TraceDataProcessor
 
-	// GetExportFormat gets the name of the format in which this exporter sends its data.
-	GetExportFormat() string
+	// ExportFormat gets the name of the format in which this exporter sends its data.
+	ExportFormat() string
 }
 
 // TraceDataExporterFactory is an interface that builds a new TraceDataExporter based on
 // some viper.Viper configuration.
 type TraceDataExporterFactory interface {
-	// GetType gets the type of the TraceDataExporter created by this factory.
-	GetType() string
+	// Type gets the type of the TraceDataExporter created by this factory.
+	Type() string
 	// NewFromViper takes a viper.Viper config and creates a new TraceDataExporter.
 	NewFromViper(cfg *viper.Viper) (TraceDataExporter, error)
-	// GetDefaultConfig returns the default configuration for TraceDataExporter
+	// DefaultConfig returns the default configuration for TraceDataExporter
 	// created by this factory.
-	GetDefaultConfig() *viper.Viper
+	DefaultConfig() *viper.Viper
 }
 
 // MetricsDataExporter inherits functions from MetricsDataProcessor, and additionally
@@ -50,18 +50,18 @@ type TraceDataExporterFactory interface {
 type MetricsDataExporter interface {
 	processor.MetricsDataProcessor
 
-	// GetExportFormat gets the name of the format in which this exporter sends its data.
-	GetExportFormat() string
+	// ExportFormat gets the name of the format in which this exporter sends its data.
+	ExportFormat() string
 }
 
 // MetricsDataExporterFactory is an interface that builds a new MetricsDataExporter based on
 // some viper.Viper configuration.
 type MetricsDataExporterFactory interface {
-	// GetType gets the type of the MetricsDataExporter created by this factory.
-	GetType() string
+	// Type gets the type of the MetricsDataExporter created by this factory.
+	Type() string
 	// NewFromViper takes a viper.Viper config and creates a new MetricsDataExporter.
 	NewFromViper(cfg *viper.Viper) (MetricsDataExporter, error)
-	// GetDefaultConfig returns the default configuration for MetricsDataExporter
+	// DefaultConfig returns the default configuration for MetricsDataExporter
 	// created by this factory.
-	GetDefaultConfig() *viper.Viper
+	DefaultConfig() *viper.Viper
 }
