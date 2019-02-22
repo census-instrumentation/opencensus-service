@@ -21,7 +21,7 @@ import (
 )
 
 // TraceDataExporter inherits functions from TraceDataProcessor, and additionally
-// adds some exporter-specific functions. This helps the collector core to
+// adds some exporter-specific functions. This helps the service core to
 // identify which TraceDataProcessors are Exporters and which are internal
 // processing components, so that better validation of pipelines can be done.
 type TraceDataExporter interface {
@@ -44,7 +44,7 @@ type TraceDataExporterFactory interface {
 }
 
 // MetricsDataExporter inherits functions from MetricsDataProcessor, and additionally
-// adds some exporter-specific functions. This helps the collector core to
+// adds some exporter-specific functions. This helps the service core to
 // identify which MetricsDataProcessors are Exporters and which are internal
 // processing components, so that better validation of pipelines can be done.
 type MetricsDataExporter interface {
