@@ -21,8 +21,9 @@ import "github.com/spf13/viper"
 type TraceDataProcessorFactory interface {
 	// GetType gets the type of the TraceDataProcessor created by this factory.
 	GetType() string
-	// NewFromViper takes a viper.Viper config and creates a new TraceDataProcessor.
-	NewFromViper(cfg *viper.Viper) (TraceDataProcessor, error)
+	// NewFromViper takes a viper.Viper config and creates a new TraceDataProcessor which uses next as
+	// the next TraceDataProcessor in the pipeline.
+	NewFromViper(cfg *viper.Viper, next TraceDataProcessor) (TraceDataProcessor, error)
 	// GetDefaultConfig returns the default configuration for TraceDataProcessors
 	// created by this factory.
 	GetDefaultConfig() *viper.Viper
@@ -33,8 +34,9 @@ type TraceDataProcessorFactory interface {
 type MetricsDataProcessorFactory interface {
 	// GetType gets the type of the MetricsDataProcessor created by this factory.
 	GetType() string
-	// NewFromViper takes a viper.Viper config and creates a new MetricsDataProcessor.
-	NewFromViper(cfg *viper.Viper) (MetricsDataProcessor, error)
+	// NewFromViper takes a viper.Viper config and creates a new MetricsDataProcessor which uses next as
+	// the next MetricsDataProcessor in the pipeline.
+	NewFromViper(cfg *viper.Viper, next MetricsDataProcessor) (MetricsDataProcessor, error)
 	// GetDefaultConfig returns the default configuration for MetricsDataProcessors
 	// created by this factory.
 	GetDefaultConfig() *viper.Viper

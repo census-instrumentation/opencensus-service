@@ -15,6 +15,7 @@
 package receiver
 
 import (
+	"github.com/census-instrumentation/opencensus-service/processor"
 	"github.com/spf13/viper"
 )
 
@@ -23,8 +24,9 @@ import (
 type TraceReceiverFactory interface {
 	// GetType gets the type of the TraceReceiver created by this factory.
 	GetType() string
-	// NewFromViper takes a viper.Viper config and creates a new TraceReceiver.
-	NewFromViper(cfg *viper.Viper) (TraceReceiver, error)
+	// NewFromViper takes a viper.Viper config and creates a new TraceReceiver which uses next as the
+	// next TraceDataProcessor in the pipeline.
+	NewFromViper(cfg *viper.Viper, next processor.TraceDataProcessor) (TraceReceiver, error)
 	// GetDefaultConfig returns the default configuration for TraceReceivers
 	// created by this factory.
 	GetDefaultConfig() *viper.Viper
@@ -35,8 +37,9 @@ type TraceReceiverFactory interface {
 type MetricsReceiverFactory interface {
 	// GetType gets the type of the MetricsReceiver created by this factory.
 	GetType() string
-	// NewFromViper takes a viper.Viper config and creates a new MetricsReceiver.
-	NewFromViper(cfg *viper.Viper) (MetricsReceiver, error)
+	// NewFromViper takes a viper.Viper config and creates a new MetricsReceiver which uses next as the
+	// next MetricsDataProcessor in the pipeline.
+	NewFromViper(cfg *viper.Viper, next processor.MetricsDataProcessor) (MetricsReceiver, error)
 	// GetDefaultConfig returns the default configuration for MetricsReceivers
 	// created by this factory.
 	GetDefaultConfig() *viper.Viper
