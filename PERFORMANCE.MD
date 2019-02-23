@@ -26,8 +26,7 @@ parameters used are defined below.
 
 Without tail-based sampling
 
-Span | CPU | RAM | Sustained | Recommended
-Format | (2+ GHz) | (GB) | Rate | Maximum
+Span Format | CPU (2+ GHz) | RAM (GB) | Sustained Rate | Recommended Maximum
 :---: | :---: | :---: | :---: | :---:
 Jaeger Thrift | 1 | 2 | ~14K | 12K
 Jaeger Thrift | 2 | 4 | ~27.5K | 24K
