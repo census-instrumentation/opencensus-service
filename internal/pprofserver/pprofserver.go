@@ -20,6 +20,7 @@ import (
 	_ "net/http/pprof" // Needed to enable the performance profiler
 	"strconv"
 
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
@@ -27,28 +28,23 @@ const (
 	httpPprofPortCfg = "http-pprof-port"
 )
 
-// pport is used to ensure that if AddFlags was called the setup works even if viper
-// was not set.
-var pport *uint
-
 // AddFlags add the command-line flags used to control the Performance Profiler
 // (pprof) HTTP server to the given flag set.
 func AddFlags(flags *flag.FlagSet) {
-	pport = flags.Uint(
+	flags.Uint(
 		httpPprofPortCfg,
 		0,
 		"Port to be used by golang net/http/pprof (Performance Profiler), the profiler is disabled if no port or 0 is specified.")
 }
 
-// SetupPerFlags sets up the Performance Profiler (pprof) as an HTTP endpoint
-// according to the command-line flags.
-func SetupPerFlags(asyncErrorChannel chan<- error, logger *zap.Logger) error {
-	// TODO: (@pjanotti) when configuration switches to viper remove pport and use viper instead.
-	if pport == nil && *pport == 0 {
+// SetupFromViper sets up the Performance Profiler (pprof) as an HTTP endpoint
+// according to the configuration in the given viper.
+func SetupFromViper(asyncErrorChannel chan<- error, v *viper.Viper, logger *zap.Logger) error {
+	port := v.GetInt(httpPprofPortCfg)
+	if port == 0 {
 		return nil
 	}
 
-	port := int(*pport)
 	logger.Info("Starting net/http/pprof server", zap.Int("port", port))
 	go func() {
 		if err := http.ListenAndServe(":"+strconv.Itoa(port), nil); err != http.ErrServerClosed {

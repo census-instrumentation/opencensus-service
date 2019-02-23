@@ -30,6 +30,7 @@ import (
 
 	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
+	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
 	"github.com/census-instrumentation/opencensus-service/internal/pprofserver"
 	"github.com/census-instrumentation/opencensus-service/receiver"
 )
@@ -75,7 +76,7 @@ func (app *Application) execute() {
 
 	app.logger.Info("Starting...", zap.Int("NumCPU", runtime.NumCPU()))
 
-	err := pprofserver.SetupPerFlags(asyncErrorChannel, app.logger)
+	err := pprofserver.SetupFromViper(asyncErrorChannel, app.v, app.logger)
 	if err != nil {
 		log.Fatalf("Failed to start net/http/pprof: %v", err)
 	}
@@ -137,7 +138,7 @@ func (app *Application) Start() error {
 			app.execute()
 		},
 	}
-	addFlags(app.v, rootCmd,
+	viperutils.AddFlags(app.v, rootCmd,
 		telemetryFlags,
 		builder.Flags,
 		healthCheckFlags,
