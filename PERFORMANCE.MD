@@ -26,13 +26,13 @@ parameters used are defined below.
 
 Without tail-based sampling
 
-| Span Format    | CPU      | RAM  | Sustained | Recommended |
-|                | (2+ GHz) | (GB) | Rate      | Maximum     |
-| -------------- | -------- | ---- | --------- | ----------- |
-| Jaeger Thrift  | 1        | 2    | ~14K      | 12K         |
-| Jaeger Thrift  | 2        | 4    | ~27.5K    | 24K         |
-| Zipkin v2 JSON | 1        | 2    | ~10.5K    | 9K          |
-| Zipkin v2 JSON | 2        | 4    | ~22K      | 18K         |
+Span Format | CPU | RAM | Sustained | Recommended
+ | (2+ GHz) | (GB) | Rate | Maximum
+:---: | :---: | :---: | :---: | :---:
+Jaeger Thrift | 1 | 2 | ~14K | 12K
+Jaeger Thrift | 2 | 4 | ~27.5K | 24K
+Zipkin v2 JSON | 1 | 2 | ~10.5K | 9K
+Zipkin v2 JSON | 2 | 4 | ~22K | 18K
 
 If you are NOT using tail-based sampling and you need higher rates then you can
 either:
@@ -46,13 +46,13 @@ With tail-based sampling
 
 > Note: Additional memory is required for tail-based sampling
 
-| Span Format    | CPU      | RAM  | Sustained | Recommended |
-|                | (2+ GHz) | (GB) | Rate      | Maximum     |
-| -------------- | -------- | ---- | --------- | ----------- |
-| Jaeger Thrift  | 1        | 6    | ~11.5K    | 10K         |
-| Jaeger Thrift  | 2        | 8    | ~23K      | 20K         |
-| Zipkin v2 JSON | 1        | 4    | ~8.5K     | 7K          |
-| Zipkin v2 JSON | 2        | 4    | ~16K      | 14K         |
+Span Format | CPU | RAM | Sustained | Recommended
+ | (2+ GHz) | (GB) | Rate | Maximum
+:---: | :---: | :---: | :---: | :---:
+Jaeger Thrift | 1 | 6 | ~11.5K | 10K
+Jaeger Thrift | 2 | 8 | ~24K | 20K
+Zipkin v2 JSON | 1 | 4 | ~8.5K | 7K
+Zipkin v2 JSON | 2 | 4 | ~16K | 14K
 
 If you are using tail-based sampling and you need higher rates then you can
 either:
