@@ -26,8 +26,8 @@ parameters used are defined below.
 
 Without tail-based sampling
 
-Span Format | CPU | RAM | Sustained | Recommended
- | (2+ GHz) | (GB) | Rate | Maximum
+Span | CPU | RAM | Sustained | Recommended
+Format | (2+ GHz) | (GB) | Rate | Maximum
 :---: | :---: | :---: | :---: | :---:
 Jaeger Thrift | 1 | 2 | ~14K | 12K
 Jaeger Thrift | 2 | 4 | ~27.5K | 24K
@@ -46,8 +46,8 @@ With tail-based sampling
 
 > Note: Additional memory is required for tail-based sampling
 
-Span Format | CPU | RAM | Sustained | Recommended
- | (2+ GHz) | (GB) | Rate | Maximum
+Span | CPU | RAM | Sustained | Recommended
+Format | (2+ GHz) | (GB) | Rate | Maximum
 :---: | :---: | :---: | :---: | :---:
 Jaeger Thrift | 1 | 6 | ~11.5K | 10K
 Jaeger Thrift | 2 | 8 | ~24K | 20K
