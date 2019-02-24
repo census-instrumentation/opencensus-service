@@ -54,15 +54,15 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 		return nil
 	}
 
-	var jTags []jaeger.Tag
+	var jTags []jaeger.KeyValue
 	nodeAttribsLen := len(node.Attributes)
 	if nodeAttribsLen > 0 {
-		jTags = make([]jaeger.Tag, 0, nodeAttribsLen)
+		jTags = make([]jaeger.KeyValue, 0, nodeAttribsLen)
 		for k, v := range node.Attributes {
 			str := v
-			jTag := &jaeger.Tag{
+			jTag := &jaeger.KeyValue{
 				Key:   k,
-				VType: jaeger.TagType_STRING,
+				VType: jaeger.ValueType_STRING,
 				VStr:  &str,
 			}
 			jTags = append(jTags, jTag)
@@ -71,27 +71,27 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 
 	if node.Identifier != nil {
 		if node.Identifier.HostName != "" {
-			hostTag := jaeger.Tag{
+			hostTag := jaeger.KeyValue{
 				Key:   "hostname",
-				VType: jaeger.TagType_STRING,
+				VType: jaeger.ValueType_STRING,
 				VStr:  &node.Identifier.HostName,
 			}
 			jTags = append(jTags, hostTag)
 		}
 		if node.Identifier.Pid != 0 {
 			pid := int64(node.Identifier.Pid)
-			hostTag := jaeger.Tag{
+			hostTag := jaeger.KeyValue{
 				Key:   "pid",
-				VType: jaeger.TagType_LONG,
+				VType: jaeger.ValueType_INT64,
 				VLong: &pid,
 			}
 			jTags = append(jTags, hostTag)
 		}
 		if node.Identifier.StartTimestamp != nil && node.Identifier.StartTimestamp.Seconds != 0 {
 			startTimeStr := ptypes.TimestampString(node.Identifier.StartTimestamp)
-			hostTag := jaeger.Tag{
+			hostTag := jaeger.KeyValue{
 				Key:   "start.time",
-				VType: jaeger.TagType_STRING,
+				VType: jaeger.ValueType_STRING,
 				VStr:  &startTimeStr,
 			}
 			jTags = append(jTags, hostTag)
@@ -104,25 +104,25 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 		// Only add language if specified
 		if ocLib.Language != commonpb.LibraryInfo_LANGUAGE_UNSPECIFIED {
 			languageStr := ocLib.Language.String()
-			languageTag := jaeger.Tag{
+			languageTag := jaeger.KeyValue{
 				Key:   opencensusLanguage,
-				VType: jaeger.TagType_STRING,
+				VType: jaeger.ValueType_STRING,
 				VStr:  &languageStr,
 			}
 			jTags = append(jTags, languageTag)
 		}
 		if ocLib.ExporterVersion != "" {
-			exporterTag := jaeger.Tag{
+			exporterTag := jaeger.KeyValue{
 				Key:   opencensusExporterVersion,
-				VType: jaeger.TagType_STRING,
+				VType: jaeger.ValueType_STRING,
 				VStr:  &ocLib.ExporterVersion,
 			}
 			jTags = append(jTags, exporterTag)
 		}
 		if ocLib.CoreLibraryVersion != "" {
-			exporterTag := jaeger.Tag{
+			exporterTag := jaeger.KeyValue{
 				Key:   opencensusCoreLibVersion,
-				VType: jaeger.TagType_STRING,
+				VType: jaeger.ValueType_STRING,
 				VStr:  &ocLib.CoreLibraryVersion,
 			}
 			jTags = append(jTags, exporterTag)
@@ -353,7 +353,7 @@ func appendJaegerTagFromOCSpanKindProto(jTags []jaeger.KeyValue, ocSpanKind trac
 	return jTags
 }
 
-func appendJaegerTagFromOCTracestateProto(jTags []jaeger.Tag, ocSpanTracestate *tracepb.Span_Tracestate) []jaeger.KeyValue {
+func appendJaegerTagFromOCTracestateProto(jTags []jaeger.KeyValue, ocSpanTracestate *tracepb.Span_Tracestate) []jaeger.KeyValue {
 	if ocSpanTracestate == nil {
 		return jTags
 	}
