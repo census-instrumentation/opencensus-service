@@ -32,12 +32,12 @@ import (
 // OCProtoToJaegerProto translates OpenCensus trace data into the Jaeger Proto for GRPC.
 func OCProtoToJaegerProto(ocBatch *agenttracepb.ExportTraceServiceRequest) (jaeger.Batch, error) {
 	if ocBatch == nil {
-		return nil, nil
+		return jaeger.Batch{}, nil
 	}
 
 	jSpans, err := ocSpansToJaegerSpansProto(ocBatch.Spans)
 	if err != nil {
-		return nil, err
+		return jaeger.Batch{}, err
 	}
 
 	jb := jaeger.Batch{
@@ -60,10 +60,10 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 		jTags = make([]jaeger.KeyValue, 0, nodeAttribsLen)
 		for k, v := range node.Attributes {
 			str := v
-			jTag := &jaeger.KeyValue{
+			jTag := jaeger.KeyValue{
 				Key:   k,
 				VType: jaeger.ValueType_STRING,
-				VStr:  &str,
+				VStr:  str,
 			}
 			jTags = append(jTags, jTag)
 		}
@@ -74,7 +74,7 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 			hostTag := jaeger.KeyValue{
 				Key:   "hostname",
 				VType: jaeger.ValueType_STRING,
-				VStr:  &node.Identifier.HostName,
+				VStr:  node.Identifier.HostName,
 			}
 			jTags = append(jTags, hostTag)
 		}
@@ -83,7 +83,7 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 			hostTag := jaeger.KeyValue{
 				Key:   "pid",
 				VType: jaeger.ValueType_INT64,
-				VLong: &pid,
+				VLong: pid,
 			}
 			jTags = append(jTags, hostTag)
 		}
@@ -92,7 +92,7 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 			hostTag := jaeger.KeyValue{
 				Key:   "start.time",
 				VType: jaeger.ValueType_STRING,
-				VStr:  &startTimeStr,
+				VStr:  startTimeStr,
 			}
 			jTags = append(jTags, hostTag)
 		}
@@ -107,7 +107,7 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 			languageTag := jaeger.KeyValue{
 				Key:   opencensusLanguage,
 				VType: jaeger.ValueType_STRING,
-				VStr:  &languageStr,
+				VStr:  languageStr,
 			}
 			jTags = append(jTags, languageTag)
 		}
@@ -115,7 +115,7 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 			exporterTag := jaeger.KeyValue{
 				Key:   opencensusExporterVersion,
 				VType: jaeger.ValueType_STRING,
-				VStr:  &ocLib.ExporterVersion,
+				VStr:  ocLib.ExporterVersion,
 			}
 			jTags = append(jTags, exporterTag)
 		}
@@ -123,7 +123,7 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 			exporterTag := jaeger.KeyValue{
 				Key:   opencensusCoreLibVersion,
 				VType: jaeger.ValueType_STRING,
-				VStr:  &ocLib.CoreLibraryVersion,
+				VStr:  ocLib.CoreLibraryVersion,
 			}
 			jTags = append(jTags, exporterTag)
 		}
@@ -186,7 +186,7 @@ func ocLinksToJaegerReferencesProto(ocSpanLinks *tracepb.Span_Links) ([]jaeger.S
 			jRefType = jaeger.SpanRefType_FOLLOWS_FROM
 		}
 
-		jRef := &jaeger.SpanRef{
+		jRef := jaeger.SpanRef{
 			TraceId: traceID,
 			SpanId:  spanID,
 			RefType: jRefType,
@@ -223,23 +223,23 @@ func ocSpanAttributesToJaegerTagsProto(ocAttribs *tracepb.Span_Attributes) []jae
 			// Jaeger-to-OC maps binary tags to string attributes and encodes them as
 			// base64 strings. Blindingly attempting to decode base64 seems too much.
 			str := truncableStringToStrProto(attribValue.StringValue)
-			jTag.VStr = &str
+			jTag.VStr = str
 			jTag.VType = jaeger.ValueType_STRING
 		case *tracepb.AttributeValue_IntValue:
 			i := attribValue.IntValue
-			jTag.VInt64 = &i
+			jTag.VInt64 = i
 			jTag.VType = jaeger.ValueType_INT64
 		case *tracepb.AttributeValue_BoolValue:
 			b := attribValue.BoolValue
-			jTag.VBool = &b
+			jTag.VBool = b
 			jTag.VType = jaeger.ValueType_BOOL
 		case *tracepb.AttributeValue_DoubleValue:
 			d := attribValue.DoubleValue
-			jTag.VInt64 = &d
+			jTag.VInt64 = d
 			jTag.VType = jaeger.ValueType_INT64
 		default:
 			str := "<Unknown OpenCensus Attribute for key \"" + key + "\">"
-			jTag.VStr = &str
+			jTag.VStr = str
 			jTag.VType = jaeger.ValueType_STRING
 		}
 		jTags = append(jTags, jTag)
@@ -283,7 +283,7 @@ func ocTimeEventsToJaegerLogsProto(ocSpanTimeEvents *tracepb.Span_TimeEvents) []
 
 func ocAnnotationToJagerTagsProto(annotation *tracepb.Span_TimeEvent_Annotation) []jaeger.KeyValue {
 	if annotation == nil {
-		return nil
+		return []jaeger.KeyValue{}
 	}
 
 	// TODO: Find a better tag for Annotation description.
@@ -296,7 +296,7 @@ func ocAnnotationToJagerTagsProto(annotation *tracepb.Span_TimeEvent_Annotation)
 
 func ocMessageEventToJaegerTagsProto(msgEvent *tracepb.Span_TimeEvent_MessageEvent) []jaeger.KeyValue {
 	if msgEvent == nil {
-		return nil
+		return []jaeger.KeyValue{}
 	}
 
 	msgEventID := make([]byte, 8)
