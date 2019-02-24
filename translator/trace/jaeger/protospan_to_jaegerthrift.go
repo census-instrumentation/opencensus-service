@@ -159,7 +159,7 @@ func ocSpansToJaegerSpans(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) {
 			return nil, fmt.Errorf("OC span has invalid trace ID: %v", err)
 		}
 		if traceIDLow == 0 && traceIDHigh == 0 {
-			return nil, ErrZeroTraceID
+			return nil, errZeroTraceID
 		}
 		jReferences, err := ocLinksToJaegerReferences(ocSpan.Links)
 		if err != nil {
@@ -170,7 +170,7 @@ func ocSpansToJaegerSpans(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) {
 			return nil, fmt.Errorf("OC span has invalid span ID: %v", err)
 		}
 		if spanID == 0 {
-			return nil, ErrZeroSpanID
+			return nil, errZeroSpanID
 		}
 		// OC ParentSpanId can be nil/empty: only attempt conversion if not nil/empty.
 		var parentSpanID int64
@@ -291,7 +291,7 @@ func ocTimeEventsToJaegerLogs(ocSpanTimeEvents *tracepb.Span_TimeEvents) []*jaeg
 		default:
 			msg := "An unknown OpenCensus TimeEvent type was detected when translating to Jaeger"
 			jTag := &jaeger.Tag{
-				Key:  JaegerTagForOcUnknownTimeEventType,
+				Key:  ocTimeEventUnknownType,
 				VStr: &msg,
 			}
 			jLog.Fields = append(jLog.Fields, jTag)
