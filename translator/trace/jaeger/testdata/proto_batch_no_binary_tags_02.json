@@ -1,0 +1,61 @@
+{
+    "process": {
+      "serviceName": "api",
+      "tags": []
+    },
+    "spans": [
+      {
+        "traceId": 5951113872249657919,
+        "spanId": 6585752,
+        "operationName": "get",
+        "startTime": 1485467191639875,
+        "duration": 22938,
+        "tags": [
+          {
+            "key": "peer.service",
+            "vType": "STRING",
+            "vStr": "AAAAAAAAMDk="
+          },
+          {
+            "key": "span.kind",
+            "vType": "STRING",
+            "vStr": "server"
+          }
+        ]
+      },
+      {
+          "traceId": 5951113872249657919,
+          "spanId": 6585753,
+          "operationName": "get",
+          "references": [
+            {
+              "refType": "CHILD_OF",
+              "traceId": 5951113872249657919,
+              "spanId": 6585752
+            },
+            {
+              "refType": "FOLLOWS_FROM",
+              "traceId": 5951113872249657919,
+              "spanId": 6866147
+            }
+          ],
+          "startTime": 1485467191639875,
+          "duration": 22938,
+          "tags": [
+            {
+              "key": "span.kind",
+              "vType": "STRING",
+              "vStr": "server"
+            }
+          ]
+        },
+        {
+            "traceId": 5951113872249657919,
+            "spanId": 6585752,
+            "operationName": "get2",
+            "startTime": 1485467192639875,
+            "duration": 22938
+          }
+        ]
+  }
+  
