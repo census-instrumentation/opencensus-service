@@ -14,6 +14,10 @@
 
 package jaeger
 
+import (
+	"errors"
+)
+
 const (
 	// Jaeger Tags
 	ocTimeEventUnknownType           = "oc.timeevent.unknown.type"
