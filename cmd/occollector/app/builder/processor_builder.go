@@ -95,7 +95,7 @@ type BatchingConfig struct {
 
 // JaegerProtoGRPCSenderCfg holds configuration for Jaeger Proto GRPC sender
 type JaegerProtoGRPCSenderCfg struct {
-	CollectorEndpoint string            `mapstructure:"collector-endpoint"`
+	CollectorEndpoint string `mapstructure:"collector-endpoint"`
 }
 
 // NewJaegerProtoGRPCSenderCfg returns an instance of JaegerProtoGRPCSenderCfg with default values
