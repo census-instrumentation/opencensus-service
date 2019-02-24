@@ -24,6 +24,9 @@ const (
 	ocTimeEventMessageEventCSize     = "oc.timeevent.messageevent.csize"
 	ocSameProcessAsParentSpan        = "oc.sameprocessasparentspan"
 	ocSpanChildCount                 = "oc.span.childcount"
+	opencensusLanguage               = "opencensus.language"
+	opencensusExporterVersion        = "opencensus.exporterversion"
+	opencensusCoreLibVersion         = "opencensus.corelibversion"
 )
 
 var (

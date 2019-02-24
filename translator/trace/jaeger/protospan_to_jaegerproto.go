@@ -17,9 +17,11 @@ package jaeger
 import (
 	"encoding/binary"
 	"fmt"
+	"time"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	wrappers "github.com/golang/protobuf/ptypes/wrappers"
 	jaeger "github.com/jaegertracing/jaeger/model"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
@@ -103,7 +105,7 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 		if ocLib.Language != commonpb.LibraryInfo_LANGUAGE_UNSPECIFIED {
 			languageStr := ocLib.Language.String()
 			languageTag := jaeger.Tag{
-				Key:   "opencensus.language",
+				Key:   opencensusLanguage,
 				VType: jaeger.TagType_STRING,
 				VStr:  &languageStr,
 			}
@@ -111,7 +113,7 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 		}
 		if ocLib.ExporterVersion != "" {
 			exporterTag := jaeger.Tag{
-				Key:   "opencensus.exporterversion",
+				Key:   opencensusExporterVersion,
 				VType: jaeger.TagType_STRING,
 				VStr:  &ocLib.ExporterVersion,
 			}
@@ -119,7 +121,7 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 		}
 		if ocLib.CoreLibraryVersion != "" {
 			exporterTag := jaeger.Tag{
-				Key:   "opencensus.corelibversion",
+				Key:   opencensusCoreLibVersion,
 				VType: jaeger.TagType_STRING,
 				VStr:  &ocLib.CoreLibraryVersion,
 			}
@@ -329,7 +331,7 @@ func ocMessageEventToJaegerTagsProto(msgEvent *tracepb.Span_TimeEvent_MessageEve
 }
 
 // Replica of protospan_to_jaegerthrift appendJaegerTagFromOCSpanKind
-func appendJaegerTagFromOCSpanKindProto(jTags []jaeger.Tag, ocSpanKind tracepb.Span_SpanKind) []jaeger.Tag {
+func appendJaegerTagFromOCSpanKindProto(jTags []jaeger.KeyValue, ocSpanKind tracepb.Span_SpanKind) []jaeger.KeyValue {
 	// We could check if the key is already present but it doesn't seem worth at this point.
 	// TODO: (@pjanotti): Replace any OpenTracing literals by importing github.com/opentracing/opentracing-go/ext?
 	var tagValue string
@@ -341,7 +343,7 @@ func appendJaegerTagFromOCSpanKindProto(jTags []jaeger.Tag, ocSpanKind tracepb.S
 	}
 
 	if tagValue != "" {
-		jTag := jaeger.Tag{
+		jTag := jaeger.KeyValue{
 			Key:  "span.kind",
 			VStr: &tagValue,
 		}
@@ -351,13 +353,13 @@ func appendJaegerTagFromOCSpanKindProto(jTags []jaeger.Tag, ocSpanKind tracepb.S
 	return jTags
 }
 
-func appendJaegerTagFromOCTracestateProto(jTags []jaeger.Tag, ocSpanTracestate *tracepb.Tracestate) []jaeger.Tag {
+func appendJaegerTagFromOCTracestateProto(jTags []jaeger.Tag, ocSpanTracestate *tracepb.Span_Tracestate) []jaeger.KeyValue {
 	if ocSpanTracestate == nil {
 		return jTags
 	}
 
 	for _, tsEntry := range ocSpanTracestate.Entries {
-		jTag := jaeger.Tag{
+		jTag := jaeger.KeyValue{
 			Key:  tsEntry.Key,
 			VStr: ts.Entry.Value,
 		}
@@ -367,12 +369,12 @@ func appendJaegerTagFromOCTracestateProto(jTags []jaeger.Tag, ocSpanTracestate *
 	return jTags
 }
 
-func appendJaegerTagFromOCStatusProto(jTags []jaeger.Tag, ocStatus *tracepb.Status) []jaeger.Tag {
+func appendJaegerTagFromOCStatusProto(jTags []jaeger.KeyValue, ocStatus *tracepb.Status) []jaeger.KeyValue {
 	if ocStatus == nil {
 		return nil
 	}
 
-	jTag := jaeger.Tag{
+	jTag := jaeger.KeyValue{
 		Key:    "span.status",
 		VInt64: ocStatus.code,
 		VStr:   ocStatus.Message,
@@ -382,12 +384,12 @@ func appendJaegerTagFromOCStatusProto(jTags []jaeger.Tag, ocStatus *tracepb.Stat
 	return jTags
 }
 
-func appendJaegerTagFromOCSameProcessAsParentSpanProto(jTags []jaeger.Tag, ocIsSameProcessAsParentSpan *tracepb.BoolValue) []jaeger.Tag {
+func appendJaegerTagFromOCSameProcessAsParentSpanProto(jTags []jaeger.KeyValue, ocIsSameProcessAsParentSpan *wrappers.UInt32Value) []jaeger.KeyValue {
 	if ocIsSameProcessAsParentSpan == nil {
 		return nil
 	}
 
-	jTag := jaeger.Tag{
+	jTag := jaeger.KeyValue{
 		Key:   ocSameProcessAsParentSpan,
 		VBool: ocIsSameProcessAsParentSpan.Value,
 	}
@@ -396,12 +398,12 @@ func appendJaegerTagFromOCSameProcessAsParentSpanProto(jTags []jaeger.Tag, ocIsS
 	return jTags
 }
 
-func appendJaegerTagFromOCChildSpanCountProto(jTags []jaeger.Tag, ocChildSpanCount *tracepb.UInt32Value) []jaeger.Tag {
+func appendJaegerTagFromOCChildSpanCountProto(jTags []jaeger.KeyValue, ocChildSpanCount *wrappers.UInt32Value) []jaeger.KeyValue {
 	if ocChildSpanCount == nil {
 		return nil
 	}
 
-	jTag := jaeger.Tag{
+	jTag := jaeger.KeyValue{
 		Key:    ocSpanChildCount,
 		VInt64: ocChildSpanCount.Value,
 	}

@@ -104,7 +104,7 @@ func ocNodeToJaegerProcess(node *commonpb.Node) *jaeger.Process {
 		if ocLib.Language != commonpb.LibraryInfo_LANGUAGE_UNSPECIFIED {
 			languageStr := ocLib.Language.String()
 			languageTag := &jaeger.Tag{
-				Key:   "opencensus.language",
+				Key:   opencensusLanguage,
 				VType: jaeger.TagType_STRING,
 				VStr:  &languageStr,
 			}
@@ -112,7 +112,7 @@ func ocNodeToJaegerProcess(node *commonpb.Node) *jaeger.Process {
 		}
 		if ocLib.ExporterVersion != "" {
 			exporterTag := &jaeger.Tag{
-				Key:   "opencensus.exporterversion",
+				Key:   opencensusExporterVersion,
 				VType: jaeger.TagType_STRING,
 				VStr:  &ocLib.ExporterVersion,
 			}
@@ -120,7 +120,7 @@ func ocNodeToJaegerProcess(node *commonpb.Node) *jaeger.Process {
 		}
 		if ocLib.CoreLibraryVersion != "" {
 			exporterTag := &jaeger.Tag{
-				Key:   "opencensus.corelibversion",
+				Key:   opencensusCoreLibVersion,
 				VType: jaeger.TagType_STRING,
 				VStr:  &ocLib.CoreLibraryVersion,
 			}
