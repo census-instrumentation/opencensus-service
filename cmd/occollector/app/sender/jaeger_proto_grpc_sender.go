@@ -62,6 +62,6 @@ func (s *JaegerProtoGRPCSender) ProcessSpans(batch *agenttracepb.ExportTraceServ
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return protoBatch.len(), nil
 }
