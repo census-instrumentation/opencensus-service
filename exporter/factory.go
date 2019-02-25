@@ -20,10 +20,10 @@ import (
 	"github.com/census-instrumentation/opencensus-service/processor"
 )
 
-// TraceDataExporter inherits functions from TraceDataProcessor, and additionally
-// adds some exporter-specific functions. This helps the service core to
-// identify which TraceDataProcessors are Exporters and which are internal
-// processing components, so that better validation of pipelines can be done.
+// TraceDataExporter composes TraceDataProcessor with some additional
+// exporter-specific functions. This helps the service core to identify which
+// TraceDataProcessors are Exporters and which are internal processing
+// components, so that better validation of pipelines can be done.
 type TraceDataExporter interface {
 	processor.TraceDataProcessor
 
@@ -43,10 +43,10 @@ type TraceDataExporterFactory interface {
 	DefaultConfig() *viper.Viper
 }
 
-// MetricsDataExporter inherits functions from MetricsDataProcessor, and additionally
-// adds some exporter-specific functions. This helps the service core to
-// identify which MetricsDataProcessors are Exporters and which are internal
-// processing components, so that better validation of pipelines can be done.
+// MetricsDataExporter composes MetricsDataProcessor with some additional
+// exporter-specific functions. This helps the service core to identify which
+// MetricsDataProcessors are Exporters and which are internal processing
+// components, so that better validation of pipelines can be done.
 type MetricsDataExporter interface {
 	processor.MetricsDataProcessor
 
