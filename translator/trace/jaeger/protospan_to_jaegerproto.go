@@ -81,9 +81,9 @@ func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 		if node.Identifier.Pid != 0 {
 			pid := int64(node.Identifier.Pid)
 			hostTag := jaeger.KeyValue{
-				Key:   "pid",
-				VType: jaeger.ValueType_INT64,
-				VLong: pid,
+				Key:    "pid",
+				VType:  jaeger.ValueType_INT64,
+				VInt64: pid,
 			}
 			jTags = append(jTags, hostTag)
 		}
@@ -156,24 +156,24 @@ func truncableStringToStrProto(ts *tracepb.TruncatableString) string {
 
 func ocLinksToJaegerReferencesProto(ocSpanLinks *tracepb.Span_Links) ([]jaeger.SpanRef, error) {
 	if ocSpanLinks == nil || ocSpanLinks.Link == nil {
-		return nil, nil
+		return []jaeger.SpanRef{}, nil
 	}
 
 	ocLinks := ocSpanLinks.Link
 	jRefs := make([]jaeger.SpanRef, 0, len(ocLinks))
 	for _, ocLink := range ocLinks {
-		var traceID [16]byte
+		var traceID []byte
 		if ocLink.TraceId != nil {
 			traceID = ocLink.TraceId
 		} else {
-			return nil, errNilTraceID
+			return []jaeger.SpanRef{}, errNilTraceID
 		}
 
-		var spanID [8]byte
+		var spanID []byte
 		if ocLink.SpanId != nil {
 			spanID = ocLink.SpanId
 		} else {
-			return nil, errNilSpanID
+			return []jaeger.SpanRef{}, errNilID
 		}
 
 		var jRefType jaeger.SpanRefType
@@ -187,8 +187,8 @@ func ocLinksToJaegerReferencesProto(ocSpanLinks *tracepb.Span_Links) ([]jaeger.S
 		}
 
 		jRef := jaeger.SpanRef{
-			TraceId: traceID,
-			SpanId:  spanID,
+			TraceID: traceID,
+			SpanID:  spanID,
 			RefType: jRefType,
 		}
 		jRefs = append(jRefs, jRef)
@@ -207,7 +207,7 @@ func timestampToTimeProto(ts *timestamp.Timestamp) (t time.Time) {
 // Replica of protospan_to_jaegerthrift.ocSpanAttributesToJaegerTags
 func ocSpanAttributesToJaegerTagsProto(ocAttribs *tracepb.Span_Attributes) []jaeger.KeyValue {
 	if ocAttribs == nil {
-		return nil
+		return []jaeger.KeyValue{}
 	}
 
 	// Pre-allocate assuming that few attributes, if any at all, are nil.
@@ -235,8 +235,8 @@ func ocSpanAttributesToJaegerTagsProto(ocAttribs *tracepb.Span_Attributes) []jae
 			jTag.VType = jaeger.ValueType_BOOL
 		case *tracepb.AttributeValue_DoubleValue:
 			d := attribValue.DoubleValue
-			jTag.VInt64 = d
-			jTag.VType = jaeger.ValueType_INT64
+			jTag.VFloat64 = d
+			jTag.VType = jaeger.ValueType_FLOAT64
 		default:
 			str := "<Unknown OpenCensus Attribute for key \"" + key + "\">"
 			jTag.VStr = str
@@ -250,7 +250,7 @@ func ocSpanAttributesToJaegerTagsProto(ocAttribs *tracepb.Span_Attributes) []jae
 
 func ocTimeEventsToJaegerLogsProto(ocSpanTimeEvents *tracepb.Span_TimeEvents) []jaeger.Log {
 	if ocSpanTimeEvents == nil || ocSpanTimeEvents.TimeEvent == nil {
-		return nil
+		return []jaeger.Log{}
 	}
 
 	ocTimeEvents := ocSpanTimeEvents.TimeEvent
@@ -263,14 +263,14 @@ func ocTimeEventsToJaegerLogsProto(ocSpanTimeEvents *tracepb.Span_TimeEvents) []
 		}
 		switch teValue := ocTimeEvent.Value.(type) {
 		case *tracepb.Span_TimeEvent_Annotation_:
-			jLog.Fields = ocAnnotationToJagerTags(teValue.Annotation)
+			jLog.Fields = ocAnnotationToJagerTagsProto(teValue.Annotation)
 		case *tracepb.Span_TimeEvent_MessageEvent_:
-			jLog.Fields = ocMessageEventToJaegerTags(teValue.MessageEvent)
+			jLog.Fields = ocMessageEventToJaegerTagsProto(teValue.MessageEvent)
 		default:
 			msg := "An unknown OpenCensus TimeEvent type was detected when translating to Jaeger"
 			jKV := jaeger.KeyValue{
 				Key:  ocTimeEventUnknownType,
-				VStr: &msg,
+				VStr: msg,
 			}
 			jLog.Fields = append(jLog.Fields, jKV)
 		}
@@ -371,7 +371,7 @@ func appendJaegerTagFromOCTracestateProto(jTags []jaeger.KeyValue, ocSpanTracest
 
 func appendJaegerTagFromOCStatusProto(jTags []jaeger.KeyValue, ocStatus *tracepb.Status) []jaeger.KeyValue {
 	if ocStatus == nil {
-		return nil
+		return jTags
 	}
 
 	jTag := jaeger.KeyValue{
@@ -386,7 +386,7 @@ func appendJaegerTagFromOCStatusProto(jTags []jaeger.KeyValue, ocStatus *tracepb
 
 func appendJaegerTagFromOCSameProcessAsParentSpanProto(jTags []jaeger.KeyValue, ocIsSameProcessAsParentSpan *wrappers.UInt32Value) []jaeger.KeyValue {
 	if ocIsSameProcessAsParentSpan == nil {
-		return nil
+		return jTags
 	}
 
 	jTag := jaeger.KeyValue{
@@ -400,7 +400,7 @@ func appendJaegerTagFromOCSameProcessAsParentSpanProto(jTags []jaeger.KeyValue, 
 
 func appendJaegerTagFromOCChildSpanCountProto(jTags []jaeger.KeyValue, ocChildSpanCount *wrappers.UInt32Value) []jaeger.KeyValue {
 	if ocChildSpanCount == nil {
-		return nil
+		return jTags
 	}
 
 	jTag := jaeger.KeyValue{
