@@ -25,7 +25,7 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	"go.uber.org/zap"
 
-	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
+	"github.com/census-instrumentation/opencensus-service/data"
 	jaegertranslator "github.com/census-instrumentation/opencensus-service/translator/trace/jaeger"
 )
 
@@ -80,25 +80,20 @@ func NewJaegerThriftHTTPSender(
 }
 
 // ProcessSpans sends the received data to the configured Jaeger Thrift end-point.
-func (s *JaegerThriftHTTPSender) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
+func (s *JaegerThriftHTTPSender) ProcessSpans(td data.TraceData, spanFormat string) error {
 	// TODO: (@pjanotti) In case of failure the translation to Jaeger Thrift is going to be remade, cache it somehow.
-	if batch == nil {
-		return 0, fmt.Errorf("Jaeger sender received nil batch")
-	}
-
-	tBatch, err := jaegertranslator.OCProtoToJaegerThrift(batch)
+	tBatch, err := jaegertranslator.OCProtoToJaegerThrift(td)
 	if err != nil {
-		return uint64(len(batch.Spans)), err
+		return err
 	}
 
-	mSpans := tBatch.Spans
 	body, err := serializeThrift(tBatch)
 	if err != nil {
-		return uint64(len(mSpans)), err
+		return err
 	}
 	req, err := http.NewRequest("POST", s.url, body)
 	if err != nil {
-		return uint64(len(mSpans)), err
+		return err
 	}
 	req.Header.Set("Content-Type", "application/x-thrift")
 	for k, v := range s.headers {
@@ -106,14 +101,14 @@ func (s *JaegerThriftHTTPSender) ProcessSpans(batch *agenttracepb.ExportTraceSer
 	}
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return uint64(len(mSpans)), err
+		return err
 	}
 	io.Copy(ioutil.Discard, resp.Body)
 	resp.Body.Close()
 	if resp.StatusCode >= http.StatusBadRequest {
-		return uint64(len(mSpans)), fmt.Errorf("Jaeger Thirft HTTP sender error: %d", resp.StatusCode)
+		return fmt.Errorf("Jaeger Thirft HTTP sender error: %d", resp.StatusCode)
 	}
-	return 0, nil
+	return nil
 }
 
 func serializeThrift(obj thrift.TStruct) (*bytes.Buffer, error) {

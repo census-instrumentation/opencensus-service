@@ -19,8 +19,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
+	"github.com/census-instrumentation/opencensus-service/data"
 )
 
 func TestMultiSpanProcessorMultiplexing(t *testing.T) {
@@ -30,59 +30,20 @@ func TestMultiSpanProcessorMultiplexing(t *testing.T) {
 	}
 
 	tt := NewMultiSpanProcessor(processors)
-	batch := &agenttracepb.ExportTraceServiceRequest{
+	td := data.TraceData{
 		Spans: make([]*tracepb.Span, 7),
 	}
 
 	var wantSpansCount = 0
 	for i := 0; i < 2; i++ {
-		wantSpansCount += len(batch.Spans)
-		tt.ProcessSpans(batch, "test")
+		wantSpansCount += len(td.Spans)
+		tt.ProcessSpans(td, "test")
 	}
 
 	for _, p := range processors {
 		m := p.(*mockSpanProcessor)
 		if m.TotalSpans != wantSpansCount {
 			t.Errorf("Wanted %d spans for every processor but got %d", wantSpansCount, m.TotalSpans)
-			return
-		}
-	}
-}
-
-func TestMultiSpanProcessorSomeNotOk(t *testing.T) {
-	processors := make([]SpanProcessor, 3)
-	for i := range processors {
-		processors[i] = &mockSpanProcessor{}
-	}
-
-	// Make one processor return false for some spans
-	m := processors[1].(*mockSpanProcessor)
-	wantFailures := uint64(2)
-	m.Failures = wantFailures
-
-	tt := NewMultiSpanProcessor(processors)
-	spans := make([]*tracepb.Span, wantFailures+3)
-	for i := range spans {
-		spans[i] = &tracepb.Span{}
-	}
-	batch := &agenttracepb.ExportTraceServiceRequest{
-		Spans: spans,
-	}
-
-	var wantSpansCount = 0
-	for i := 0; i < 2; i++ {
-		failures, _ := tt.ProcessSpans(batch, "test")
-		batchSize := len(batch.Spans)
-		wantSpansCount += batchSize
-		if wantFailures != failures {
-			t.Errorf("Wanted %d failures but got %d", wantFailures, failures)
-		}
-	}
-
-	for _, p := range processors {
-		m := p.(*mockSpanProcessor)
-		if m.TotalSpans != wantSpansCount {
-			t.Errorf("Wanted %d for every processor but got %d", wantSpansCount, m.TotalSpans)
 			return
 		}
 	}
@@ -99,22 +60,19 @@ func TestMultiSpanProcessorWhenOneErrors(t *testing.T) {
 	m.MustFail = true
 
 	tt := NewMultiSpanProcessor(processors)
-	batch := &agenttracepb.ExportTraceServiceRequest{
+	td := data.TraceData{
 		Spans: make([]*tracepb.Span, 5),
 	}
 
 	var wantSpansCount = 0
 	for i := 0; i < 2; i++ {
-		failures, err := tt.ProcessSpans(batch, "test")
+		err := tt.ProcessSpans(td, "test")
 		if err == nil {
 			t.Errorf("Wanted error got nil")
 			return
 		}
-		batchSize := len(batch.Spans)
+		batchSize := len(td.Spans)
 		wantSpansCount += batchSize
-		if failures != uint64(batchSize) {
-			t.Errorf("Wanted all spans to fail, got a different value.")
-		}
 	}
 
 	for _, p := range processors {
@@ -133,12 +91,12 @@ func TestMultiSpanProcessorWithPreProcessFn(t *testing.T) {
 	}
 
 	calledFnCount := int32(0)
-	testPreProcessFn := func(*agenttracepb.ExportTraceServiceRequest, string) {
+	testPreProcessFn := func(data.TraceData, string) {
 		atomic.AddInt32(&calledFnCount, 1)
 	}
 
 	tt := NewMultiSpanProcessor(processors, WithPreProcessFn(testPreProcessFn))
-	batch := &agenttracepb.ExportTraceServiceRequest{
+	batch := data.TraceData{
 		Spans: make([]*tracepb.Span, 7),
 	}
 
@@ -187,9 +145,9 @@ func multiSpanProcessorWithAddAttributesTestHelper(t *testing.T, overwrite bool)
 		}, overwrite),
 	)
 
-	batch := &agenttracepb.ExportTraceServiceRequest{}
+	td := data.TraceData{}
 	for i := 0; i < 7; i++ {
-		batch.Spans = append(batch.Spans, &tracepb.Span{
+		td.Spans = append(td.Spans, &tracepb.Span{
 			Attributes: &tracepb.Span_Attributes{
 				AttributeMap: map[string]*tracepb.AttributeValue{
 					"some_int": {
@@ -200,10 +158,10 @@ func multiSpanProcessorWithAddAttributesTestHelper(t *testing.T, overwrite bool)
 		})
 	}
 
-	spans := make([]*tracepb.Span, 0, len(batch.Spans)*2)
+	spans := make([]*tracepb.Span, 0, len(td.Spans)*2)
 	for i := 0; i < 2; i++ {
-		tt.ProcessSpans(batch, "test")
-		spans = append(spans, batch.Spans...)
+		tt.ProcessSpans(td, "test")
+		spans = append(spans, td.Spans...)
 	}
 
 	expectedSomeIntValue := int64(4567)
@@ -233,19 +191,18 @@ func multiSpanProcessorWithAddAttributesTestHelper(t *testing.T, overwrite bool)
 }
 
 type mockSpanProcessor struct {
-	Failures   uint64
 	TotalSpans int
 	MustFail   bool
 }
 
 var _ SpanProcessor = &mockSpanProcessor{}
 
-func (p *mockSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
-	batchSize := len(batch.Spans)
+func (p *mockSpanProcessor) ProcessSpans(td data.TraceData, spanFormat string) error {
+	batchSize := len(td.Spans)
 	p.TotalSpans += batchSize
 	if p.MustFail {
-		return uint64(batchSize), fmt.Errorf("this processor must fail")
+		return fmt.Errorf("this processor must fail")
 	}
 
-	return p.Failures, nil
+	return nil
 }
