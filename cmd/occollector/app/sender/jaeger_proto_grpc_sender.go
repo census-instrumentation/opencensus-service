@@ -48,16 +48,16 @@ func NewJaegerProtoGRPCSender(collectorEndpoint string, zlogger *zap.Logger) *Ja
 }
 
 // ProcessSpans sends the batch to the configured Jaeger Proto-GRPC endpoint.
-func (s *JaegerProtoGRPCSender) ProcessSpans(td data.TraceData, spanFormat string) (uint64, error) {
+func (s *JaegerProtoGRPCSender) ProcessSpans(td data.TraceData, spanFormat string) error {
 	protoBatch, err := jaegertranslator.OCProtoToJaegerProto(td)
 	if err != nil {
-		return uint64(len(td.Spans)), err
+		return err
 	}
 
 	_, err := s.client.PostSpans(context.Background(), &jaegerproto.PostSpansRequest{Batch: protoBatch})
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	return protoBatch.len(), nil
+	return nil
 }
