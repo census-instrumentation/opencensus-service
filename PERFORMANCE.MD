@@ -1,4 +1,6 @@
-The performance number that follow were generated using version 0.1.3 of the
+# OpenCensus Service Performance
+
+The performance numbers that follow were generated using version 0.1.3 of the
 OpenCensus Service, are applicable primarily to the OpenCensus Collector and
 are measured only for traces. In the future, more configurations will be tested.
 
@@ -15,7 +17,9 @@ on a variety of factors including:
 * Whether tail-sampling is enabled or not
 * CPU / Memory allocation
 
-Testing was completed using the Synthetic Load Generator utility and results can
+## Testing
+
+Testing was completed using the [Synthetic Load Generator utility](https://github.com/Omnition/synthetic-load-generator) and results can
 be reproduced in your own environment. It is important to note that this utility
 has a few configurable parameters which can impact the results of the tests. The
 parameters used are defined below.
@@ -24,7 +28,7 @@ parameters used are defined below.
 * MaxQueueSize [default: 100]
 * SubmissionRate(spans/sec): 100,000
 
-Without tail-based sampling
+## Results without tail-based sampling
 
 | Span<br>Format    | CPU<br>(2+ GHz) | RAM<br>(GB) | Sustained<br>Rate | Recommended<br>Maximum |
 | :---:             | :---:           | :---:       | :---:             | :---:                  |
@@ -41,7 +45,7 @@ either:
 * Scale-out by putting one or more collectors behind a load balancer or k8s
 service
 
-With tail-based sampling
+## Results with tail-based sampling
 
 > Note: Additional memory is required for tail-based sampling
 
@@ -49,8 +53,8 @@ With tail-based sampling
 | :---:             | :---:           | :---:       | :---:             | :---:                  |
 | Jaeger Thrift     | 1               | 6           | ~11.5K            | 10K                    |
 | Jaeger Thrift     | 2               | 8           | ~23K              | 20K                    |
-| Zipkin v2 JSON    | 1               | 4           | ~8.5K             | 7K                     |
-| Zipkin v2 JSON    | 2               | 4           | ~16K              | 14K                    |
+| Zipkin v2 JSON    | 1               | 6           | ~8.5K             | 7K                     |
+| Zipkin v2 JSON    | 2               | 8           | ~16K              | 14K                    |
 
 If you are using tail-based sampling and you need higher rates then you can
 either:
