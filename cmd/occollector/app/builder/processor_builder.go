@@ -69,6 +69,16 @@ func NewJaegerThriftHTTPSenderCfg() *JaegerThriftHTTPSenderCfg {
 	return opts
 }
 
+// JaegerProtoGRPCSenderCfg holds configuration for Jaeger Proto GRPC sender
+type JaegerProtoGRPCSenderCfg struct {
+	CollectorEndpoint string `mapstructure:"collector-endpoint"`
+}
+
+// NewJaegerProtoGRPCSenderCfg returns an instance of JaegerProtoGRPCSenderCfg with default values
+func NewJaegerProtoGRPCSenderCfg() *JaegerProtoGRPCSenderCfg {
+	return &JaegerProtoGRPCSenderCfg{}
+}
+
 // BatchingConfig contains configuration around the queueing batching.
 // It contains some advanced configurations, which should not be used
 // by a typical user, but are provided as advanced features to increase
@@ -91,16 +101,6 @@ type BatchingConfig struct {
 	// from a node after which the batcher for that node will be deleted. This is an
 	// advanved configuration option.
 	RemoveAfterTicks *int `mapstructure:"remove-after-ticks,omitempty"`
-}
-
-// JaegerProtoGRPCSenderCfg holds configuration for Jaeger Proto GRPC sender
-type JaegerProtoGRPCSenderCfg struct {
-	CollectorEndpoint string `mapstructure:"collector-endpoint"`
-}
-
-// NewJaegerProtoGRPCSenderCfg returns an instance of JaegerProtoGRPCSenderCfg with default values
-func NewJaegerProtoGRPCSenderCfg() *JaegerProtoGRPCSenderCfg {
-	return &JaegerProtoGRPCSenderCfg{}
 }
 
 // QueuedSpanProcessorCfg holds configuration for the queued span processor

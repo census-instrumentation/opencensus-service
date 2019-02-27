@@ -32,12 +32,12 @@ import (
 // OCProtoToJaegerProto translates OpenCensus trace data into the Jaeger Proto for GRPC.
 func OCProtoToJaegerProto(ocBatch *agenttracepb.ExportTraceServiceRequest) (jaeger.Batch, error) {
 	if ocBatch == nil {
-		return jaeger.Batch{}, nil
+		return nil, nil
 	}
 
 	jSpans, err := ocSpansToJaegerSpansProto(ocBatch.Spans)
 	if err != nil {
-		return jaeger.Batch{}, err
+		return nil, err
 	}
 
 	jb := jaeger.Batch{
@@ -156,7 +156,7 @@ func truncableStringToStrProto(ts *tracepb.TruncatableString) string {
 
 func ocLinksToJaegerReferencesProto(ocSpanLinks *tracepb.Span_Links) ([]jaeger.SpanRef, error) {
 	if ocSpanLinks == nil || ocSpanLinks.Link == nil {
-		return []jaeger.SpanRef{}, nil
+		return nil, nil
 	}
 
 	ocLinks := ocSpanLinks.Link
@@ -166,14 +166,14 @@ func ocLinksToJaegerReferencesProto(ocSpanLinks *tracepb.Span_Links) ([]jaeger.S
 		if ocLink.TraceId != nil {
 			traceID = ocLink.TraceId
 		} else {
-			return []jaeger.SpanRef{}, errNilTraceID
+			return nil, errNilTraceID
 		}
 
 		var spanID []byte
 		if ocLink.SpanId != nil {
 			spanID = ocLink.SpanId
 		} else {
-			return []jaeger.SpanRef{}, errNilID
+			return nil, errNilID
 		}
 
 		var jRefType jaeger.SpanRefType
@@ -207,7 +207,7 @@ func timestampToTimeProto(ts *timestamp.Timestamp) (t time.Time) {
 // Replica of protospan_to_jaegerthrift.ocSpanAttributesToJaegerTags
 func ocSpanAttributesToJaegerTagsProto(ocAttribs *tracepb.Span_Attributes) []jaeger.KeyValue {
 	if ocAttribs == nil {
-		return []jaeger.KeyValue{}
+		return nil
 	}
 
 	// Pre-allocate assuming that few attributes, if any at all, are nil.

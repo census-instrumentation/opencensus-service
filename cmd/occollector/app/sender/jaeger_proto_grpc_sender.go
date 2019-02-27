@@ -28,25 +28,26 @@ import (
 )
 
 // JaegerProtoGRPCSender forwards spans encoded in the jaeger proto
-// format to a grpc server
+// format, to a grpc server.
 type JaegerProtoGRPCSender struct {
-	client *grpc.ClientConn
+	client *jaegerproto.CollectorServiceClient
 	logger *zap.Logger
 }
 
 // NewJaegerProtoGRPCSender returns a new GRPC-backend span sender.
-// The collector endpoint should be of the form "hostname:14250"
+// The collector endpoint should be of the form "hostname:14250".
 func NewJaegerProtoGRPCSender(collectorEndpoint string, zlogger *zap.Logger) *JaegerProtoGRPCSender {
 	client := grpc.Dial(collectorEndpoint, grpc.WithInsecure())
+	collectorServiceClient := jaegerproto.NewCollectorServiceClient(client)
 	s := &JaegerProtoGRPCSender{
-		client: client,
+		client: collectorServiceClient,
 		logger: zlogger,
 	}
 
 	return s
 }
 
-// ProcessSpans sends the received data to the configured Jaeger Proto-GRPC end-point.
+// ProcessSpans sends the batch to the configured Jaeger Proto-GRPC endpoint.
 func (s *JaegerProtoGRPCSender) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
 	if batch == nil {
 		return 0, fmt.Errorf("Jaeger sender received nil batch")
@@ -57,8 +58,7 @@ func (s *JaegerProtoGRPCSender) ProcessSpans(batch *agenttracepb.ExportTraceServ
 		return uint64(len(batch.Spans)), err
 	}
 
-	collectorServiceClient := jaegerproto.NewCollectorServiceClient(s.client)
-	_, err := collectorServiceClient.PostSpans(context.Background(), &jaegerproto.PostSpansRequest{Batch: protoBatch})
+	_, err := s.client.PostSpans(context.Background(), &jaegerproto.PostSpansRequest{Batch: protoBatch})
 	if err != nil {
 		return 0, err
 	}
