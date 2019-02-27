@@ -16,10 +16,12 @@ on a variety of factors including:
 * The size of the spans (tests are based on number of tags): 20
 * Whether tail-sampling is enabled or not
 * CPU / Memory allocation
+* Operating System: Linux
 
 ## Testing
 
-Testing was completed using the [Synthetic Load Generator utility](https://github.com/Omnition/synthetic-load-generator) and results can
+Testing was completed on Linux using the [Synthetic Load Generator
+utility](https://github.com/Omnition/synthetic-load-generator) and results can
 be reproduced in your own environment. It is important to note that this utility
 has a few configurable parameters which can impact the results of the tests. The
 parameters used are defined below.
