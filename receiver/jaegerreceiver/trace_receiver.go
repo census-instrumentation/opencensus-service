@@ -89,6 +89,8 @@ const (
 	defaultZipkinThriftUDPPort  = 5775
 	defaultCompactThriftUDPPort = 6831
 	defaultBinaryThriftUDPPort  = 6832
+
+	traceSource string = "Jaeger"
 )
 
 // New creates a TraceReceiver that receives traffic as a collector with both Thrift and HTTP transports.
@@ -158,6 +160,10 @@ func (jr *jReceiver) agentBinaryThriftAddr() string {
 		port = defaultBinaryThriftUDPPort
 	}
 	return fmt.Sprintf(":%d", port)
+}
+
+func (jr *jReceiver) TraceSource() string {
+	return traceSource
 }
 
 func (jr *jReceiver) StartTraceReception(ctx context.Context, nextProcessor processor.TraceDataProcessor) error {
@@ -231,15 +237,15 @@ func (jr *jReceiver) SubmitBatches(ctx thrift.Context, batches []*jaeger.Batch) 
 	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(ctx, "jaeger-collector")
 
 	for _, batch := range batches {
-		octrace, err := jaegertranslator.ThriftBatchToOCProto(batch)
+		td, err := jaegertranslator.ThriftBatchToOCProto(batch)
 		// TODO: (@odeke-em) add this error for Jaeger observability
 		ok := false
 
-		if err == nil && octrace != nil {
+		if err == nil {
 			ok = true
-			jr.nextProcessor.ProcessTraceData(ctx, data.TraceData{Node: octrace.Node, Spans: octrace.Spans})
+			jr.nextProcessor.ProcessTraceData(ctx, td)
 			// We MUST unconditionally record metrics from this reception.
-			spansMetricsFn(octrace.Node, octrace.Spans)
+			spansMetricsFn(td.Node, td.Spans)
 		}
 
 		jbsr = append(jbsr, &jaeger.BatchSubmitResponse{

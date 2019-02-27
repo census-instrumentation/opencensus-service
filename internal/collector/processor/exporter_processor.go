@@ -17,7 +17,6 @@ package processor
 import (
 	"context"
 
-	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/processor"
 )
@@ -33,11 +32,10 @@ func NewTraceExporterProcessor(traceExporters ...processor.TraceDataProcessor) S
 	return &exporterSpanProcessor{tdp: processor.NewMultiTraceDataProcessor(traceExporters)}
 }
 
-func (sp *exporterSpanProcessor) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
-	err := sp.tdp.ProcessTraceData(context.Background(), data.TraceData{Node: batch.Node, Resource: batch.Resource, Spans: batch.Spans})
+func (sp *exporterSpanProcessor) ProcessSpans(td data.TraceData, spanFormat string) error {
+	err := sp.tdp.ProcessTraceData(context.Background(), td)
 	if err != nil {
-		// TODO: determine if the number of dropped spans is needed because it was wrong anyway.
-		return 0, err
+		return err
 	}
-	return 0, nil
+	return nil
 }
