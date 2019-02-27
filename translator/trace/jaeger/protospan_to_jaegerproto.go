@@ -25,23 +25,19 @@ import (
 	jaeger "github.com/jaegertracing/jaeger/model"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
-	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
+	"github.com/census-instrumentation/opencensus-service/data"
 )
 
 // OCProtoToJaegerProto translates OpenCensus trace data into the Jaeger Proto for GRPC.
-func OCProtoToJaegerProto(ocBatch *agenttracepb.ExportTraceServiceRequest) (jaeger.Batch, error) {
-	if ocBatch == nil {
-		return nil, nil
-	}
-
-	jSpans, err := ocSpansToJaegerSpansProto(ocBatch.Spans)
+func OCProtoToJaegerProto(td data.TraceData) (jaeger.Batch, error) {
+	jSpans, err := ocSpansToJaegerSpansProto(td.Spans)
 	if err != nil {
 		return nil, err
 	}
 
 	jb := jaeger.Batch{
-		Process: ocNodeToJaegerProcessProto(ocBatch.Node),
+		Process: ocNodeToJaegerProcessProto(td.Node),
 		Spans:   jSpans,
 	}
 
@@ -345,7 +341,7 @@ func appendJaegerTagFromOCSpanKindProto(jTags []jaeger.KeyValue, ocSpanKind trac
 	if tagValue != "" {
 		jTag := jaeger.KeyValue{
 			Key:  "span.kind",
-			VStr: &tagValue,
+			VStr: tagValue,
 		}
 		jTags = append(jTags, jTag)
 	}
@@ -376,7 +372,7 @@ func appendJaegerTagFromOCStatusProto(jTags []jaeger.KeyValue, ocStatus *tracepb
 
 	jTag := jaeger.KeyValue{
 		Key:    "span.status",
-		VInt64: ocStatus.code,
+		VInt64: ocStatus.Code,
 		VStr:   ocStatus.Message,
 	}
 	jTags = append(jTags, jTag)
