@@ -23,7 +23,7 @@ import (
 
 	jaegerproto "github.com/jaegertracing/jaeger/proto-gen/api_v2"
 
-	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
+	"github.com/census-instrumentation/opencensus-service/data"
 	jaegertranslator "github.com/census-instrumentation/opencensus-service/translator/trace/jaeger"
 )
 
@@ -48,14 +48,10 @@ func NewJaegerProtoGRPCSender(collectorEndpoint string, zlogger *zap.Logger) *Ja
 }
 
 // ProcessSpans sends the batch to the configured Jaeger Proto-GRPC endpoint.
-func (s *JaegerProtoGRPCSender) ProcessSpans(batch *agenttracepb.ExportTraceServiceRequest, spanFormat string) (uint64, error) {
-	if batch == nil {
-		return 0, fmt.Errorf("Jaeger sender received nil batch")
-	}
-
-	protoBatch, err := jaegertranslator.OCProtoToJaegerProto(batch)
+func (s *JaegerProtoGRPCSender) ProcessSpans(td data.TraceData, spanFormat string) (uint64, error) {
+	protoBatch, err := jaegertranslator.OCProtoToJaegerProto(td)
 	if err != nil {
-		return uint64(len(batch.Spans)), err
+		return uint64(len(td.Spans)), err
 	}
 
 	_, err := s.client.PostSpans(context.Background(), &jaegerproto.PostSpansRequest{Batch: protoBatch})
