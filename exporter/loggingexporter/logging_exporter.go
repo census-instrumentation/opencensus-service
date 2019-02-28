@@ -48,14 +48,14 @@ func (sp *loggingExporter) ExportFormat() string {
 	return exportFormat
 }
 
-// NewTraceDataExporter creates an exporter.TraceDataExporter that just drops the
+// NewTraceExporter creates an exporter.TraceDataExporter that just drops the
 // received data and logs debugging messages.
-func NewTraceDataExporter(logger *zap.Logger) exporter.TraceDataExporter {
+func NewTraceExporter(logger *zap.Logger) exporter.TraceDataExporter {
 	return &loggingExporter{logger: logger}
 }
 
-// NewMetricsDataExporter creates an exporter.MetricsDataExporter that just drops the
+// NewMetricsExporter creates an exporter.MetricsDataExporter that just drops the
 // received data and logs debugging messages.
-func NewMetricsDataExporter(logger *zap.Logger) exporter.MetricsDataExporter {
+func NewMetricsExporter(logger *zap.Logger) exporter.MetricsDataExporter {
 	return &loggingExporter{logger: logger}
 }

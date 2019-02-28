@@ -248,7 +248,7 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor
 	_ = metricsExporters
 
 	if builder.LoggingExporterEnabled(v) {
-		dbgProc := processor.NewTraceExporterProcessor(loggingexporter.NewTraceDataExporter(logger))
+		dbgProc := processor.NewTraceExporterProcessor(loggingexporter.NewTraceExporter(logger))
 		// TODO: Add this to the exporters list and avoid treating it specially. Don't know all the implications.
 		nameToSpanProcessor["debug"] = dbgProc
 		spanProcessors = append(spanProcessors, dbgProc)

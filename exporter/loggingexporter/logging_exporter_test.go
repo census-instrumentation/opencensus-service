@@ -23,8 +23,8 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestDebugTraceDataExporterNoErrors(t *testing.T) {
-	dtdp := NewTraceDataExporter(zap.NewNop())
+func TestLoggingTraceExporterNoErrors(t *testing.T) {
+	dtdp := NewTraceExporter(zap.NewNop())
 	td := data.TraceData{
 		Spans: make([]*tracepb.Span, 7),
 	}
@@ -37,8 +37,8 @@ func TestDebugTraceDataExporterNoErrors(t *testing.T) {
 	}
 }
 
-func TestDebugMetricsDataExporterNoErrors(t *testing.T) {
-	dmdp := NewMetricsDataExporter(zap.NewNop())
+func TestLoggingMetricsExporterNoErrors(t *testing.T) {
+	dmdp := NewMetricsExporter(zap.NewNop())
 	md := data.MetricsData{
 		Metrics: make([]*metricspb.Metric, 7),
 	}
