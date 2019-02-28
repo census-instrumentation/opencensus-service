@@ -20,11 +20,11 @@ import (
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
-	"go.uber.org/zap/zaptest"
+	"go.uber.org/zap"
 )
 
 func TestDebugTraceDataExporterNoErrors(t *testing.T) {
-	dtdp := NewDebugTraceDataExporter(zaptest.NewLogger(t))
+	dtdp := NewDebugTraceDataExporter(zap.NewNop())
 	td := data.TraceData{
 		Spans: make([]*tracepb.Span, 7),
 	}
@@ -35,7 +35,7 @@ func TestDebugTraceDataExporterNoErrors(t *testing.T) {
 }
 
 func TestDebugMetricsDataExporterNoErrors(t *testing.T) {
-	dmdp := NewDebugMetricsDataExporter(zaptest.NewLogger(t))
+	dmdp := NewDebugMetricsDataExporter(zap.NewNop())
 	md := data.MetricsData{
 		Metrics: make([]*metricspb.Metric, 7),
 	}
