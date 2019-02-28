@@ -105,6 +105,8 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceDa
 	return
 }
 
+const exporterTagValue = "oc_trace"
+
 func (oce *ocagentExporter) ProcessTraceData(ctx context.Context, td data.TraceData) error {
 	// Get an exporter worker round-robin
 	exporter := oce.exporters[atomic.AddUint32(&oce.counter, 1)%uint32(len(oce.exporters))]
@@ -121,7 +123,6 @@ func (oce *ocagentExporter) ProcessTraceData(ctx context.Context, td data.TraceD
 		// processor should record these metrics.
 		return err
 	}
-	ctxWithExporterName := internal.ContextWithTraceExporterName(ctx, "ocagent")
-	internal.RecordTraceExporterMetrics(ctxWithExporterName, len(td.Spans), 0)
+	internal.RecordTraceExporterMetrics(internal.ContextWithExporterName(ctx, exporterTagValue), len(td.Spans), 0)
 	return nil
 }

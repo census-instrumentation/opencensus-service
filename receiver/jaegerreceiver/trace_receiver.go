@@ -98,7 +98,7 @@ const (
 func New(ctx context.Context, config *Configuration) (receiver.TraceReceiver, error) {
 	return &jReceiver{
 		config:          config,
-		defaultAgentCtx: internal.ContextWithTraceReceiverName(context.Background(), "jaeger-agent"),
+		defaultAgentCtx: internal.ContextWithReceiverName(context.Background(), "jaeger-agent"),
 	}, nil
 }
 
@@ -236,9 +236,11 @@ func (jr *jReceiver) stopTraceReceptionLocked(ctx context.Context) error {
 	return err
 }
 
+const collectorReceiverTagValue = "jaeger-collector"
+
 func (jr *jReceiver) SubmitBatches(ctx thrift.Context, batches []*jaeger.Batch) ([]*jaeger.BatchSubmitResponse, error) {
 	jbsr := make([]*jaeger.BatchSubmitResponse, 0, len(batches))
-	ctxWithReceiverName := internal.ContextWithTraceReceiverName(ctx, "jaeger-collector")
+	ctxWithReceiverName := internal.ContextWithReceiverName(ctx, collectorReceiverTagValue)
 
 	for _, batch := range batches {
 		td, err := jaegertranslator.ThriftBatchToOCProto(batch)

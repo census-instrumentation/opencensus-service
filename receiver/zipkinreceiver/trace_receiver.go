@@ -271,6 +271,11 @@ func zlibUncompressedbody(r io.Reader) io.Reader {
 	return zr
 }
 
+const (
+	zipkinV1TagValue = "zipkinV1"
+	zipkinV2TagValue = "zipkinV2"
+)
+
 // The ZipkinReceiver receives spans from endpoint /api/v2 as JSON,
 // unmarshals them and sends them along to the nextProcessor.
 func (zr *ZipkinReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -295,13 +300,13 @@ func (zr *ZipkinReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var tds []data.TraceData
 
-	var receiverNameTag string
+	var receiverTagValue string
 	if asZipkinv1 {
 		tds, err = zr.v1ToTraceSpans(slurp, r.Header)
-		receiverNameTag = "zipkinV1"
+		receiverTagValue = zipkinV1TagValue
 	} else {
 		tds, err = zr.v2ToTraceSpans(slurp, r.Header)
-		receiverNameTag = "zipkinV2"
+		receiverTagValue = zipkinV2TagValue
 	}
 
 	if err != nil {
@@ -313,7 +318,7 @@ func (zr *ZipkinReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctxWithReceiverName := internal.ContextWithTraceReceiverName(ctx, receiverNameTag)
+	ctxWithReceiverName := internal.ContextWithReceiverName(ctx, receiverTagValue)
 	// Now translate them into TraceData
 	for _, td := range tds {
 		zr.nextProcessor.ProcessTraceData(ctxWithReceiverName, td)

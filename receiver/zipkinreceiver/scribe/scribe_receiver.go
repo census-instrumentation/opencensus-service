@@ -60,7 +60,7 @@ func NewReceiver(addr string, port uint16, category string) (receiver.TraceRecei
 			category:            category,
 			msgDecoder:          base64.StdEncoding.WithPadding('='),
 			tBinProtocolFactory: thrift.NewTBinaryProtocolFactory(true, false),
-			defaultCtx:          internal.ContextWithTraceReceiverName(context.Background(), "zipkin-scribe"),
+			defaultCtx:          internal.ContextWithReceiverName(context.Background(), "zipkin-scribe"),
 		},
 	}
 	return r, nil

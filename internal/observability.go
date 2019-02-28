@@ -31,13 +31,13 @@ import (
 )
 
 var (
-	tagKeyTraceReceiverName, _ = tag.NewKey("opencensus_trace_receiver")
-	mReceiverReceivedSpans     = stats.Int64("oc.io/receiver/received_spans", "Counts the number of spans received by the receiver", "1")
-	mReceiverDroppedSpans      = stats.Int64("oc.io/receiver/dropped_spans", "Counts the number of spans dropped by the receiver", "1")
+	tagKeyReceiver, _      = tag.NewKey("oc_receiver")
+	mReceiverReceivedSpans = stats.Int64("oc.io/receiver/received_spans", "Counts the number of spans received by the receiver", "1")
+	mReceiverDroppedSpans  = stats.Int64("oc.io/receiver/dropped_spans", "Counts the number of spans dropped by the receiver", "1")
 
-	tagKeyTraceExporterName, _ = tag.NewKey("opencensus_trace_exporter")
-	mExporterReceivedSpans     = stats.Int64("oc.io/exporter/received_spans", "Counts the number of spans received by the exporter", "1")
-	mExporterDroppedSpans      = stats.Int64("oc.io/exporter/dropped_spans", "Counts the number of spans received by the exporter", "1")
+	tagKeyExporter, _      = tag.NewKey("oc_exporter")
+	mExporterReceivedSpans = stats.Int64("oc.io/exporter/received_spans", "Counts the number of spans received by the exporter", "1")
+	mExporterDroppedSpans  = stats.Int64("oc.io/exporter/dropped_spans", "Counts the number of spans received by the exporter", "1")
 )
 
 // ViewReceiverReceivedSpans defines the view for the receiver received spans metric.
@@ -46,7 +46,7 @@ var ViewReceiverReceivedSpans = &view.View{
 	Description: mReceiverReceivedSpans.Description(),
 	Measure:     mReceiverReceivedSpans,
 	Aggregation: view.Sum(),
-	TagKeys:     []tag.Key{tagKeyTraceReceiverName},
+	TagKeys:     []tag.Key{tagKeyReceiver},
 }
 
 // ViewReceiverDroppedSpans defines the view for the receiver dropped spans metric.
@@ -55,7 +55,7 @@ var ViewReceiverDroppedSpans = &view.View{
 	Description: mReceiverDroppedSpans.Description(),
 	Measure:     mReceiverDroppedSpans,
 	Aggregation: view.Sum(),
-	TagKeys:     []tag.Key{tagKeyTraceReceiverName},
+	TagKeys:     []tag.Key{tagKeyReceiver},
 }
 
 // ViewExporterReceivedSpans defines the view for the exporter received spans metric.
@@ -64,16 +64,16 @@ var ViewExporterReceivedSpans = &view.View{
 	Description: mExporterReceivedSpans.Description(),
 	Measure:     mExporterReceivedSpans,
 	Aggregation: view.Sum(),
-	TagKeys:     []tag.Key{tagKeyTraceReceiverName, tagKeyTraceExporterName},
+	TagKeys:     []tag.Key{tagKeyReceiver, tagKeyExporter},
 }
 
 // ViewExporterDroppedSpans defines the view for the exporter dropped spans metric.
 var ViewExporterDroppedSpans = &view.View{
-	Name:        mExporterReceivedSpans.Name(),
-	Description: mExporterReceivedSpans.Description(),
-	Measure:     mExporterReceivedSpans,
+	Name:        mExporterDroppedSpans.Name(),
+	Description: mExporterDroppedSpans.Description(),
+	Measure:     mExporterDroppedSpans,
 	Aggregation: view.Sum(),
-	TagKeys:     []tag.Key{tagKeyTraceReceiverName, tagKeyTraceExporterName},
+	TagKeys:     []tag.Key{tagKeyReceiver, tagKeyExporter},
 }
 
 // AllViews has the views for the metrics provided by the agent.
@@ -84,28 +84,30 @@ var AllViews = []*view.View{
 	ViewExporterDroppedSpans,
 }
 
-// ContextWithTraceReceiverName adds the tag "opencensus_trace_receiver" and the name of the
-// receiver as the value, and returns the newly created context.
-func ContextWithTraceReceiverName(ctx context.Context, traceReceiverName string) context.Context {
-	ctx, _ = tag.New(ctx, tag.Upsert(tagKeyTraceReceiverName, traceReceiverName))
+// ContextWithReceiverName adds the tag "oc_receiver" and the name of the receiver as the value,
+// and returns the newly created context. For receivers that can receive multiple signals it is
+// recommended to encode the signal as suffix (e.g. "oc_trace" and "oc_metrics").
+func ContextWithReceiverName(ctx context.Context, receiverName string) context.Context {
+	ctx, _ = tag.New(ctx, tag.Upsert(tagKeyReceiver, receiverName))
 	return ctx
 }
 
 // RecordTraceReceiverMetrics records the number of the spans received and dropped by the receiver.
-// Use it with a context.Context generated using ContextWithTraceReceiverName().
+// Use it with a context.Context generated using ContextWithReceiverName().
 func RecordTraceReceiverMetrics(ctxWithTraceReceiverName context.Context, receivedSpans int, droppedSpans int) {
 	stats.Record(ctxWithTraceReceiverName, mReceiverReceivedSpans.M(int64(receivedSpans)), mReceiverDroppedSpans.M(int64(droppedSpans)))
 }
 
-// ContextWithTraceExporterName adds the tag "opencensus_trace_exporter" and the name of the
-// receiver as the value, and returns the newly created context.
-func ContextWithTraceExporterName(ctx context.Context, traceReceiverName string) context.Context {
-	ctx, _ = tag.New(ctx, tag.Upsert(tagKeyTraceReceiverName, traceReceiverName))
+// ContextWithExporterName adds the tag "oc_exporter" and the name of the exporter as the value,
+// and returns the newly created context. For exporters that can export multiple signals it is
+// recommended to encode the signal as suffix (e.g. "oc_trace" and "oc_metrics").
+func ContextWithExporterName(ctx context.Context, exporterName string) context.Context {
+	ctx, _ = tag.New(ctx, tag.Upsert(tagKeyExporter, exporterName))
 	return ctx
 }
 
 // RecordTraceExporterMetrics records the number of the spans received and dropped by the exporter.
-// Use it with a context.Context generated using ContextWithTraceExporterName().
+// Use it with a context.Context generated using ContextWithExporterName().
 func RecordTraceExporterMetrics(ctx context.Context, receivedSpans int, droppedSpans int) {
 	stats.Record(ctx, mExporterReceivedSpans.M(int64(receivedSpans)), mExporterDroppedSpans.M(int64(droppedSpans)))
 }
