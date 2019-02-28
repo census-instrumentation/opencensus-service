@@ -279,6 +279,7 @@ func (zr *ZipkinReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer span.End()
 
 	// If the starting RPC has a parent span, then add it as a parent link.
+	// TODO: parentCtx should be direct parent for the span created here.
 	parentCtx := r.Context()
 	internal.SetParentLink(parentCtx, span)
 
@@ -312,12 +313,13 @@ func (zr *ZipkinReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(ctx, receiverNameTag)
+	ctxWithReceiverName := internal.ContextWithTraceReceiverName(ctx, receiverNameTag)
 	// Now translate them into TraceData
 	for _, td := range tds {
-		zr.nextProcessor.ProcessTraceData(ctx, td)
+		zr.nextProcessor.ProcessTraceData(ctxWithReceiverName, td)
 		// We MUST unconditionally record metrics from this reception.
-		spansMetricsFn(td.Node, td.Spans)
+		// TODO: Get the number of dropped spans from the conversion failure if any.
+		internal.RecordTraceReceiverMetrics(ctxWithReceiverName, len(td.Spans), 0)
 	}
 
 	// Finally send back the response "Accepted" as

@@ -60,6 +60,7 @@ func NewReceiver(addr string, port uint16, category string) (receiver.TraceRecei
 			category:            category,
 			msgDecoder:          base64.StdEncoding.WithPadding('='),
 			tBinProtocolFactory: thrift.NewTBinaryProtocolFactory(true, false),
+			defaultCtx:          internal.ContextWithTraceReceiverName(context.Background(), "zipkin-scribe"),
 		},
 	}
 	return r, nil
@@ -128,6 +129,7 @@ type scribeCollector struct {
 	msgDecoder          *base64.Encoding
 	tBinProtocolFactory *thrift.TBinaryProtocolFactory
 	nextProcessor       processor.TraceDataProcessor
+	defaultCtx          context.Context
 }
 
 var _ scribe.Scribe = (*scribeCollector)(nil)
@@ -165,12 +167,9 @@ func (sc *scribeCollector) Log(messages []*scribe.LogEntry) (r scribe.ResultCode
 		return scribe.ResultCode_OK, err
 	}
 
-	ctx := context.Background()
-	spansMetricsFn := internal.NewReceivedSpansRecorderStreaming(ctx, "zipkin-scribe")
-
 	for _, td := range tds {
-		sc.nextProcessor.ProcessTraceData(ctx, td)
-		spansMetricsFn(td.Node, td.Spans)
+		sc.nextProcessor.ProcessTraceData(sc.defaultCtx, td)
+		internal.RecordTraceReceiverMetrics(sc.defaultCtx, len(zSpans), len(zSpans)-len(td.Spans))
 	}
 
 	return scribe.ResultCode_OK, nil

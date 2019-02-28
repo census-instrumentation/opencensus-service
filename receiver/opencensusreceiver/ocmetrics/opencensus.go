@@ -62,7 +62,7 @@ const receiverName = "opencensus_metrics"
 func (ocr *Receiver) Export(mes agentmetricspb.MetricsService_ExportServer) error {
 	// The bundler will receive batches of metrics i.e. []*metricspb.Metric
 	// We need to ensure that it propagates the receiver name as a tag
-	ctxWithReceiverName := internal.ContextWithReceiverName(mes.Context(), receiverName)
+	ctxWithReceiverName := internal.ContextWithTraceReceiverName(mes.Context(), receiverName)
 	metricsBundler := bundler.NewBundler((*data.MetricsData)(nil), func(payload interface{}) {
 		ocr.batchMetricExporting(ctxWithReceiverName, payload)
 	})

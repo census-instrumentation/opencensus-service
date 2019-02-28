@@ -116,9 +116,12 @@ func (oce *ocagentExporter) ProcessTraceData(ctx context.Context, td data.TraceD
 		},
 	)
 	if err != nil {
+		// TODO: If failed to send all maybe record a different metric. Failed to "Sent", but
+		// this may not be accurate if we have retry outside of this exporter. Maybe the retry
+		// processor should record these metrics.
 		return err
 	}
-	nSpansCounter := internal.NewExportedSpansRecorder("ocagent")
-	nSpansCounter(ctx, td.Node, td.Spans)
+	ctxWithExporterName := internal.ContextWithTraceExporterName(ctx, "ocagent")
+	internal.RecordTraceExporterMetrics(ctxWithExporterName, len(td.Spans), 0)
 	return nil
 }

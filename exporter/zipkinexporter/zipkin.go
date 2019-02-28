@@ -222,8 +222,8 @@ func (ze *zipkinExporter) ProcessTraceData(ctx context.Context, td data.TraceDat
 	}
 
 	// And finally record metrics on the number of exported spans.
-	nSpansCounter := internal.NewExportedSpansRecorder("zipkin")
-	nSpansCounter(ctx, td.Node, goodSpans)
+	ctxWithExporterName := internal.ContextWithTraceExporterName(ctx, "zipkin")
+	internal.RecordTraceExporterMetrics(ctxWithExporterName, len(td.Spans), len(td.Spans)-len(goodSpans))
 
 	return nil
 }
