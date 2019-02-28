@@ -32,6 +32,9 @@ func TestDebugTraceDataExporterNoErrors(t *testing.T) {
 		t.Errorf("Wanted nil got error")
 		return
 	}
+	if "debug" != dtdp.ExportFormat() {
+		t.Errorf("Wanted debug got %v", dtdp.ExportFormat())
+	}
 }
 
 func TestDebugMetricsDataExporterNoErrors(t *testing.T) {
@@ -42,5 +45,8 @@ func TestDebugMetricsDataExporterNoErrors(t *testing.T) {
 	if err := dmdp.ProcessMetricsData(context.Background(), md); err != nil {
 		t.Errorf("Wanted nil got error")
 		return
+	}
+	if "debug" != dmdp.ExportFormat() {
+		t.Errorf("Wanted debug got %v", dmdp.ExportFormat())
 	}
 }
