@@ -26,6 +26,7 @@ import (
 
 	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"
 	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/sender"
+	"github.com/census-instrumentation/opencensus-service/exporter/debugexporter"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/nodebatcher"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/queued"
@@ -247,7 +248,7 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor
 	_ = metricsExporters
 
 	if builder.DebugProcessorEnabled(v) {
-		dbgProc := processor.NewNoopSpanProcessor(logger)
+		dbgProc := processor.NewTraceExporterProcessor(debugexporter.NewDebugTraceDataExporter(logger))
 		nameToSpanProcessor["debug"] = dbgProc
 		spanProcessors = append(spanProcessors, dbgProc)
 	}

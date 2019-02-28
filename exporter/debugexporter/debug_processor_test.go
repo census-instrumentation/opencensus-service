@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package processor
+package debugexporter
 
 import (
 	"context"
@@ -23,8 +23,8 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-func TestDebugTraceDataProcessorNoErrors(t *testing.T) {
-	dtdp := NewDebugTraceDataProcessor(zaptest.NewLogger(t))
+func TestDebugTraceDataExporterNoErrors(t *testing.T) {
+	dtdp := NewDebugTraceDataExporter(zaptest.NewLogger(t))
 	td := data.TraceData{
 		Spans: make([]*tracepb.Span, 7),
 	}
@@ -34,8 +34,8 @@ func TestDebugTraceDataProcessorNoErrors(t *testing.T) {
 	}
 }
 
-func TestDebugMetricsDataProcessorNoErrors(t *testing.T) {
-	dmdp := NewDebugMetricsDataProcessor(zaptest.NewLogger(t))
+func TestDebugMetricsDataExporterNoErrors(t *testing.T) {
+	dmdp := NewDebugMetricsDataExporter(zaptest.NewLogger(t))
 	md := data.MetricsData{
 		Metrics: make([]*metricspb.Metric, 7),
 	}
