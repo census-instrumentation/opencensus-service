@@ -275,12 +275,11 @@ func (jr *jReceiver) EmitZipkinBatch(spans []*zipkincore.Span) error {
 func (jr *jReceiver) EmitBatch(batch *jaeger.Batch) error {
 	td, err := jaegertranslator.ThriftBatchToOCProto(batch)
 	if err != nil {
-		// TODO: (@odeke-em) add this error for Jaeger observability metrics
+		internal.RecordTraceReceiverMetrics(jr.defaultAgentCtx, len(batch.Spans), len(batch.Spans))
 		return err
 	}
 
 	err = jr.nextProcessor.ProcessTraceData(jr.defaultAgentCtx, td)
-	// We MUST unconditionally record metrics from this reception.
 	internal.RecordTraceReceiverMetrics(jr.defaultAgentCtx, len(batch.Spans), len(batch.Spans)-len(td.Spans))
 
 	return err

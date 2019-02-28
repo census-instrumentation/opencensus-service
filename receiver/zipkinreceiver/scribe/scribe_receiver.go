@@ -140,11 +140,13 @@ func (sc *scribeCollector) Log(messages []*scribe.LogEntry) (r scribe.ResultCode
 	for _, logEntry := range messages {
 		if sc.category != logEntry.Category {
 			// Not the specified category, do nothing
+			// TODO: Is this an error? Should we count this as dropped Span?
 			continue
 		}
 
 		b, err := sc.msgDecoder.DecodeString(logEntry.Message)
 		if err != nil {
+			// TODO: Should we continue to read? What error should we record here?
 			return scribe.ResultCode_OK, err
 		}
 
@@ -152,6 +154,7 @@ func (sc *scribeCollector) Log(messages []*scribe.LogEntry) (r scribe.ResultCode
 		st := thrift.NewStreamTransportR(r)
 		zs := &zipkincore.Span{}
 		if err := zs.Read(sc.tBinProtocolFactory.GetProtocol(st)); err != nil {
+			// TODO: Should we continue to read? What error should we record here?
 			return scribe.ResultCode_OK, err
 		}
 
@@ -164,13 +167,18 @@ func (sc *scribeCollector) Log(messages []*scribe.LogEntry) (r scribe.ResultCode
 
 	tds, err := zipkintranslator.V1ThriftBatchToOCProto(zSpans)
 	if err != nil {
+		// If failed to convert, record all the received spans as dropped.
+		internal.RecordTraceReceiverMetrics(sc.defaultCtx, len(zSpans), len(zSpans))
 		return scribe.ResultCode_OK, err
 	}
 
+	tdsSize := 0
 	for _, td := range tds {
 		sc.nextProcessor.ProcessTraceData(sc.defaultCtx, td)
-		internal.RecordTraceReceiverMetrics(sc.defaultCtx, len(zSpans), len(zSpans)-len(td.Spans))
+		tdsSize += len(td.Spans)
 	}
+
+	internal.RecordTraceReceiverMetrics(sc.defaultCtx, len(zSpans), len(zSpans)-tdsSize)
 
 	return scribe.ResultCode_OK, nil
 }

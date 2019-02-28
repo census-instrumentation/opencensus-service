@@ -319,13 +319,14 @@ func (zr *ZipkinReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctxWithReceiverName := internal.ContextWithReceiverName(ctx, receiverTagValue)
-	// Now translate them into TraceData
+	tdsSize := 0
 	for _, td := range tds {
 		zr.nextProcessor.ProcessTraceData(ctxWithReceiverName, td)
-		// We MUST unconditionally record metrics from this reception.
-		// TODO: Get the number of dropped spans from the conversion failure if any.
-		internal.RecordTraceReceiverMetrics(ctxWithReceiverName, len(td.Spans), 0)
+		tdsSize += len(td.Spans)
 	}
+
+	// TODO: Get the number of dropped spans from the conversion failure.
+	internal.RecordTraceReceiverMetrics(ctxWithReceiverName, tdsSize, 0)
 
 	// Finally send back the response "Accepted" as
 	// required at https://zipkin.io/zipkin-api/#/default/post_spans
