@@ -211,7 +211,7 @@ zpages:
 ### <a name="agent-usage"></a>Usage
 
 The ocagent can be run directly from sources, binary, or a Docker image. If you are planning to run from sources or build
-on your machine starting by cloning the repo using `go get -d github.com/census-instrumentation/opencensus-service`.
+on your machine start by cloning the repo using `go get -d github.com/census-instrumentation/opencensus-service`.
 
 It is recommended that you use the latest [release](https://github.com/census-instrumentation/opencensus-service/releases).
 
@@ -220,7 +220,7 @@ The minimum Go version required for this project is Go 1.11.4.
 1. Run from sources:
 
 ```shell
-$ GO111MODULE=on go run github.com/census-instrumentation/opencensus-service/cmd/ocagent
+$ GO111MODULE=on go run github.com/census-instrumentation/opencensus-service/cmd/ocagent --help
 ```
 
 2. Run from binary (from the root of your repo):
@@ -324,13 +324,13 @@ sampling:
 > It is recommended that you use the latest [release](https://github.com/census-instrumentation/opencensus-service/releases).
 
 The collector can be run directly from sources, binary, or a Docker image. If you are planning to run from sources or build
-on your machine starting by cloning the repo using `go get -d github.com/census-instrumentation/opencensus-service`.
+on your machine start by cloning the repo using `go get -d github.com/census-instrumentation/opencensus-service`.
 
 The minimum Go version required for this project is Go 1.11.4.
 
 1. Run from sources:
 ```shell
-$ GO111MODULE=on go run github.com/census-instrumentation/opencensus-service/cmd/occollector
+$ GO111MODULE=on go run github.com/census-instrumentation/opencensus-service/cmd/occollector --help
 ```
 2. Run from binary (from the root of your repo):
 ```shell
