@@ -30,13 +30,13 @@ import (
 )
 
 // OCProtoToJaegerProto translates OpenCensus trace data into the Jaeger Proto for GRPC.
-func OCProtoToJaegerProto(td data.TraceData) (jaeger.Batch, error) {
+func OCProtoToJaegerProto(td data.TraceData) (*jaeger.Batch, error) {
 	jSpans, err := ocSpansToJaegerSpansProto(td.Spans)
 	if err != nil {
 		return nil, err
 	}
 
-	jb := jaeger.Batch{
+	jb := &jaeger.Batch{
 		Process: ocNodeToJaegerProcessProto(td.Node),
 		Spans:   jSpans,
 	}
@@ -158,19 +158,28 @@ func ocLinksToJaegerReferencesProto(ocSpanLinks *tracepb.Span_Links) ([]jaeger.S
 	ocLinks := ocSpanLinks.Link
 	jRefs := make([]jaeger.SpanRef, 0, len(ocLinks))
 	for _, ocLink := range ocLinks {
-		var traceID []byte
-		if ocLink.TraceId != nil {
-			traceID = ocLink.TraceId
+		var traceID jaeger.TraceID
+		traceIDLow, traceIDHigh, err := traceIDBytesToUnsignedLowAndHigh(ocLink.TraceId)
+		if err != nil {
+			return nil, fmt.Errorf("OC link has invalid trace ID: %v", err)
+		} else if traceIDLow == 0 && traceIDHigh == 0 {
+			return nil, fmt.Errorf("OC link has zero trace ID: %v", errZeroTraceID)
 		} else {
-			return nil, errNilTraceID
+			traceID = jaeger.TraceID{
+				Low:  traceIDLow,
+				High: traceIDHigh,
+			}
 		}
 
-		var spanID []byte
-		if ocLink.SpanId != nil {
-			spanID = ocLink.SpanId
-		} else {
-			return nil, errNilID
+		var spanID jaeger.SpanID
+		uSpanID, err := ocIDBytesToUnsignedInt(ocLink.SpanId)
+		if err != nil {
+			return nil, fmt.Errorf("OC link span ID conversion error: %v", err)
 		}
+		if uSpanID == 0 {
+			return nil, errZeroSpanID
+		}
+		spanID = jaeger.SpanID(uSpanID)
 
 		var jRefType jaeger.SpanRefType
 		switch ocLink.Type {
@@ -265,8 +274,9 @@ func ocTimeEventsToJaegerLogsProto(ocSpanTimeEvents *tracepb.Span_TimeEvents) []
 		default:
 			msg := "An unknown OpenCensus TimeEvent type was detected when translating to Jaeger"
 			jKV := jaeger.KeyValue{
-				Key:  ocTimeEventUnknownType,
-				VStr: msg,
+				Key:   ocTimeEventUnknownType,
+				VStr:  msg,
+				VType: jaeger.ValueType_STRING,
 			}
 			jLog.Fields = append(jLog.Fields, jKV)
 		}
@@ -284,8 +294,9 @@ func ocAnnotationToJagerTagsProto(annotation *tracepb.Span_TimeEvent_Annotation)
 
 	// TODO: Find a better tag for Annotation description.
 	jKV := jaeger.KeyValue{
-		Key:  ocTimeEventAnnotationDescription,
-		VStr: annotation.Description,
+		Key:   ocTimeEventAnnotationDescription,
+		VStr:  truncableStringToStr(annotation.Description),
+		VType: jaeger.ValueType_STRING,
 	}
 	return append(ocSpanAttributesToJaegerTagsProto(annotation.Attributes), jKV)
 }
@@ -305,25 +316,53 @@ func ocMessageEventToJaegerTagsProto(msgEvent *tracepb.Span_TimeEvent_MessageEve
 	binary.BigEndian.PutUint64(compressedSize, uint64(msgEvent.CompressedSize))
 
 	// TODO: Find a better tag for Message event.
+	msgTypeStr := msgEvent.Type.String()
 	jaegerKVs := []jaeger.KeyValue{
 		jaeger.KeyValue{
-			Key:    ocTimeEventMessageEventType,
-			VInt64: msgEvent.Type,
+			Key:   ocTimeEventMessageEventType,
+			VStr:  msgTypeStr,
+			VType: jaeger.ValueType_STRING,
 		},
 		jaeger.KeyValue{
-			Key:     ocTimeEventMessageEventId,
+			Key:     ocTimeEventMessageEventID,
 			VBinary: msgEventID,
+			VType:   jaeger.ValueType_BINARY,
 		},
 		jaeger.KeyValue{
 			Key:     ocTimeEventMessageEventUSize,
 			VBinary: uncompressedSize,
+			VType:   jaeger.ValueType_BINARY,
 		},
 		jaeger.KeyValue{
 			Key:     ocTimeEventMessageEventCSize,
 			VBinary: compressedSize,
+			VType:   jaeger.ValueType_BINARY,
 		},
 	}
 	return jaegerKVs
+}
+
+func traceIDBytesToUnsignedLowAndHigh(traceID []byte) (traceIDLow, traceIDHigh uint64, err error) {
+	if traceID == nil {
+		return 0, 0, errNilTraceID
+	}
+	if len(traceID) != 16 {
+		return 0, 0, errWrongLenTraceID
+	}
+	traceIDHigh = uint64(binary.BigEndian.Uint64(traceID[:8]))
+	traceIDLow = uint64(binary.BigEndian.Uint64(traceID[8:]))
+	return traceIDLow, traceIDHigh, nil
+}
+
+func ocIDBytesToUnsignedInt(b []byte) (id uint64, err error) {
+	if b == nil {
+		return 0, errNilID
+	}
+	if len(b) != 8 {
+		return 0, errWrongLenID
+	}
+	id = uint64(binary.BigEndian.Uint64(b))
+	return id, nil
 }
 
 // Replica of protospan_to_jaegerthrift appendJaegerTagFromOCSpanKind
@@ -340,8 +379,9 @@ func appendJaegerTagFromOCSpanKindProto(jTags []jaeger.KeyValue, ocSpanKind trac
 
 	if tagValue != "" {
 		jTag := jaeger.KeyValue{
-			Key:  "span.kind",
-			VStr: tagValue,
+			Key:   "span.kind",
+			VStr:  tagValue,
+			VType: jaeger.ValueType_STRING,
 		}
 		jTags = append(jTags, jTag)
 	}
@@ -356,8 +396,9 @@ func appendJaegerTagFromOCTracestateProto(jTags []jaeger.KeyValue, ocSpanTracest
 
 	for _, tsEntry := range ocSpanTracestate.Entries {
 		jTag := jaeger.KeyValue{
-			Key:  tsEntry.Key,
-			VStr: ts.Entry.Value,
+			Key:   tsEntry.Key,
+			VStr:  tsEntry.Value,
+			VType: jaeger.ValueType_STRING,
 		}
 		jTags = append(jTags, jTag)
 	}
@@ -372,7 +413,7 @@ func appendJaegerTagFromOCStatusProto(jTags []jaeger.KeyValue, ocStatus *tracepb
 
 	jTag := jaeger.KeyValue{
 		Key:    "span.status",
-		VInt64: ocStatus.Code,
+		VInt64: int64(ocStatus.Code),
 		VStr:   ocStatus.Message,
 	}
 	jTags = append(jTags, jTag)
@@ -380,7 +421,7 @@ func appendJaegerTagFromOCStatusProto(jTags []jaeger.KeyValue, ocStatus *tracepb
 	return jTags
 }
 
-func appendJaegerTagFromOCSameProcessAsParentSpanProto(jTags []jaeger.KeyValue, ocIsSameProcessAsParentSpan *wrappers.UInt32Value) []jaeger.KeyValue {
+func appendJaegerTagFromOCSameProcessAsParentSpanProto(jTags []jaeger.KeyValue, ocIsSameProcessAsParentSpan *wrappers.BoolValue) []jaeger.KeyValue {
 	if ocIsSameProcessAsParentSpan == nil {
 		return jTags
 	}
@@ -388,6 +429,7 @@ func appendJaegerTagFromOCSameProcessAsParentSpanProto(jTags []jaeger.KeyValue, 
 	jTag := jaeger.KeyValue{
 		Key:   ocSameProcessAsParentSpan,
 		VBool: ocIsSameProcessAsParentSpan.Value,
+		VType: jaeger.ValueType_BOOL,
 	}
 	jTags = append(jTags, jTag)
 
@@ -401,7 +443,8 @@ func appendJaegerTagFromOCChildSpanCountProto(jTags []jaeger.KeyValue, ocChildSp
 
 	jTag := jaeger.KeyValue{
 		Key:    ocSpanChildCount,
-		VInt64: ocChildSpanCount.Value,
+		VInt64: int64(ocChildSpanCount.Value),
+		VType:  jaeger.ValueType_INT64,
 	}
 	jTags = append(jTags, jTag)
 
@@ -416,27 +459,34 @@ func ocSpansToJaegerSpansProto(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) 
 	// Pre-allocate assuming that few, if any spans, are nil.
 	jSpans := make([]*jaeger.Span, 0, len(ocSpans))
 	for _, ocSpan := range ocSpans {
-		var traceID [16]byte
+		var traceID jaeger.TraceID
 		if ocSpan.TraceId == nil {
 			return nil, errNilTraceID
 		} else if len(ocSpan.TraceId) != 16 {
 			return nil, errWrongLenTraceID
-		} else if ocSpan.TraceId == 0 {
-			return nil, errZeroTraceID
 		} else {
-			traceID = ocSpan.TraceId
+			traceIDLow, traceIDHigh, err := traceIDBytesToUnsignedLowAndHigh(ocSpan.TraceId)
+			if err != nil {
+				return nil, fmt.Errorf("OC span has invalid trace ID: %v", err)
+			} else if traceIDLow == 0 && traceIDHigh == 0 {
+				return nil, errZeroTraceID
+			} else {
+				traceID = jaeger.TraceID{
+					Low:  traceIDLow,
+					High: traceIDHigh,
+				}
+			}
 		}
 
-		var spanID [8]byte
-		if ocSpan.SpanId == nil {
-			return nil, errNilID
-		} else if len(ocSpan.SpanId) != 8 {
-			return nil, errWrongLenID
-		} else if ocSpan.SpanId == 0 {
-			return nil, errZeroSpanID
-		} else {
-			spanID = ocSpan.SpanId
+		var spanID jaeger.SpanID
+		uSpanID, err := ocIDBytesToUnsignedInt(ocSpan.SpanId)
+		if err != nil {
+			return nil, fmt.Errorf("OC span ID conversion error: %v", err)
 		}
+		if uSpanID == 0 {
+			return nil, errZeroSpanID
+		}
+		spanID = jaeger.SpanID(uSpanID)
 
 		jReferences, err := ocLinksToJaegerReferencesProto(ocSpan.Links)
 		if err != nil {
@@ -445,11 +495,19 @@ func ocSpansToJaegerSpansProto(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) 
 
 		// OC ParentSpanId can be nil/empty: only attempt conversion if not nil/empty.
 		if len(ocSpan.ParentSpanId) != 0 {
-			jRef := &jaeger.SpanRef{
-				TraceId: traceID,
-				SpanId:  ocSpan.ParentSpanId,
-				RefType: jaeger.SpanRefType_CHILD_OF,
+			uParentSpanID, err := ocIDBytesToUnsignedInt(ocSpan.ParentSpanId)
+			if err != nil {
+				return nil, fmt.Errorf("OC parent span ID conversion error: %v", err)
 			}
+			if uParentSpanID == 0 {
+				return nil, errZeroSpanID
+			}
+
+			jReferences = append(jReferences, jaeger.SpanRef{
+				TraceID: traceID,
+				SpanID:  jaeger.SpanID(uParentSpanID),
+				RefType: jaeger.SpanRefType_CHILD_OF,
+			})
 		}
 
 		startTime := timestampToTimeProto(ocSpan.StartTime)
