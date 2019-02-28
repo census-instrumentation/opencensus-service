@@ -19,7 +19,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/census-instrumentation/opencensus-service/exporter/debugexporter"
+	"github.com/census-instrumentation/opencensus-service/exporter/loggingexporter"
 
 	"contrib.go.opencensus.io/exporter/ocagent"
 	"go.opencensus.io/trace"
@@ -43,7 +43,7 @@ func Example_endToEnd() {
 
 	// Once we have the span receiver which will connect to the
 	// various exporter pipeline i.e. *tracepb.Span->OpenCensus.SpanData
-	lsr := debugexporter.NewDebugTraceDataExporter(zap.NewNop())
+	lsr := loggingexporter.NewTraceDataExporter(zap.NewNop())
 	for _, tr := range trl {
 		if err := tr.StartTraceReception(context.Background(), lsr); err != nil {
 			log.Fatalf("Failed to start trace receiver: %v", err)

@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package debugexporter
+package loggingexporter
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 )
 
 func TestDebugTraceDataExporterNoErrors(t *testing.T) {
-	dtdp := NewDebugTraceDataExporter(zap.NewNop())
+	dtdp := NewTraceDataExporter(zap.NewNop())
 	td := data.TraceData{
 		Spans: make([]*tracepb.Span, 7),
 	}
@@ -32,13 +32,13 @@ func TestDebugTraceDataExporterNoErrors(t *testing.T) {
 		t.Errorf("Wanted nil got error")
 		return
 	}
-	if "debug" != dtdp.ExportFormat() {
-		t.Errorf("Wanted debug got %v", dtdp.ExportFormat())
+	if "LoggingExporter" != dtdp.ExportFormat() {
+		t.Errorf("Wanted LoggingExporter got %v", dtdp.ExportFormat())
 	}
 }
 
 func TestDebugMetricsDataExporterNoErrors(t *testing.T) {
-	dmdp := NewDebugMetricsDataExporter(zap.NewNop())
+	dmdp := NewMetricsDataExporter(zap.NewNop())
 	md := data.MetricsData{
 		Metrics: make([]*metricspb.Metric, 7),
 	}
@@ -46,7 +46,7 @@ func TestDebugMetricsDataExporterNoErrors(t *testing.T) {
 		t.Errorf("Wanted nil got error")
 		return
 	}
-	if "debug" != dmdp.ExportFormat() {
-		t.Errorf("Wanted debug got %v", dmdp.ExportFormat())
+	if "LoggingExporter" != dmdp.ExportFormat() {
+		t.Errorf("Wanted LoggingExporter got %v", dmdp.ExportFormat())
 	}
 }
