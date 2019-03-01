@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package processortest
+package exportertest
 
 import (
 	"context"
@@ -22,8 +22,8 @@ import (
 	"github.com/census-instrumentation/opencensus-service/data"
 )
 
-func TestNoopTraceDataProcessorNoErrors(t *testing.T) {
-	ntdp := NewNoopTraceDataProcessor()
+func TestNopTraceExporterNoErrors(t *testing.T) {
+	ntdp := NewNopTraceExporter()
 	td := data.TraceData{
 		Spans: make([]*tracepb.Span, 7),
 	}
@@ -33,8 +33,8 @@ func TestNoopTraceDataProcessorNoErrors(t *testing.T) {
 	}
 }
 
-func TestNoopMetricsDataProcessorNoErrors(t *testing.T) {
-	nmdp := NewNoopMetricsDataProcessor()
+func TestNoopMetricsExporterNoErrors(t *testing.T) {
+	nmdp := NewNopMetricsExporter()
 	md := data.MetricsData{
 		Metrics: make([]*metricspb.Metric, 7),
 	}

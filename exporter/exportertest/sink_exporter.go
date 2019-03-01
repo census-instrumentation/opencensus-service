@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package processortest
+package exportertest
 
 import (
 	"context"
@@ -20,47 +20,52 @@ import (
 	"sync"
 
 	"github.com/census-instrumentation/opencensus-service/data"
-	"github.com/census-instrumentation/opencensus-service/processor"
+	"github.com/census-instrumentation/opencensus-service/exporter"
 )
 
-// TODO: Move this to processortest and use TraceData.
-
-// ConcurrentTraceDataSink acts as a trace receiver for use in tests.
-type ConcurrentTraceDataSink struct {
+// SinkTraceExporter acts as a trace receiver for use in tests.
+type SinkTraceExporter struct {
 	mu     sync.Mutex
 	traces []data.TraceData
 }
 
-var _ processor.TraceDataProcessor = (*ConcurrentTraceDataSink)(nil)
+var _ exporter.TraceExporter = (*SinkTraceExporter)(nil)
 
 // ProcessTraceData stores traces for tests.
-func (css *ConcurrentTraceDataSink) ProcessTraceData(ctx context.Context, td data.TraceData) error {
-	css.mu.Lock()
-	defer css.mu.Unlock()
+func (cts *SinkTraceExporter) ProcessTraceData(ctx context.Context, td data.TraceData) error {
+	cts.mu.Lock()
+	defer cts.mu.Unlock()
 
-	css.traces = append(css.traces, td)
+	cts.traces = append(cts.traces, td)
 
 	return nil
 }
 
-// AllTraces returns the traces sent to the test sink.
-func (css *ConcurrentTraceDataSink) AllTraces() []data.TraceData {
-	css.mu.Lock()
-	defer css.mu.Unlock()
+const sinkExportFormat = "SinkExporter"
 
-	return css.traces[:]
+// ExportFormat retruns the name of this TraceExporter
+func (cts *SinkTraceExporter) ExportFormat() string {
+	return sinkExportFormat
 }
 
-// ConcurrentMetricsDataSink acts as a metrics receiver for use in tests.
-type ConcurrentMetricsDataSink struct {
+// AllTraces returns the traces sent to the test sink.
+func (cts *SinkTraceExporter) AllTraces() []data.TraceData {
+	cts.mu.Lock()
+	defer cts.mu.Unlock()
+
+	return cts.traces[:]
+}
+
+// SinkMetricsExporter acts as a metrics receiver for use in tests.
+type SinkMetricsExporter struct {
 	mu      sync.Mutex
 	metrics []data.MetricsData
 }
 
-var _ processor.MetricsDataProcessor = (*ConcurrentMetricsDataSink)(nil)
+var _ exporter.MetricsExporter = (*SinkMetricsExporter)(nil)
 
 // ProcessMetricsData stores traces for tests.
-func (cms *ConcurrentMetricsDataSink) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
+func (cms *SinkMetricsExporter) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
 	cms.mu.Lock()
 	defer cms.mu.Unlock()
 
@@ -69,8 +74,13 @@ func (cms *ConcurrentMetricsDataSink) ProcessMetricsData(ctx context.Context, md
 	return nil
 }
 
+// ExportFormat retruns the name of this TraceExporter
+func (cms *SinkMetricsExporter) ExportFormat() string {
+	return sinkExportFormat
+}
+
 // AllMetrics returns the metrics sent to the test sink.
-func (cms *ConcurrentMetricsDataSink) AllMetrics() []data.MetricsData {
+func (cms *SinkMetricsExporter) AllMetrics() []data.MetricsData {
 	cms.mu.Lock()
 	defer cms.mu.Unlock()
 
