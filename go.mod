@@ -78,10 +78,10 @@ require (
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/crypto v0.0.0-20190131182504-b8fe1690c613 // indirect
+	golang.org/x/lint v0.0.0-20190227174305-5b3e6a55c961 // indirect
 	golang.org/x/oauth2 v0.0.0-20181102170140-232e45548389 // indirect
 	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c // indirect
-	google.golang.org/api v0.0.0-20181102150758-04bb50b6b83d
-	google.golang.org/appengine v1.3.0 // indirect
+	google.golang.org/api v0.0.0-20181017004218-3f6e8463aa1d
 	google.golang.org/genproto v0.0.0-20190215211957-bd968387e4aa // indirect
 	google.golang.org/grpc v1.17.0
 	gopkg.in/DataDog/dd-trace-go.v1 v1.4.0 // indirect
@@ -93,4 +93,21 @@ require (
 	k8s.io/apimachinery v0.0.0-20190207091153-095b9d203467 // indirect
 	k8s.io/kube-openapi v0.0.0-20190205224424-fd29a9f2f429 // indirect
 	sigs.k8s.io/structured-merge-diff v0.0.0-20190130003954-e5e029740eb8 // indirect
+)
+
+// Related to this https://github.com/golang/go/issues/28652
+replace (
+	golang.org/x/crypto => github.com/golang/crypto v0.0.0-20190131182504-b8fe1690c613 // indirect
+	golang.org/x/lint => github.com/golang/lint v0.0.0-20190227174305-5b3e6a55c961
+	golang.org/x/net => github.com/golang/net v0.0.0-20190228165749-92fc7df08ae7
+	golang.org/x/oauth2 => github.com/golang/oauth2 v0.0.0-20181102170140-232e45548389 // indirect
+	golang.org/x/perf => github.com/golang/perf v0.0.0-20190124201629-844a5f5b46f4
+	golang.org/x/sync => github.com/golang/sync v0.0.0-20190227155943-e225da77a7e6
+	golang.org/x/sys => github.com/golang/sys v0.0.0-20190228124157-a34e9553db1e
+	golang.org/x/text => github.com/golang/text v0.3.0
+	golang.org/x/time => github.com/golang/time v0.0.0-20181108054448-85acf8d2951c // indirect
+	golang.org/x/tools => github.com/golang/tools v0.0.0-20190228203856-589c23e65e65
+	// Dependencies that are on baazar and don't work on AppVeyor
+	labix.org/v2/mgo => github.com/tobyzxj/mgo v0.0.0-20140723083435-39a33f704b16
+	launchpad.net/gocheck => github.com/go-check/check v0.0.0-20180628173108-788fd7840127
 )
