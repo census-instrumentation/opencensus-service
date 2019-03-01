@@ -23,23 +23,31 @@ import (
 )
 
 func TestNopTraceExporterNoErrors(t *testing.T) {
-	ntdp := NewNopTraceExporter()
+	nte := NewNopTraceExporter()
 	td := data.TraceData{
 		Spans: make([]*tracepb.Span, 7),
 	}
-	if err := ntdp.ProcessTraceData(context.Background(), td); err != nil {
+	if err := nte.ProcessTraceData(context.Background(), td); err != nil {
 		t.Errorf("Wanted nil got error")
+		return
+	}
+	if "NopExporter" != nte.ExportFormat() {
+		t.Errorf("Wanted NopExporter got %s", nte.ExportFormat())
 		return
 	}
 }
 
 func TestNoopMetricsExporterNoErrors(t *testing.T) {
-	nmdp := NewNopMetricsExporter()
+	nme := NewNopMetricsExporter()
 	md := data.MetricsData{
 		Metrics: make([]*metricspb.Metric, 7),
 	}
-	if err := nmdp.ProcessMetricsData(context.Background(), md); err != nil {
+	if err := nme.ProcessMetricsData(context.Background(), md); err != nil {
 		t.Errorf("Wanted nil got error")
+		return
+	}
+	if "NopExporter" != nme.ExportFormat() {
+		t.Errorf("Wanted NopExporter got %s", nme.ExportFormat())
 		return
 	}
 }

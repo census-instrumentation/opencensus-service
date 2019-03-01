@@ -29,12 +29,12 @@ type nopProcessor struct {
 var _ processor.TraceDataProcessor = (*nopProcessor)(nil)
 var _ processor.MetricsDataProcessor = (*nopProcessor)(nil)
 
-func (ns *nopProcessor) ProcessTraceData(ctx context.Context, td data.TraceData) error {
-	return ns.nextTraceProcessor.ProcessTraceData(ctx, td)
+func (np *nopProcessor) ProcessTraceData(ctx context.Context, td data.TraceData) error {
+	return np.nextTraceProcessor.ProcessTraceData(ctx, td)
 }
 
-func (ns *nopProcessor) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
-	return ns.nextMetricsProcessor.ProcessMetricsData(ctx, md)
+func (np *nopProcessor) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
+	return np.nextMetricsProcessor.ProcessMetricsData(ctx, md)
 }
 
 // NewNopTraceProcessor creates an TraceDataProcessor that just pass the received data to the nextTraceProcessor.
