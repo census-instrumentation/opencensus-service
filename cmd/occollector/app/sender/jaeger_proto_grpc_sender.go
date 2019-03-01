@@ -54,7 +54,7 @@ func (s *JaegerProtoGRPCSender) ProcessSpans(td data.TraceData, spanFormat strin
 		return err
 	}
 
-	_, err := s.client.PostSpans(context.Background(), &jaegerproto.PostSpansRequest{Batch: protoBatch})
+	_, err := s.client.PostSpans(context.Background(), &jaegerproto.PostSpansRequest{Batch: *protoBatch})
 	if err != nil {
 		return err
 	}
