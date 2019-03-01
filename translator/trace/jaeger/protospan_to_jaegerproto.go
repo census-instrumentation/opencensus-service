@@ -318,22 +318,22 @@ func ocMessageEventToJaegerTagsProto(msgEvent *tracepb.Span_TimeEvent_MessageEve
 	// TODO: Find a better tag for Message event.
 	msgTypeStr := msgEvent.Type.String()
 	jaegerKVs := []jaeger.KeyValue{
-		jaeger.KeyValue{
+		{
 			Key:   ocTimeEventMessageEventType,
 			VStr:  msgTypeStr,
 			VType: jaeger.ValueType_STRING,
 		},
-		jaeger.KeyValue{
+		{
 			Key:     ocTimeEventMessageEventID,
 			VBinary: msgEventID,
 			VType:   jaeger.ValueType_BINARY,
 		},
-		jaeger.KeyValue{
+		{
 			Key:     ocTimeEventMessageEventUSize,
 			VBinary: uncompressedSize,
 			VType:   jaeger.ValueType_BINARY,
 		},
-		jaeger.KeyValue{
+		{
 			Key:     ocTimeEventMessageEventCSize,
 			VBinary: compressedSize,
 			VType:   jaeger.ValueType_BINARY,
