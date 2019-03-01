@@ -37,12 +37,12 @@ func (ns *nopProcessor) ProcessMetricsData(ctx context.Context, md data.MetricsD
 	return ns.nextMetricsProcessor.ProcessMetricsData(ctx, md)
 }
 
-// NewNopTraceProcessor creates an TraceDataProcessor that just drops the received data.
+// NewNopTraceProcessor creates an TraceDataProcessor that just pass the received data to the nextTraceProcessor.
 func NewNopTraceProcessor(nextTraceProcessor processor.TraceDataProcessor) processor.TraceDataProcessor {
 	return &nopProcessor{nextTraceProcessor: nextTraceProcessor}
 }
 
-// NewNopMetricsProcessor creates an MetricsDataProcessor that just drops the received data.
+// NewNopMetricsProcessor creates an MetricsDataProcessor that just pass the received data to the nextMetricsProcessor.
 func NewNopMetricsProcessor(nextMetricsProcessor processor.MetricsDataProcessor) processor.MetricsDataProcessor {
 	return &nopProcessor{nextMetricsProcessor: nextMetricsProcessor}
 }
