@@ -32,11 +32,11 @@ type SinkTraceExporter struct {
 var _ exporter.TraceExporter = (*SinkTraceExporter)(nil)
 
 // ProcessTraceData stores traces for tests.
-func (cts *SinkTraceExporter) ProcessTraceData(ctx context.Context, td data.TraceData) error {
-	cts.mu.Lock()
-	defer cts.mu.Unlock()
+func (ste *SinkTraceExporter) ProcessTraceData(ctx context.Context, td data.TraceData) error {
+	ste.mu.Lock()
+	defer ste.mu.Unlock()
 
-	cts.traces = append(cts.traces, td)
+	ste.traces = append(ste.traces, td)
 
 	return nil
 }
@@ -44,16 +44,16 @@ func (cts *SinkTraceExporter) ProcessTraceData(ctx context.Context, td data.Trac
 const sinkExportFormat = "SinkExporter"
 
 // ExportFormat retruns the name of this TraceExporter
-func (cts *SinkTraceExporter) ExportFormat() string {
+func (ste *SinkTraceExporter) ExportFormat() string {
 	return sinkExportFormat
 }
 
 // AllTraces returns the traces sent to the test sink.
-func (cts *SinkTraceExporter) AllTraces() []data.TraceData {
-	cts.mu.Lock()
-	defer cts.mu.Unlock()
+func (ste *SinkTraceExporter) AllTraces() []data.TraceData {
+	ste.mu.Lock()
+	defer ste.mu.Unlock()
 
-	return cts.traces[:]
+	return ste.traces[:]
 }
 
 // SinkMetricsExporter acts as a metrics receiver for use in tests.
@@ -65,26 +65,26 @@ type SinkMetricsExporter struct {
 var _ exporter.MetricsExporter = (*SinkMetricsExporter)(nil)
 
 // ProcessMetricsData stores traces for tests.
-func (cms *SinkMetricsExporter) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
-	cms.mu.Lock()
-	defer cms.mu.Unlock()
+func (sme *SinkMetricsExporter) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
+	sme.mu.Lock()
+	defer sme.mu.Unlock()
 
-	cms.metrics = append(cms.metrics, md)
+	sme.metrics = append(sme.metrics, md)
 
 	return nil
 }
 
 // ExportFormat retruns the name of this TraceExporter
-func (cms *SinkMetricsExporter) ExportFormat() string {
+func (sme *SinkMetricsExporter) ExportFormat() string {
 	return sinkExportFormat
 }
 
 // AllMetrics returns the metrics sent to the test sink.
-func (cms *SinkMetricsExporter) AllMetrics() []data.MetricsData {
-	cms.mu.Lock()
-	defer cms.mu.Unlock()
+func (sme *SinkMetricsExporter) AllMetrics() []data.MetricsData {
+	sme.mu.Lock()
+	defer sme.mu.Unlock()
 
-	return cms.metrics[:]
+	return sme.metrics[:]
 }
 
 // ToJSON marshals a generic interface to JSON to enable easy comparisons.
