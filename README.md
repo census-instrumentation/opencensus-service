@@ -215,7 +215,7 @@ on your machine start by cloning the repo using `go get -d github.com/census-ins
 
 It is recommended that you use the latest [release](https://github.com/census-instrumentation/opencensus-service/releases).
 
-The minimum Go version required for this project is Go 1.11.4. 
+The minimum Go version required for this project is Go 1.11.4.
 
 1. Run from sources:
 
