@@ -15,8 +15,9 @@
 package receiver
 
 import (
-	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/spf13/viper"
+
+	"github.com/census-instrumentation/opencensus-service/consumer"
 )
 
 // TraceReceiverFactory is an interface that builds a new TraceReceiver based on
@@ -25,11 +26,11 @@ type TraceReceiverFactory interface {
 	// Type gets the type of the TraceReceiver created by this factory.
 	Type() string
 	// NewFromViper takes a viper.Viper config and creates a new TraceReceiver which uses next as the
-	// next TraceConsumer in the pipeline.
-	NewFromViper(cfg *viper.Viper, next consumer.TraceConsumer) (TraceReceiver, error)
-	// DefaultConfig returns the default configuration for TraceReceivers
+	// next TraceConsumer in the pipeline. Returning also the configuration used to create it.
+	NewFromViper(v *viper.Viper, next consumer.TraceConsumer) (receiver TraceReceiver, config interface{}, err error)
+	// AddDefaultConfig adds the default configuration for the TraceReceivers
 	// created by this factory.
-	DefaultConfig() *viper.Viper
+	AddDefaultConfig(v *viper.Viper)
 }
 
 // MetricsReceiverFactory is an interface that builds a new MetricsReceiver based on
@@ -38,9 +39,9 @@ type MetricsReceiverFactory interface {
 	// Type gets the type of the MetricsReceiver created by this factory.
 	Type() string
 	// NewFromViper takes a viper.Viper config and creates a new MetricsReceiver which uses next as the
-	// next MetricsConsumer in the pipeline.
-	NewFromViper(cfg *viper.Viper, next consumer.MetricsConsumer) (MetricsReceiver, error)
-	// DefaultConfig returns the default configuration for MetricsReceivers
+	// next MetricsConsumer in the pipeline. Returning also the configuration used to create it.
+	NewFromViper(v *viper.Viper, next consumer.MetricsConsumer) (receiver MetricsReceiver, config interface{}, err error)
+	// AddDefaultConfig adds the default configuration for the MetricReceivers
 	// created by this factory.
-	DefaultConfig() *viper.Viper
+	AddDefaultConfig(v *viper.Viper)
 }

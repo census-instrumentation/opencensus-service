@@ -1,0 +1,6 @@
+receivers:
+  altmockreceiver:
+    port: 123
+  mockreceiver:
+    address: "0.0.0.0"
+    port: 616

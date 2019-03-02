@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
-	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor"
 	"github.com/census-instrumentation/opencensus-service/receiver"
 	"github.com/census-instrumentation/opencensus-service/receiver/zipkinreceiver/scribe"
@@ -31,22 +30,18 @@ import (
 
 // Start starts the Zipkin Scribe receiver endpoint.
 func Start(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor) (receiver.TraceReceiver, error) {
-	rOpts, err := builder.NewDefaultZipkinScribeReceiverCfg().InitFromViper(v)
+	factory := scribe.Factory
+	ss := processor.WrapWithSpanSink(factory.Type(), spanProc)
+	sr, cfg, err := factory.NewFromViper(v)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create the %s trace receiver: %v", factory.Type(), err)
 	}
-
-	sr, err := scribe.NewReceiver(rOpts.Address, rOpts.Port, rOpts.Category)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create the Zipkin Scribe receiver: %v", err)
-	}
-	ss := processor.WrapWithSpanSink("zipkin-scribe", spanProc)
 
 	if err := sr.StartTraceReception(context.Background(), ss); err != nil {
-		return nil, fmt.Errorf("Cannot start Zipkin Scribe receiver %+v: %v", rOpts, err)
+		return nil, fmt.Errorf("cannot start %s receiver: %v", factory.Type(), err)
 	}
 
-	logger.Info("Zipkin Scribe receiver is running.", zap.Uint16("port", rOpts.Port), zap.String("category", rOpts.Category))
+	logger.Info("Receiver running", zap.String("type", factory.Type()), zap.Any("config", cfg))
 
 	return sr, nil
 }
