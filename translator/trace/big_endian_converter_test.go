@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func TestUInt64TraceIdConversion(t *testing.T) {
+func TestUInt64ToBytesTraceIDConversion(t *testing.T) {
 	if nil != UInt64ToByteTraceID(0, 0) {
 		t.Errorf("Failed to convert 0 TraceID:\n\tGot: %v\nWant: nil", UInt64ToByteTraceID(0, 0))
 	}
@@ -38,7 +38,7 @@ func TestUInt64TraceIdConversion(t *testing.T) {
 		"Failed to convert MaxUint64:")
 }
 
-func TestInt64TraceIdConversion(t *testing.T) {
+func TestInt64ToBytesTraceIDConversion(t *testing.T) {
 	if nil != Int64ToByteTraceID(0, 0) {
 		t.Errorf("Failed to convert 0 TraceID:\n\tGot: %v\nWant: nil", Int64ToByteTraceID(0, 0))
 	}
@@ -53,7 +53,17 @@ func TestInt64TraceIdConversion(t *testing.T) {
 		"Failed to convert MinInt64:")
 }
 
-func TestUInt64SpanIdConversion(t *testing.T) {
+func TestBytesToUInt64TraceIDErrors(t *testing.T) {
+	if _, _, err := BytesToUInt64TraceID(nil); err != ErrNilTraceID {
+		t.Errorf("Got: %v\nWant: %v", err, ErrNilTraceID)
+	}
+	longTraceID := []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00}
+	if _, _, err := BytesToUInt64TraceID(longTraceID); err != ErrWrongLenTraceID {
+		t.Errorf("Got: %v\nWant: %v", err, ErrWrongLenTraceID)
+	}
+}
+
+func TestUInt64ToBytesSpanIDConversion(t *testing.T) {
 	if nil != UInt64ToByteSpanID(0) {
 		t.Errorf("Failed to convert 0 SpanID:\n\tGot: %v\nWant: nil", UInt64ToByteSpanID(0))
 	}
@@ -65,7 +75,7 @@ func TestUInt64SpanIdConversion(t *testing.T) {
 		"Failed to convert MaxUint64:")
 }
 
-func TestInt64SpanIdConversion(t *testing.T) {
+func TestInt64ToBytesSpanIDConversion(t *testing.T) {
 	if nil != Int64ToByteSpanID(0) {
 		t.Errorf("Failed to convert 0 SpanID:\n\tGot: %v\nWant: nil", Int64ToByteSpanID(0))
 	}
@@ -78,6 +88,15 @@ func TestInt64SpanIdConversion(t *testing.T) {
 	assertEqual(t, Int64ToByteSpanID(math.MinInt64),
 		[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		"Failed to convert MinInt64:")
+}
+
+func TestBytesToUInt64SpanIDErrors(t *testing.T) {
+	if _, err := BytesToUInt64SpanID(nil); err != ErrNilSpanID {
+		t.Errorf("Got: %v\nWant: %v", err, ErrNilSpanID)
+	}
+	if _, err := BytesToUInt64SpanID([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05}); err != ErrWrongLenSpanID {
+		t.Errorf("Got: %v\nWant: %v", err, ErrWrongLenSpanID)
+	}
 }
 
 func TestTraceIDInt64RoundTrip(t *testing.T) {
