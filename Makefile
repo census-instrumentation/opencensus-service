@@ -1,5 +1,8 @@
 ALL_SRC := $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
+# ALL_PKGS is used with 'go cover'
+ALL_PKGS := $(shell go list $(sort $(dir $(ALL_SRC))))
+
 GOTEST_OPT?=-v -race -timeout 30s
 GOTEST_OPT_WITH_COVERAGE = $(GOTEST_OPT) -coverprofile=coverage.txt -covermode=atomic
 GOTEST=go test
@@ -15,18 +18,32 @@ BUILD_X2=-X $(BUILD_INFO_IMPORT_PATH).Version=$(VERSION)
 endif
 BUILD_INFO=-ldflags "${BUILD_X1} ${BUILD_X2}"
 
-.DEFAULT_GOAL := default_goal
+all-pkgs:
+	@echo $(ALL_PKGS) | tr ' ' '\n' | sort
 
-.PHONY: default_goal
-default_goal: fmt lint test
+all-srcs:
+	@echo $(ALL_SRC) | tr ' ' '\n' | sort
+
+.DEFAULT_GOAL := test-fmt-lint
+
+.PHONY: test-fmt-lint
+test-fmt-lint: fmt lint test
 
 .PHONY: test
 test:
 	$(GOTEST) $(GOTEST_OPT) ./...
 
-.PHONY: test-with-coverage
-test-with-coverage:
+.PHONY: travis-ci
+travis-ci: fmt lint test-with-cover
+
+.PHONY: test-with-cover
+test-with-cover: 
+	@echo Verifying that all packages have test files to count in coverage
+	@scripts/check-test-files.sh $(subst github.com/census-instrumentation/opencensus-service/,./,$(ALL_PKGS))
+	@echo pre-compiling tests
+	@time go test -i $(ALL_PKGS)
 	$(GOTEST) $(GOTEST_OPT_WITH_COVERAGE) ./...
+	go tool cover -html=coverage.txt -o coverage.html
 
 .PHONY: fmt
 fmt:
