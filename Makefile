@@ -1,7 +1,7 @@
 ALL_SRC := $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
 GOTEST_OPT?=-v -race -timeout 30s
-GOTEST_OPT_WITH_COVERAGE = $(GOTEST_OPT) -coverprofile=coverage.txt -covermode=atomic
+GOTEST_OPT_WITH_COVERAGE = $(GOTEST_OPT) -coverprofile=coverage.txt -covermode=atomic -coverpkg=./...
 GOTEST=go test
 GOFMT=gofmt
 GOLINT=golint
