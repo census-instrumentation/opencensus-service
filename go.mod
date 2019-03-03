@@ -43,6 +43,7 @@ require (
 	github.com/jaegertracing/jaeger v1.8.2
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
+	github.com/lib/pq v1.0.0
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/omnition/scribe-go v0.0.0-20190131012523-9e3c68f31124

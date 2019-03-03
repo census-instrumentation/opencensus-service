@@ -1,0 +1,4 @@
+exporters:
+        stackdriver:
+                project: "cloud-debugging"
+                enable_tracing: true

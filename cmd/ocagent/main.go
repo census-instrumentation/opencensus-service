@@ -42,6 +42,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/processor"
 	"github.com/census-instrumentation/opencensus-service/receiver/jaegerreceiver"
 	"github.com/census-instrumentation/opencensus-service/receiver/opencensusreceiver"
+	"github.com/census-instrumentation/opencensus-service/receiver/postgresreceiver"
 	"github.com/census-instrumentation/opencensus-service/receiver/prometheusreceiver"
 	"github.com/census-instrumentation/opencensus-service/receiver/zipkinreceiver"
 	"github.com/census-instrumentation/opencensus-service/receiver/zipkinreceiver/scribe"
@@ -173,6 +174,13 @@ func runOCAgent() {
 		}
 		closeFns = append(closeFns, promDoneFn)
 	}
+
+	// Add postgres receiver for whatever condition. Yah.
+	postgresDoneFn, err := runPostgresReceiver(commonSpanSink)
+	if err != nil {
+		log.Fatal(err)
+	}
+	closeFns = append(closeFns, postgresDoneFn)
 
 	// Always cleanup finally
 	defer func() {
@@ -339,5 +347,17 @@ func runPrometheusReceiver(promConfig *prometheusreceiver.Configuration, next pr
 		return pmr.StopMetricsReception(context.Background())
 	}
 	log.Print("Running Prometheus receiver")
+	return doneFn, nil
+}
+
+func runPostgresReceiver(next processor.TraceDataProcessor) (doneFn func() error, err error) {
+	pgr := postgresreceiver.New()
+	if err := pgr.StartTraceReception(context.Background(), next); err != nil {
+		return nil, err
+	}
+	doneFn = func() error {
+		return pgr.StopTraceReception(context.Background())
+	}
+	log.Print("Running PostgreSQL receiver")
 	return doneFn, nil
 }
