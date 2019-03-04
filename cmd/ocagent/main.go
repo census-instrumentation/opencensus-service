@@ -85,8 +85,8 @@ func runOCAgent() {
 		log.Fatalf("Cannot read the YAML file %v error: %v", configYAMLFile, err)
 	}
 
-	var agentConfig *config.Config
-	err = viperCfg.Unmarshal(agentConfig)
+	var agentConfig config.Config
+	err = viperCfg.Unmarshal(&agentConfig)
 	if err != nil {
 		log.Fatalf("Error unmarshalling yaml config file %v: %v", configYAMLFile, err)
 	}
@@ -121,7 +121,7 @@ func runOCAgent() {
 	commonMetricsSink := processor.NewMultiMetricsDataProcessor(metricsExporters)
 
 	// Add other receivers here as they are implemented
-	ocReceiverDoneFn, err := runOCReceiver(logger, agentConfig, commonSpanSink, commonMetricsSink)
+	ocReceiverDoneFn, err := runOCReceiver(logger, &agentConfig, commonSpanSink, commonMetricsSink)
 	if err != nil {
 		log.Fatal(err)
 	}
