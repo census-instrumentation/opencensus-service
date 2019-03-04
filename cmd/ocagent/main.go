@@ -134,7 +134,7 @@ func runOCAgent() {
 		closeFns = append(closeFns, zCloseFn)
 	}
 
-	// TODO: generify the startup of these receivers when unifying them w/ collector
+	// TODO: Generalize the startup of these receivers when unifying them w/ collector
 	// If the Zipkin receiver is enabled, then run it
 	if agentConfig.ZipkinReceiverEnabled() {
 		zipkinReceiverAddr := agentConfig.ZipkinReceiverAddress()
