@@ -41,6 +41,7 @@ git remote add fork git@github.com:YOUR_GITHUB_USERNAME/opencensus-service.git
 Run tests, fmt and lint:
 
 ```
+$ make install-tools # Only first time.
 $ make
 ```
 
