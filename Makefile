@@ -1,4 +1,7 @@
-ALL_SRC := $(shell find . -type f -name '*.go' -not -path "./vendor/*")
+# More exclusions can be added similar with: -not -path "./vendor/*"
+ALL_SRC := $(shell find . -name '*.go' \
+                                -not -path "./vendor/*" \
+                                -type f | sort)
 
 # ALL_PKGS is used with 'go cover'
 ALL_PKGS := $(shell go list $(sort $(dir $(ALL_SRC))))
@@ -8,6 +11,7 @@ GOTEST_OPT_WITH_COVERAGE = $(GOTEST_OPT) -coverprofile=coverage.txt -covermode=a
 GOTEST=go test
 GOFMT=gofmt
 GOLINT=golint
+GOVET=go vet
 GOOS=$(shell go env GOOS)
 
 GIT_SHA=$(shell git rev-parse --short HEAD)
@@ -18,23 +22,23 @@ BUILD_X2=-X $(BUILD_INFO_IMPORT_PATH).Version=$(VERSION)
 endif
 BUILD_INFO=-ldflags "${BUILD_X1} ${BUILD_X2}"
 
-all-pkgs:
+all_pkgs:
 	@echo $(ALL_PKGS) | tr ' ' '\n' | sort
 
-all-srcs:
+all_srcs:
 	@echo $(ALL_SRC) | tr ' ' '\n' | sort
 
-.DEFAULT_GOAL := test-fmt-lint
+.DEFAULT_GOAL := fmt-vet-lint-test
 
-.PHONY: test-fmt-lint
-test-fmt-lint: fmt lint test
+.PHONY: fmt-vet-lint-test
+fmt-vet-lint-test: fmt vet lint test
 
 .PHONY: test
 test:
-	$(GOTEST) $(GOTEST_OPT) ./...
+	$(GOTEST) $(GOTEST_OPT) $(ALL_PKGS)
 
 .PHONY: travis-ci
-travis-ci: fmt lint test-with-cover
+travis-ci: fmt vet lint test-with-cover
 
 .PHONY: test-with-cover
 test-with-cover: 
@@ -42,7 +46,7 @@ test-with-cover:
 	@scripts/check-test-files.sh $(subst github.com/census-instrumentation/opencensus-service/,./,$(ALL_PKGS))
 	@echo pre-compiling tests
 	@time go test -i $(ALL_PKGS)
-	$(GOTEST) $(GOTEST_OPT_WITH_COVERAGE) ./...
+	$(GOTEST) $(GOTEST_OPT_WITH_COVERAGE) $(ALL_PKGS)
 	go tool cover -html=coverage.txt -o coverage.html
 
 .PHONY: fmt
@@ -56,10 +60,19 @@ fmt:
 
 .PHONY: lint
 lint:
-	@LINTOUT=`$(GOLINT) ./... 2>&1`; \
+	@LINTOUT=`$(GOLINT) $(ALL_PKGS) 2>&1`; \
 	if [ "$$LINTOUT" ]; then \
 		echo "$(GOLINT) FAILED => clean the following lint errors:\n"; \
 		echo "$$LINTOUT\n"; \
+		exit 1; \
+	fi
+
+.PHONY: vet
+vet:
+	@VETOUT=`$(GOVET) ./... 2>&1`; \
+	if [ "$$VETOUT" ]; then \
+		echo "$(GOVET) FAILED => clean the following lint errors:\n"; \
+		echo "$$VETOUT\n"; \
 		exit 1; \
 	fi
 
