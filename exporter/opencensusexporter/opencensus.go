@@ -16,6 +16,7 @@ package opencensusexporter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 
@@ -50,6 +51,12 @@ const (
 	defaultNumWorkers int = 2
 )
 
+var (
+	ErrEndpointRequired           = errors.New("OpenCensus exporter config requires an Endpoint")
+	ErrUnsupportedCompressionType = errors.New("OpenCensus exporter unsupported compression type")
+	ErrUnableToGetTLSCreds        = errors.New("OpenCensus exporter unable to read TLS credentials")
+)
+
 var _ processor.TraceDataProcessor = (*ocagentExporter)(nil)
 
 // OpenCensusTraceExportersFromViper unmarshals the viper and returns an processor.TraceDataProcessor targeting
@@ -67,7 +74,7 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceDa
 	}
 
 	if ocac.Endpoint == "" {
-		return nil, nil, nil, fmt.Errorf("openCensus config requires an Endpoint")
+		return nil, nil, nil, ErrEndpointRequired
 	}
 
 	opts := []ocagent.ExporterOption{ocagent.WithAddress(ocac.Endpoint)}
@@ -75,13 +82,13 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceDa
 		if compressionKey := grpc.GetGRPCCompressionKey(ocac.Compression); compressionKey != compression.Unsupported {
 			opts = append(opts, ocagent.UseCompressor(compressionKey))
 		} else {
-			return nil, nil, nil, fmt.Errorf("unsupported compression type: %s", ocac.Compression)
+			return nil, nil, nil, ErrUnsupportedCompressionType
 		}
 	}
 	if ocac.CertPemFile != "" {
 		creds, err := credentials.NewClientTLSFromFile(ocac.CertPemFile, "")
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("unable to get credentials from provided pem file %s. err: %s", ocac.CertPemFile, err)
+			return nil, nil, nil, ErrUnableToGetTLSCreds
 		}
 		opts = append(opts, ocagent.WithTLSCredentials(creds))
 	} else {
