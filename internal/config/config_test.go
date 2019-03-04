@@ -15,12 +15,13 @@
 package config_test
 
 import (
-	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
-	"github.com/spf13/viper"
 	"testing"
+
+	"github.com/spf13/viper"
 
 	"github.com/census-instrumentation/opencensus-service/exporter/zipkinexporter"
 	"github.com/census-instrumentation/opencensus-service/internal/config"
+	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
 )
 
 // Issue #233: Zipkin receiver and exporter loopback detection
