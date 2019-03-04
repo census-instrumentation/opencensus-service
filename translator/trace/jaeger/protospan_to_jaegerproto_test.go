@@ -18,21 +18,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 	"testing"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/jaegertracing/jaeger/proto-gen/api_v2"
+	jaeger "github.com/jaegertracing/jaeger/model"
 
+	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/internal/testutils"
 	"github.com/census-instrumentation/opencensus-service/translator/trace"
 )
 
-func TestNilOCProtoNode(t *testing.T) {
-	nilNodeBatch := &agenttracepb.ExportTraceServiceRequest{
+func TestNilOCProtoNodeToJaegerProto(t *testing.T) {
+	nilNodeBatch := data.TraceData{
 		Spans: []*tracepb.Span{
 			{
 				TraceId: []byte("0123456789abcdef"),
@@ -46,9 +46,6 @@ func TestNilOCProtoNode(t *testing.T) {
 	}
 	if got.Process == nil {
 		t.Fatalf("Jaeger requires a non-nil Process field")
-	}
-	if got.Process != unknownProcess {
-		t.Fatalf("got unexpected Jaeger Process field")
 	}
 }
 
@@ -107,7 +104,7 @@ func TestOCProtoToJaegerProto(t *testing.T) {
 
 // ocBatches has the OpenCensus proto batches used in the test. They are hard coded because
 // structs like tracepb.AttributeMap cannot be read from JSON.
-var ocBatches = []*agenttracepb.ExportTraceServiceRequest{
+var ocBatches = []data.TraceData{
 	{
 		Node: &commonpb.Node{
 			Identifier: &commonpb.ProcessIdentifier{

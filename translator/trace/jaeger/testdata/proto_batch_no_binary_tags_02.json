@@ -1,59 +1,59 @@
 {
     "process": {
-      "serviceName": "api",
+      "service_name": "api",
       "tags": []
     },
     "spans": [
       {
-        "traceId": 5951113872249657919,
-        "spanId": 6585752,
-        "operationName": "get",
-        "startTime": 1485467191639875,
+        "trace_id": 5951113872249657919,
+        "span_id": 6585752,
+        "operation_name": "get",
+        "start_time": 1485467191639875,
         "duration": 22938,
         "tags": [
           {
             "key": "peer.service",
-            "vType": "STRING",
-            "vStr": "AAAAAAAAMDk="
+            "v_type": "STRING",
+            "v_str": "AAAAAAAAMDk="
           },
           {
             "key": "span.kind",
-            "vType": "STRING",
-            "vStr": "server"
+            "v_type": "STRING",
+            "v_str": "server"
           }
         ]
       },
       {
-          "traceId": 5951113872249657919,
-          "spanId": 6585753,
-          "operationName": "get",
+          "trace_id": 5951113872249657919,
+          "span_id": 6585753,
+          "operation_name": "get",
           "references": [
             {
-              "refType": "CHILD_OF",
-              "traceId": 5951113872249657919,
+              "ref_type": "CHILD_OF",
+              "trace_id": 5951113872249657919,
               "spanId": 6585752
             },
             {
-              "refType": "FOLLOWS_FROM",
-              "traceId": 5951113872249657919,
-              "spanId": 6866147
+              "ref_type": "FOLLOWS_FROM",
+              "trace_id": 5951113872249657919,
+              "span_id": 6866147
             }
           ],
-          "startTime": 1485467191639875,
+          "start_time": 1485467191639875,
           "duration": 22938,
           "tags": [
             {
               "key": "span.kind",
-              "vType": "STRING",
-              "vStr": "server"
+              "v_type": "STRING",
+              "v_str": "server"
             }
           ]
         },
         {
-            "traceId": 5951113872249657919,
-            "spanId": 6585752,
-            "operationName": "get2",
-            "startTime": 1485467192639875,
+            "trace_id": 5951113872249657919,
+            "span_id": 6585752,
+            "operation_name": "get2",
+            "start_time": 1485467192639875,
             "duration": 22938
           }
         ]
