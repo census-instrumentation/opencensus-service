@@ -30,7 +30,7 @@ var (
 	ErrWrongLenSpanID = errors.New("SpanID does not have 8 bytes")
 )
 
-// UInt64ToByteTraceID takes a two uint64 representaition of a TraceID and
+// UInt64ToByteTraceID takes a two uint64 representation of a TraceID and
 // converts it to a []byte representation.
 func UInt64ToByteTraceID(high, low uint64) []byte {
 	if high == 0 && low == 0 {
@@ -42,7 +42,7 @@ func UInt64ToByteTraceID(high, low uint64) []byte {
 	return traceID
 }
 
-// Int64ToByteTraceID takes a two int64 representaition of a TraceID and
+// Int64ToByteTraceID takes a two int64 representation of a TraceID and
 // converts it to a []byte representation.
 func Int64ToByteTraceID(high, low int64) []byte {
 	return UInt64ToByteTraceID(uint64(high), uint64(low))
