@@ -92,7 +92,7 @@ func TestInvalidOCProtoIDs(t *testing.T) {
 	}
 }
 
-func TestNilOCProtoNode(t *testing.T) {
+func TestNilOCProtoNodeToJaegerThrift(t *testing.T) {
 	nilNodeBatch := data.TraceData{
 		Spans: []*tracepb.Span{
 			{

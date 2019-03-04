@@ -40,7 +40,7 @@ require (
 	github.com/honeycombio/libhoney-go v1.8.2 // indirect
 	github.com/honeycombio/opencensus-exporter v0.0.0-20181101214123-9be2bb327b5a
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/jaegertracing/jaeger v1.8.2
+	github.com/jaegertracing/jaeger v1.9.0
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
@@ -70,7 +70,7 @@ require (
 	github.com/tinylib/msgp v1.0.2 // indirect
 	github.com/uber-go/atomic v1.3.2 // indirect
 	github.com/uber/jaeger-client-go v2.15.0+incompatible // indirect
-	github.com/uber/jaeger-lib v1.5.0
+	github.com/uber/jaeger-lib v2.0.0+incompatible
 	github.com/uber/tchannel-go v1.10.0
 	github.com/yancl/opencensus-go-exporter-kafka v0.0.0-20181029030031-9c471c1bfbeb
 	go.opencensus.io v0.18.1-0.20181204023538-aab39bd6a98b
