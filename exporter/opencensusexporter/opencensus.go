@@ -52,9 +52,12 @@ const (
 )
 
 var (
-	ErrEndpointRequired           = errors.New("OpenCensus exporter config requires an Endpoint")
+	// ErrEndpointRequired indicates that this exporter was not provided with an endpoint in its config.
+	ErrEndpointRequired = errors.New("OpenCensus exporter config requires an Endpoint")
+	// ErrUnsupportedCompressionType indicates that this exporter was provided with a compression protocol it does not support.
 	ErrUnsupportedCompressionType = errors.New("OpenCensus exporter unsupported compression type")
-	ErrUnableToGetTLSCreds        = errors.New("OpenCensus exporter unable to read TLS credentials")
+	// ErrUnableToGetTLSCredis indicates that this exporter could not read the provided TLS credentials.
+	ErrUnableToGetTLSCreds = errors.New("OpenCensus exporter unable to read TLS credentials")
 )
 
 var _ processor.TraceDataProcessor = (*ocagentExporter)(nil)
