@@ -18,10 +18,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/spf13/viper"
-	"gopkg.in/yaml.v2"
 	"sync"
 	"time"
+
+	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 
 	agentmetricspb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	"github.com/census-instrumentation/opencensus-service/data"

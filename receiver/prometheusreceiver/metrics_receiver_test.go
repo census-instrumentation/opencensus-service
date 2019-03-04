@@ -17,8 +17,6 @@ package prometheusreceiver
 import (
 	"context"
 	"fmt"
-	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
-	"github.com/spf13/viper"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -28,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/viper"
 	"go.opencensus.io/exporter/prometheus"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
@@ -37,6 +36,7 @@ import (
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/exporter/exportertest"
+	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
