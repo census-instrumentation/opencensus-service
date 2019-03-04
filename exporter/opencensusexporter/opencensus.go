@@ -56,7 +56,7 @@ var (
 	ErrEndpointRequired = errors.New("OpenCensus exporter config requires an Endpoint")
 	// ErrUnsupportedCompressionType indicates that this exporter was provided with a compression protocol it does not support.
 	ErrUnsupportedCompressionType = errors.New("OpenCensus exporter unsupported compression type")
-	// ErrUnableToGetTLSCredis indicates that this exporter could not read the provided TLS credentials.
+	// ErrUnableToGetTLSCreds indicates that this exporter could not read the provided TLS credentials.
 	ErrUnableToGetTLSCreds = errors.New("OpenCensus exporter unable to read TLS credentials")
 )
 
