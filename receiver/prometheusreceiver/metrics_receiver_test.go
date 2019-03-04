@@ -57,6 +57,27 @@ func (sc *scrapeCounter) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func TestNew(t *testing.T) {
+	v := viper.New()
+
+	_, err := New(v)
+	if err != errNilScrapeConfig {
+		t.Fatalf("Expected errNilScrapeConfig but did not get it.")
+	}
+
+	v.Set("config", nil)
+	_, err = New(v)
+	if err != errNilScrapeConfig {
+		t.Fatalf("Expected errNilScrapeConfig but did not get it.")
+	}
+
+	v.Set("config.blah", "some_value")
+	_, err = New(v)
+	if err != errNilScrapeConfig {
+		t.Fatalf("Expected errNilScrapeConfig but did not get it.")
+	}
+}
+
 func TestEndToEnd(t *testing.T) {
 	pe, err := prometheus.NewExporter(prometheus.Options{
 		Namespace: "e2ereceiver",

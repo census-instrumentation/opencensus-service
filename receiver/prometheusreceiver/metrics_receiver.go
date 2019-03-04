@@ -48,6 +48,16 @@ type Preceiver struct {
 
 var _ receiver.MetricsReceiver = (*Preceiver)(nil)
 
+var (
+	errAlreadyStarted         = errors.New("already started the Prometheus receiver")
+	errNilMetricsReceiverSink = errors.New("expecting a non-nil MetricsReceiverSink")
+	errNilScrapeConfig        = errors.New("expecting a non-nil ScrapeConfig")
+)
+
+const (
+	prometheusConfigKey = "config"
+)
+
 // New creates a new prometheus.Receiver reference.
 func New(v *viper.Viper) (*Preceiver, error) {
 	var cfg Configuration
@@ -59,7 +69,10 @@ func New(v *viper.Viper) (*Preceiver, error) {
 	}
 
 	// Unmarshal prometheus's config values. Since prometheus uses `yaml` tags, so use `yaml`.
-	promCfgMap := v.Sub("config").AllSettings()
+	if !v.IsSet(prometheusConfigKey) {
+		return nil, errNilScrapeConfig
+	}
+	promCfgMap := v.Sub(prometheusConfigKey).AllSettings()
 	out, err := yaml.Marshal(promCfgMap)
 	if err != nil {
 		return nil, fmt.Errorf("prometheus receiver failed to marshal config to yaml: %s", err)
@@ -68,18 +81,12 @@ func New(v *viper.Viper) (*Preceiver, error) {
 	if err != nil {
 		return nil, fmt.Errorf("prometheus receiver failed to unmarshal yaml to prometheus config: %s", err)
 	}
-	if cfg.ScrapeConfig == nil {
+	if len(cfg.ScrapeConfig.ScrapeConfigs) == 0 {
 		return nil, errNilScrapeConfig
 	}
 	pr := &Preceiver{cfg: &cfg}
 	return pr, nil
 }
-
-var (
-	errAlreadyStarted         = errors.New("already started the Prometheus receiver")
-	errNilMetricsReceiverSink = errors.New("expecting a non-nil MetricsReceiverSink")
-	errNilScrapeConfig        = errors.New("expecting a non-nil ScrapeConfig")
-)
 
 const metricsSource string = "Prometheus"
 
