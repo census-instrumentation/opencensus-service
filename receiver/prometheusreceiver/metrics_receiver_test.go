@@ -17,6 +17,8 @@ package prometheusreceiver
 import (
 	"context"
 	"fmt"
+	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
+	"github.com/spf13/viper"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -25,8 +27,6 @@ import (
 	"sort"
 	"testing"
 	"time"
-
-	"gopkg.in/yaml.v2"
 
 	"go.opencensus.io/exporter/prometheus"
 	"go.opencensus.io/stats"
@@ -95,12 +95,12 @@ buffer_count: 2
 
 	host, port, _ := net.SplitHostPort(cstURL.Host)
 
-	config := new(Configuration)
-	if err := yaml.Unmarshal([]byte(yamlConfig), config); err != nil {
-		t.Fatalf("Failed to unmarshal YAML: %v", err)
+	v := viper.New()
+	if err = viperutils.LoadYAMLBytes(v, []byte(yamlConfig)); err != nil {
+		t.Fatalf("Failed to load yaml config into viper")
 	}
 
-	precv, err := New(config)
+	precv, err := New(v)
 	if err != nil {
 		t.Fatalf("Failed to create promreceiver: %v", err)
 	}

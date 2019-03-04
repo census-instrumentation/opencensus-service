@@ -17,6 +17,9 @@ package prometheusreceiver
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 	"sync"
 	"time"
 
@@ -30,9 +33,9 @@ import (
 
 // Configuration defines the behavior and targets of the Prometheus scrapers.
 type Configuration struct {
-	ScrapeConfig *config.Config `yaml:"config"`
-	BufferPeriod time.Duration  `yaml:"buffer_period"`
-	BufferCount  int            `yaml:"buffer_count"`
+	ScrapeConfig *config.Config `mapstructure:"config"`
+	BufferPeriod time.Duration  `mapstructure:"buffer_period"`
+	BufferCount  int            `mapstructure:"buffer_count"`
 }
 
 // Preceiver is the type that provides Prometheus scraper/receiver functionality.
@@ -45,11 +48,29 @@ type Preceiver struct {
 var _ receiver.MetricsReceiver = (*Preceiver)(nil)
 
 // New creates a new prometheus.Receiver reference.
-func New(cfg *Configuration) (*Preceiver, error) {
-	if cfg == nil || cfg.ScrapeConfig == nil {
+func New(v *viper.Viper) (*Preceiver, error) {
+	var cfg Configuration
+
+	// Unmarshal our config values (using viper's mapstructure)
+	err := v.Unmarshal(&cfg)
+	if err != nil {
+		return nil, fmt.Errorf("prometheus receiver failed to parse config: %s", err)
+	}
+
+	// Unmarshal prometheus's config values. Since prometheus uses `yaml` tags, so use `yaml`.
+	promCfgMap := v.Sub("config").AllSettings()
+	out, err := yaml.Marshal(promCfgMap)
+	if err != nil {
+		return nil, fmt.Errorf("prometheus receiver failed to marshal config to yaml: %s", err)
+	}
+	err = yaml.Unmarshal(out, &cfg.ScrapeConfig)
+	if err != nil {
+		return nil, fmt.Errorf("prometheus receiver failed to unmarshal yaml to prometheus config: %s", err)
+	}
+	if cfg.ScrapeConfig == nil {
 		return nil, errNilScrapeConfig
 	}
-	pr := &Preceiver{cfg: cfg}
+	pr := &Preceiver{cfg: &cfg}
 	return pr, nil
 }
 

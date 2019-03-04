@@ -15,9 +15,9 @@
 package config_test
 
 import (
+	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
+	"github.com/spf13/viper"
 	"testing"
-
-	yaml "gopkg.in/yaml.v2"
 
 	"github.com/census-instrumentation/opencensus-service/exporter/zipkinexporter"
 	"github.com/census-instrumentation/opencensus-service/internal/config"
@@ -39,11 +39,17 @@ exporters:
         endpoint: "http://localhost:9411/api/v2/spans"
 `)
 
-	cfg, err := config.ParseOCAgentConfig(regressionYAML)
+	v := viper.New()
+	err := viperutils.LoadYAMLBytes(v, regressionYAML)
 	if err != nil {
 		t.Fatalf("Unexpected YAML parse error: %v", err)
 	}
-	if err := cfg.CheckLogicalConflicts(regressionYAML); err != nil {
+	var cfg config.Config
+	err = v.Unmarshal(&cfg)
+	if err != nil {
+		t.Fatalf("Unexpected error unmarshaling viper: %s", err)
+	}
+	if err := cfg.CheckLogicalConflicts(); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
@@ -53,10 +59,10 @@ exporters:
 
 	var ecfg struct {
 		Exporters *struct {
-			Zipkin *zipkinexporter.ZipkinConfig `yaml:"zipkin"`
-		} `yaml:"exporters"`
+			Zipkin *zipkinexporter.ZipkinConfig `mapstructure:"zipkin"`
+		} `mapstructure:"exporters"`
 	}
-	_ = yaml.Unmarshal(regressionYAML, &ecfg)
+	_ = v.Unmarshal(&ecfg)
 	if g, w := ecfg.Exporters.Zipkin.EndpointURL(), "http://localhost:9411/api/v2/spans"; g != w {
 		t.Errorf("Exporters.Zipkin.EndpointURL mismatch\nGot: %s\nWant:%s", g, w)
 	}
@@ -84,9 +90,14 @@ receivers:
     zipkin:
         address: "localhost:9410"`)
 
-	cfg, err := config.ParseOCAgentConfig(regressionYAML)
+	v := viper.New()
+	err := viperutils.LoadYAMLBytes(v, regressionYAML)
 	if err != nil {
 		t.Fatalf("Unexpected YAML parse error: %v", err)
+	}
+	err = v.Unmarshal(cfg)
+	if err != nil {
+		t.Fatalf("Unexpected error unmarshaling viper: %s", err)
 	}
 
 	if cfg.CanRunOpenCensusTraceReceiver() {
