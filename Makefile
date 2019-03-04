@@ -1,6 +1,6 @@
-# More exclusions can be added similar with: -not -path "./vendor/*"
+# More exclusions can be added similar with: -not -path './vendor/*'
 ALL_SRC := $(shell find . -name '*.go' \
-                                -not -path "./vendor/*" \
+                                -not -path './vendor/*' \
                                 -type f | sort)
 
 # ALL_PKGS is used with 'go cover'
@@ -56,6 +56,8 @@ fmt:
 		echo "$(GOFMT) FAILED => gofmt the following files:\n"; \
 		echo "$$FMTOUT\n"; \
 		exit 1; \
+	else \
+	    echo "Fmt finished successfully"; \
 	fi
 
 .PHONY: lint
@@ -65,15 +67,19 @@ lint:
 		echo "$(GOLINT) FAILED => clean the following lint errors:\n"; \
 		echo "$$LINTOUT\n"; \
 		exit 1; \
+	else \
+	    echo "Lint finished successfully"; \
 	fi
 
 .PHONY: vet
 vet:
 	@VETOUT=`$(GOVET) ./... 2>&1`; \
 	if [ "$$VETOUT" ]; then \
-		echo "$(GOVET) FAILED => clean the following lint errors:\n"; \
+		echo "$(GOVET) FAILED => clean the following vet errors:\n"; \
 		echo "$$VETOUT\n"; \
 		exit 1; \
+	else \
+	    echo "Vet finished successfully"; \
 	fi
 
 .PHONY: install-tools
