@@ -22,14 +22,14 @@ import (
 )
 
 type exporterSpanProcessor struct {
-	tdp processor.TraceDataProcessor
+	tdp processor.TraceProcessor
 }
 
 var _ SpanProcessor = (*exporterSpanProcessor)(nil)
 
 // NewTraceExporterProcessor creates processor that feeds SpanData to the given trace exporters.
-func NewTraceExporterProcessor(traceExporters ...processor.TraceDataProcessor) SpanProcessor {
-	return &exporterSpanProcessor{tdp: processor.NewMultiTraceDataProcessor(traceExporters)}
+func NewTraceExporterProcessor(traceExporters ...processor.TraceProcessor) SpanProcessor {
+	return &exporterSpanProcessor{tdp: processor.NewMultiTraceProcessor(traceExporters)}
 }
 
 func (sp *exporterSpanProcessor) ProcessSpans(td data.TraceData, spanFormat string) error {

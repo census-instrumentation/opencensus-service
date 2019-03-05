@@ -45,10 +45,10 @@ type prometheusConfig struct {
 
 var errBlankPrometheusAddress = errors.New("expecting a non-blank address to run the Prometheus metrics handler")
 
-// PrometheusExportersFromViper unmarshals the viper and returns processor.MetricsDataProcessors
+// PrometheusExportersFromViper unmarshals the viper and returns processor.MetricsProcessors
 // targeting Prometheus according to the configuration settings.
 // It allows HTTP clients to scrape it on endpoint path "/metrics".
-func PrometheusExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataProcessor, mdps []processor.MetricsDataProcessor, doneFns []func() error, err error) {
+func PrometheusExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
 	var cfg struct {
 		Prometheus *prometheusConfig `mapstructure:"prometheus"`
 	}
@@ -92,7 +92,7 @@ func PrometheusExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataPro
 
 	doneFns = append(doneFns, ln.Close)
 	pexp := &prometheusExporter{exporter: pe}
-	mdps = append(mdps, pexp)
+	mps = append(mps, pexp)
 
 	return
 }
@@ -101,7 +101,7 @@ type prometheusExporter struct {
 	exporter *prometheus.Exporter
 }
 
-var _ processor.MetricsDataProcessor = (*prometheusExporter)(nil)
+var _ processor.MetricsProcessor = (*prometheusExporter)(nil)
 
 func (pe *prometheusExporter) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
 	for _, metric := range md.Metrics {

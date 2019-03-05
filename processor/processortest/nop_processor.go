@@ -22,12 +22,12 @@ import (
 )
 
 type nopProcessor struct {
-	nextTraceProcessor   processor.TraceDataProcessor
-	nextMetricsProcessor processor.MetricsDataProcessor
+	nextTraceProcessor   processor.TraceProcessor
+	nextMetricsProcessor processor.MetricsProcessor
 }
 
-var _ processor.TraceDataProcessor = (*nopProcessor)(nil)
-var _ processor.MetricsDataProcessor = (*nopProcessor)(nil)
+var _ processor.TraceProcessor = (*nopProcessor)(nil)
+var _ processor.MetricsProcessor = (*nopProcessor)(nil)
 
 func (np *nopProcessor) ProcessTraceData(ctx context.Context, td data.TraceData) error {
 	return np.nextTraceProcessor.ProcessTraceData(ctx, td)
@@ -37,12 +37,12 @@ func (np *nopProcessor) ProcessMetricsData(ctx context.Context, md data.MetricsD
 	return np.nextMetricsProcessor.ProcessMetricsData(ctx, md)
 }
 
-// NewNopTraceProcessor creates an TraceDataProcessor that just pass the received data to the nextTraceProcessor.
-func NewNopTraceProcessor(nextTraceProcessor processor.TraceDataProcessor) processor.TraceDataProcessor {
+// NewNopTraceProcessor creates an TraceProcessor that just pass the received data to the nextTraceProcessor.
+func NewNopTraceProcessor(nextTraceProcessor processor.TraceProcessor) processor.TraceProcessor {
 	return &nopProcessor{nextTraceProcessor: nextTraceProcessor}
 }
 
-// NewNopMetricsProcessor creates an MetricsDataProcessor that just pass the received data to the nextMetricsProcessor.
-func NewNopMetricsProcessor(nextMetricsProcessor processor.MetricsDataProcessor) processor.MetricsDataProcessor {
+// NewNopMetricsProcessor creates an MetricsProcessor that just pass the received data to the nextMetricsProcessor.
+func NewNopMetricsProcessor(nextMetricsProcessor processor.MetricsProcessor) processor.MetricsProcessor {
 	return &nopProcessor{nextMetricsProcessor: nextMetricsProcessor}
 }

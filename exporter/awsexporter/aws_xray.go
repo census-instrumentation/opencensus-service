@@ -57,11 +57,11 @@ type awsXRayExporter struct {
 	defaultOptions     []xray.Option
 }
 
-var _ processor.TraceDataProcessor = (*awsXRayExporter)(nil)
+var _ processor.TraceProcessor = (*awsXRayExporter)(nil)
 
-// AWSXRayTraceExportersFromViper unmarshals the viper and returns an processor.TraceDataProcessor targeting
+// AWSXRayTraceExportersFromViper unmarshals the viper and returns an processor.TraceProcessor targeting
 // AWS X-Ray according to the configuration settings.
-func AWSXRayTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataProcessor, mdps []processor.MetricsDataProcessor, doneFns []func() error, err error) {
+func AWSXRayTraceExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
 	var cfg struct {
 		AWSXRay *awsXRayConfig `mapstructure:"aws-xray"`
 	}
@@ -84,7 +84,7 @@ func AWSXRayTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataP
 		defaultServiceName:     xc.DefaultServiceName,
 	}
 
-	tdps = append(tdps, axe)
+	tps = append(tps, axe)
 	doneFns = append(doneFns, func() error {
 		axe.Flush()
 		return nil

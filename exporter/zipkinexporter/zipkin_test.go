@@ -173,7 +173,7 @@ zipkin:
 		t.Fatalf("Failed to create a new Zipkin receiver: %v", err)
 	}
 
-	zexp := processor.NewMultiTraceDataProcessor(tes)
+	zexp := processor.NewMultiTraceProcessor(tes)
 	if err := zi.StartTraceReception(context.Background(), zexp); err != nil {
 		t.Fatalf("Failed to start trace reception: %v", err)
 	}

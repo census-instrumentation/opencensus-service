@@ -32,7 +32,7 @@ type jaegerConfig struct {
 
 // JaegerExportersFromViper unmarshals the viper and returns exporter.TraceExporters targeting
 // Jaeger according to the configuration settings.
-func JaegerExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataProcessor, mdps []processor.MetricsDataProcessor, doneFns []func() error, err error) {
+func JaegerExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
 	var cfg struct {
 		Jaeger *jaegerConfig `mapstructure:"jaeger"`
 	}
@@ -64,6 +64,6 @@ func JaegerExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataProcess
 	// TODO: Examine "contrib.go.opencensus.io/exporter/jaeger" to see
 	// if trace.ExportSpan was constraining and if perhaps the Jaeger
 	// upload can use the context and information from the Node.
-	tdps = append(tdps, exporterwrapper.NewExporterWrapper("jaeger", je))
+	tps = append(tps, exporterwrapper.NewExporterWrapper("jaeger", je))
 	return
 }

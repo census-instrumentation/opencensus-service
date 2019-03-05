@@ -443,10 +443,10 @@ func eqLocalHost(host string) bool {
 //  + prometheus
 //  + aws-xray
 //  + honeycomb
-func ExportersFromViperConfig(logger *zap.Logger, v *viper.Viper) ([]processor.TraceDataProcessor, []processor.MetricsDataProcessor, []func() error, error) {
+func ExportersFromViperConfig(logger *zap.Logger, v *viper.Viper) ([]processor.TraceProcessor, []processor.MetricsProcessor, []func() error, error) {
 	parseFns := []struct {
 		name string
-		fn   func(*viper.Viper) ([]processor.TraceDataProcessor, []processor.MetricsDataProcessor, []func() error, error)
+		fn   func(*viper.Viper) ([]processor.TraceProcessor, []processor.MetricsProcessor, []func() error, error)
 	}{
 		{name: "datadog", fn: datadogexporter.DatadogTraceExportersFromViper},
 		{name: "stackdriver", fn: stackdriverexporter.StackdriverTraceExportersFromViper},
@@ -459,8 +459,8 @@ func ExportersFromViperConfig(logger *zap.Logger, v *viper.Viper) ([]processor.T
 		{name: "honeycomb", fn: honeycombexporter.HoneycombTraceExportersFromViper},
 	}
 
-	var traceExporters []processor.TraceDataProcessor
-	var metricsExporters []processor.MetricsDataProcessor
+	var traceExporters []processor.TraceProcessor
+	var metricsExporters []processor.MetricsProcessor
 	var doneFns []func() error
 	exportersViper := v.Sub("exporters")
 	if exportersViper == nil {

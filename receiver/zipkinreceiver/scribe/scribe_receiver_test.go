@@ -154,7 +154,7 @@ func newMockTraceSink(numReceiveTraceDataCount int) *mockTraceSink {
 	}
 }
 
-var _ processor.TraceDataProcessor = (*mockTraceSink)(nil)
+var _ processor.TraceProcessor = (*mockTraceSink)(nil)
 
 func (m *mockTraceSink) ProcessTraceData(ctx context.Context, td data.TraceData) error {
 	m.receivedData = append(m.receivedData, td)

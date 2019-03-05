@@ -20,12 +20,12 @@ import (
 	"github.com/census-instrumentation/opencensus-service/processor"
 )
 
-// TraceExporter composes TraceDataProcessor with some additional
+// TraceExporter composes TraceProcessor with some additional
 // exporter-specific functions. This helps the service core to identify which
-// TraceDataProcessors are Exporters and which are internal processing
+// TraceProcessors are Exporters and which are internal processing
 // components, so that better validation of pipelines can be done.
 type TraceExporter interface {
-	processor.TraceDataProcessor
+	processor.TraceProcessor
 
 	// TraceExportFormat gets the name of the format in which this exporter sends its data.
 	// For exporters that can export multiple signals it is recommended to encode the signal
@@ -45,12 +45,12 @@ type TraceExporterFactory interface {
 	DefaultConfig() *viper.Viper
 }
 
-// MetricsExporter composes MetricsDataProcessor with some additional
+// MetricsExporter composes MetricsProcessor with some additional
 // exporter-specific functions. This helps the service core to identify which
-// MetricsDataProcessors are Exporters and which are internal processing
+// MetricsProcessors are Exporters and which are internal processing
 // components, so that better validation of pipelines can be done.
 type MetricsExporter interface {
-	processor.MetricsDataProcessor
+	processor.MetricsProcessor
 
 	// MetricsExportFormat gets the name of the format in which this exporter sends its data.
 	// For exporters that can export multiple signals it is recommended to encode the signal

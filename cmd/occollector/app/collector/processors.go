@@ -36,7 +36,7 @@ import (
 	mainprocessor "github.com/census-instrumentation/opencensus-service/processor"
 )
 
-func createExporters(v *viper.Viper, logger *zap.Logger) ([]func(), []mainprocessor.TraceDataProcessor, []mainprocessor.MetricsDataProcessor) {
+func createExporters(v *viper.Viper, logger *zap.Logger) ([]func(), []mainprocessor.TraceProcessor, []mainprocessor.MetricsProcessor) {
 	// TODO: (@pjanotti) this is slightly modified from agent but in the end duplication, need to consolidate style and visibility.
 	traceExporters, metricsExporters, doneFns, err := config.ExportersFromViperConfig(logger, v)
 	if err != nil {

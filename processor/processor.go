@@ -20,18 +20,18 @@ import (
 	"github.com/census-instrumentation/opencensus-service/data"
 )
 
-// MetricsDataProcessor is an interface that receives data.MetricsData, process it as needed, and
+// MetricsProcessor is an interface that receives data.MetricsData, process it as needed, and
 // sends it to the next processing node if any or to the destination.
 //
-// ProcessMetricsData receives data.MetricsData for processing by the MetricsDataProcessor.
-type MetricsDataProcessor interface {
+// ProcessMetricsData receives data.MetricsData for processing by the MetricsProcessor.
+type MetricsProcessor interface {
 	ProcessMetricsData(ctx context.Context, md data.MetricsData) error
 }
 
-// TraceDataProcessor is an interface that receives data.TraceData, process it as needed, and
+// TraceProcessor is an interface that receives data.TraceData, process it as needed, and
 // sends it to the next processing node if any or to the destination.
 //
-// ProcessTraceData receives data.TraceData for processing by the TraceDataProcessor.
-type TraceDataProcessor interface {
+// ProcessTraceData receives data.TraceData for processing by the TraceProcessor.
+type TraceProcessor interface {
 	ProcessTraceData(ctx context.Context, td data.TraceData) error
 }

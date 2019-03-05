@@ -32,7 +32,7 @@ type honeycombConfig struct {
 
 // HoneycombTraceExportersFromViper unmarshals the viper and returns an exporter.TraceExporter
 // targeting Honeycomb according to the configuration settings.
-func HoneycombTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataProcessor, mdps []processor.MetricsDataProcessor, doneFns []func() error, err error) {
+func HoneycombTraceExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
 	var cfg struct {
 		Honeycomb *honeycombConfig `mapstructure:"honeycomb"`
 	}
@@ -47,7 +47,7 @@ func HoneycombTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceDat
 
 	rawExp := honeycomb.NewExporter(hc.WriteKey, hc.DatasetName)
 
-	tdps = append(tdps, exporterwrapper.NewExporterWrapper("honeycomb", rawExp))
+	tps = append(tps, exporterwrapper.NewExporterWrapper("honeycomb", rawExp))
 	doneFns = append(doneFns, func() error {
 		rawExp.Close()
 		return nil

@@ -34,15 +34,15 @@ import (
 
 // Receiver is the type used to handle metrics from OpenCensus exporters.
 type Receiver struct {
-	nextProcessor      processor.MetricsDataProcessor
+	nextProcessor      processor.MetricsProcessor
 	metricBufferPeriod time.Duration
 	metricBufferCount  int
 }
 
 // New creates a new ocmetrics.Receiver reference.
-func New(nextProcessor processor.MetricsDataProcessor, opts ...Option) (*Receiver, error) {
+func New(nextProcessor processor.MetricsProcessor, opts ...Option) (*Receiver, error) {
 	if nextProcessor == nil {
-		return nil, errors.New("needs a non-nil processor.MetricsDataProcessor")
+		return nil, errors.New("needs a non-nil processor.MetricsProcessor")
 	}
 	ocr := &Receiver{nextProcessor: nextProcessor}
 	for _, opt := range opts {

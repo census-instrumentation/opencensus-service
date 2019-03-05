@@ -54,7 +54,7 @@ type ZipkinReceiver struct {
 	// addr is the address onto which the HTTP server will be bound
 	addr string
 
-	nextProcessor processor.TraceDataProcessor
+	nextProcessor processor.TraceProcessor
 
 	startOnce sync.Once
 	stopOnce  sync.Once
@@ -93,7 +93,7 @@ func (zr *ZipkinReceiver) TraceSource() string {
 }
 
 // StartTraceReception spins up the receiver's HTTP server and makes the receiver start its processing.
-func (zr *ZipkinReceiver) StartTraceReception(ctx context.Context, nextProcessor processor.TraceDataProcessor) error {
+func (zr *ZipkinReceiver) StartTraceReception(ctx context.Context, nextProcessor processor.TraceProcessor) error {
 	zr.mu.Lock()
 	defer zr.mu.Unlock()
 

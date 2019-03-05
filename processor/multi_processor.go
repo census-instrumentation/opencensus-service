@@ -21,19 +21,19 @@ import (
 	"github.com/census-instrumentation/opencensus-service/internal"
 )
 
-// NewMultiMetricsDataProcessor wraps multiple metrics exporters in a single one.
-func NewMultiMetricsDataProcessor(mdps []MetricsDataProcessor) MetricsDataProcessor {
-	return metricsDataProcessors(mdps)
+// NewMultiMetricsProcessor wraps multiple metrics exporters in a single one.
+func NewMultiMetricsProcessor(mps []MetricsProcessor) MetricsProcessor {
+	return metricsProcessors(mps)
 }
 
-type metricsDataProcessors []MetricsDataProcessor
+type metricsProcessors []MetricsProcessor
 
-var _ MetricsDataProcessor = (*metricsDataProcessors)(nil)
+var _ MetricsProcessor = (*metricsProcessors)(nil)
 
 // ExportMetricsData exports the MetricsData to all exporters wrapped by the current one.
-func (mdps metricsDataProcessors) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
+func (mps metricsProcessors) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
 	var errs []error
-	for _, mdp := range mdps {
+	for _, mdp := range mps {
 		if err := mdp.ProcessMetricsData(ctx, md); err != nil {
 			errs = append(errs, err)
 		}
@@ -41,19 +41,19 @@ func (mdps metricsDataProcessors) ProcessMetricsData(ctx context.Context, md dat
 	return internal.CombineErrors(errs)
 }
 
-// NewMultiTraceDataProcessor wraps multiple trace exporters in a single one.
-func NewMultiTraceDataProcessor(tdps []TraceDataProcessor) TraceDataProcessor {
-	return traceDataProcessors(tdps)
+// NewMultiTraceProcessor wraps multiple trace exporters in a single one.
+func NewMultiTraceProcessor(tps []TraceProcessor) TraceProcessor {
+	return traceProcessors(tps)
 }
 
-type traceDataProcessors []TraceDataProcessor
+type traceProcessors []TraceProcessor
 
-var _ TraceDataProcessor = (*traceDataProcessors)(nil)
+var _ TraceProcessor = (*traceProcessors)(nil)
 
 // ExportSpans exports the span data to all trace exporters wrapped by the current one.
-func (tdps traceDataProcessors) ProcessTraceData(ctx context.Context, td data.TraceData) error {
+func (tps traceProcessors) ProcessTraceData(ctx context.Context, td data.TraceData) error {
 	var errs []error
-	for _, tdp := range tdps {
+	for _, tdp := range tps {
 		if err := tdp.ProcessTraceData(ctx, td); err != nil {
 			errs = append(errs, err)
 		}

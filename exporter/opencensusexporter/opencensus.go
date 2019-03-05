@@ -60,11 +60,11 @@ var (
 	ErrUnableToGetTLSCreds = errors.New("OpenCensus exporter unable to read TLS credentials")
 )
 
-var _ processor.TraceDataProcessor = (*ocagentExporter)(nil)
+var _ processor.TraceProcessor = (*ocagentExporter)(nil)
 
-// OpenCensusTraceExportersFromViper unmarshals the viper and returns an processor.TraceDataProcessor targeting
+// OpenCensusTraceExportersFromViper unmarshals the viper and returns an processor.TraceProcessor targeting
 // OpenCensus Agent/Collector according to the configuration settings.
-func OpenCensusTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataProcessor, mdps []processor.MetricsDataProcessor, doneFns []func() error, err error) {
+func OpenCensusTraceExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
 	var cfg struct {
 		OpenCensus *opencensusConfig `mapstructure:"opencensus"`
 	}
@@ -120,10 +120,10 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceDa
 	}
 
 	oexp := &ocagentExporter{exporters: exporters}
-	tdps = append(tdps, oexp)
+	tps = append(tps, oexp)
 
 	// TODO: (@odeke-em, @songya23) implement ExportMetrics for OpenCensus.
-	// mdps = append(mdps, oexp)
+	// mps = append(mps, oexp)
 	return
 }
 

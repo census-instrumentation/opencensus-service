@@ -37,7 +37,7 @@ const (
 
 // Receiver is the type used to handle spans from OpenCensus exporters.
 type Receiver struct {
-	nextProcessor processor.TraceDataProcessor
+	nextProcessor processor.TraceProcessor
 	numWorkers    int
 	workers       []*receiverWorker
 	messageChan   chan *traceDataWithCtx
@@ -49,9 +49,9 @@ type traceDataWithCtx struct {
 }
 
 // New creates a new opencensus.Receiver reference.
-func New(nextProcessor processor.TraceDataProcessor, opts ...Option) (*Receiver, error) {
+func New(nextProcessor processor.TraceProcessor, opts ...Option) (*Receiver, error) {
 	if nextProcessor == nil {
-		return nil, errors.New("needs a non-nil processor.TraceDataProcessor")
+		return nil, errors.New("needs a non-nil processor.TraceProcessor")
 	}
 
 	messageChan := make(chan *traceDataWithCtx, messageChannelSize)

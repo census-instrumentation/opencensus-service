@@ -73,7 +73,7 @@ func (r *scribeReceiver) TraceSource() string {
 	return traceSource
 }
 
-func (r *scribeReceiver) StartTraceReception(ctx context.Context, nextProcessor processor.TraceDataProcessor) error {
+func (r *scribeReceiver) StartTraceReception(ctx context.Context, nextProcessor processor.TraceProcessor) error {
 	r.Lock()
 	defer r.Unlock()
 
@@ -128,7 +128,7 @@ type scribeCollector struct {
 	category            string
 	msgDecoder          *base64.Encoding
 	tBinProtocolFactory *thrift.TBinaryProtocolFactory
-	nextProcessor       processor.TraceDataProcessor
+	nextProcessor       processor.TraceProcessor
 	defaultCtx          context.Context
 }
 

@@ -24,7 +24,7 @@ import (
 // A TraceReceiver is an "arbitrary data"-to-"trace proto span" converter.
 // Its purpose is to translate data from the wild into trace proto accompanied
 // by a *commonpb.Node to uniquely identify where that data comes from.
-// TraceReceiver feeds a processor.TraceDataProcessor with data.
+// TraceReceiver feeds a processor.TraceProcessor with data.
 //
 // For example it could be Zipkin data source which translates
 // Zipkin spans into *tracepb.Span-s.
@@ -33,7 +33,7 @@ type TraceReceiver interface {
 	TraceSource() string
 
 	// StartTraceReception tells the receiver to start its processing.
-	StartTraceReception(ctx context.Context, nextProcessor processor.TraceDataProcessor) error
+	StartTraceReception(ctx context.Context, nextProcessor processor.TraceProcessor) error
 
 	// StopTraceReception tells the receiver that should stop reception,
 	// giving it a chance to perform any necessary clean-up.
@@ -43,7 +43,7 @@ type TraceReceiver interface {
 // A MetricsReceiver is an "arbitrary data"-to-"metric proto" converter.
 // Its purpose is to translate data from the wild into metric proto accompanied
 // by a *commonpb.Node to uniquely identify where that data comes from.
-// MetricsReceiver feeds a processor.MetricsDataProcessor with data.
+// MetricsReceiver feeds a processor.MetricsProcessor with data.
 //
 // For example it could be Prometheus data source which translates
 // Prometheus metrics into *metricpb.Metric-s.
@@ -52,7 +52,7 @@ type MetricsReceiver interface {
 	MetricsSource() string
 
 	// StartMetricsReception tells the receiver to start its processing.
-	StartMetricsReception(ctx context.Context, nextProcessor processor.MetricsDataProcessor) error
+	StartMetricsReception(ctx context.Context, nextProcessor processor.MetricsProcessor) error
 
 	// StopMetricsReception tells the receiver that should stop reception,
 	// giving it a chance to perform any necessary clean-up.

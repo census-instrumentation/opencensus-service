@@ -41,11 +41,11 @@ type stackdriverExporter struct {
 	exporter *stackdriver.Exporter
 }
 
-var _ processor.MetricsDataProcessor = (*stackdriverExporter)(nil)
+var _ processor.MetricsProcessor = (*stackdriverExporter)(nil)
 
-// StackdriverTraceExportersFromViper unmarshals the viper and returns an processor.TraceDataProcessor targeting
+// StackdriverTraceExportersFromViper unmarshals the viper and returns an processor.TraceProcessor targeting
 // Stackdriver according to the configuration settings.
-func StackdriverTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataProcessor, mdps []processor.MetricsDataProcessor, doneFns []func() error, err error) {
+func StackdriverTraceExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
 	var cfg struct {
 		Stackdriver *stackdriverConfig `mapstructure:"stackdriver"`
 	}
@@ -92,11 +92,11 @@ func StackdriverTraceExportersFromViper(v *viper.Viper) (tdps []processor.TraceD
 	// if trace.ExportSpan was constraining and if perhaps the Stackdriver
 	// upload can use the context and information from the Node.
 	if sc.EnableTracing {
-		tdps = append(tdps, exporterwrapper.NewExporterWrapper("stackdriver", sde))
+		tps = append(tps, exporterwrapper.NewExporterWrapper("stackdriver", sde))
 	}
 
 	if sc.EnableMetrics {
-		mdps = append(mdps, exp)
+		mps = append(mps, exp)
 	}
 
 	doneFns = append(doneFns, func() error {

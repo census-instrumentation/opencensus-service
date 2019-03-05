@@ -23,13 +23,13 @@ import (
 	"github.com/census-instrumentation/opencensus-service/data"
 )
 
-func TestMultiTraceDataProcessorMultiplexing(t *testing.T) {
-	processors := make([]TraceDataProcessor, 3)
+func TestMultiTraceProcessorMultiplexing(t *testing.T) {
+	processors := make([]TraceProcessor, 3)
 	for i := range processors {
-		processors[i] = &mockTraceDataProcessor{}
+		processors[i] = &mockTraceProcessor{}
 	}
 
-	mtdp := NewMultiTraceDataProcessor(processors)
+	mtdp := NewMultiTraceProcessor(processors)
 	td := data.TraceData{
 		Spans: make([]*tracepb.Span, 7),
 	}
@@ -45,7 +45,7 @@ func TestMultiTraceDataProcessorMultiplexing(t *testing.T) {
 	}
 
 	for _, p := range processors {
-		m := p.(*mockTraceDataProcessor)
+		m := p.(*mockTraceProcessor)
 		if m.TotalSpans != wantSpansCount {
 			t.Errorf("Wanted %d spans for every processor but got %d", wantSpansCount, m.TotalSpans)
 			return
@@ -53,16 +53,16 @@ func TestMultiTraceDataProcessorMultiplexing(t *testing.T) {
 	}
 }
 
-func TestMultiTraceDataProcessorWhenOneErrors(t *testing.T) {
-	processors := make([]TraceDataProcessor, 3)
+func TestMultiTraceProcessorWhenOneErrors(t *testing.T) {
+	processors := make([]TraceProcessor, 3)
 	for i := range processors {
-		processors[i] = &mockTraceDataProcessor{}
+		processors[i] = &mockTraceProcessor{}
 	}
 
 	// Make one processor return error
-	processors[1].(*mockTraceDataProcessor).MustFail = true
+	processors[1].(*mockTraceProcessor).MustFail = true
 
-	mtdp := NewMultiTraceDataProcessor(processors)
+	mtdp := NewMultiTraceProcessor(processors)
 	td := data.TraceData{
 		Spans: make([]*tracepb.Span, 5),
 	}
@@ -78,7 +78,7 @@ func TestMultiTraceDataProcessorWhenOneErrors(t *testing.T) {
 	}
 
 	for _, p := range processors {
-		m := p.(*mockTraceDataProcessor)
+		m := p.(*mockTraceProcessor)
 		if m.TotalSpans != wantSpansCount {
 			t.Errorf("Wanted %d spans for every processor but got %d", wantSpansCount, m.TotalSpans)
 			return
@@ -86,13 +86,13 @@ func TestMultiTraceDataProcessorWhenOneErrors(t *testing.T) {
 	}
 }
 
-func TestMultiMetricsDataProcessorMultiplexing(t *testing.T) {
-	processors := make([]MetricsDataProcessor, 3)
+func TestMultiMetricsProcessorMultiplexing(t *testing.T) {
+	processors := make([]MetricsProcessor, 3)
 	for i := range processors {
-		processors[i] = &mockMetricsDataProcessor{}
+		processors[i] = &mockMetricsProcessor{}
 	}
 
-	mmdp := NewMultiMetricsDataProcessor(processors)
+	mmdp := NewMultiMetricsProcessor(processors)
 	md := data.MetricsData{
 		Metrics: make([]*metricspb.Metric, 7),
 	}
@@ -108,7 +108,7 @@ func TestMultiMetricsDataProcessorMultiplexing(t *testing.T) {
 	}
 
 	for _, p := range processors {
-		m := p.(*mockMetricsDataProcessor)
+		m := p.(*mockMetricsProcessor)
 		if m.TotalMetrics != wantMetricsCount {
 			t.Errorf("Wanted %d metrics for every processor but got %d", wantMetricsCount, m.TotalMetrics)
 			return
@@ -116,16 +116,16 @@ func TestMultiMetricsDataProcessorMultiplexing(t *testing.T) {
 	}
 }
 
-func TestMultiMetricsDataProcessorWhenOneErrors(t *testing.T) {
-	processors := make([]MetricsDataProcessor, 3)
+func TestMultiMetricsProcessorWhenOneErrors(t *testing.T) {
+	processors := make([]MetricsProcessor, 3)
 	for i := range processors {
-		processors[i] = &mockMetricsDataProcessor{}
+		processors[i] = &mockMetricsProcessor{}
 	}
 
 	// Make one processor return error
-	processors[1].(*mockMetricsDataProcessor).MustFail = true
+	processors[1].(*mockMetricsProcessor).MustFail = true
 
-	mmdp := NewMultiMetricsDataProcessor(processors)
+	mmdp := NewMultiMetricsProcessor(processors)
 	md := data.MetricsData{
 		Metrics: make([]*metricspb.Metric, 5),
 	}
@@ -141,7 +141,7 @@ func TestMultiMetricsDataProcessorWhenOneErrors(t *testing.T) {
 	}
 
 	for _, p := range processors {
-		m := p.(*mockMetricsDataProcessor)
+		m := p.(*mockMetricsProcessor)
 		if m.TotalMetrics != wantMetricsCount {
 			t.Errorf("Wanted %d metrics for every processor but got %d", wantMetricsCount, m.TotalMetrics)
 			return
@@ -149,14 +149,14 @@ func TestMultiMetricsDataProcessorWhenOneErrors(t *testing.T) {
 	}
 }
 
-type mockTraceDataProcessor struct {
+type mockTraceProcessor struct {
 	TotalSpans int
 	MustFail   bool
 }
 
-var _ TraceDataProcessor = &mockTraceDataProcessor{}
+var _ TraceProcessor = &mockTraceProcessor{}
 
-func (p *mockTraceDataProcessor) ProcessTraceData(ctx context.Context, td data.TraceData) error {
+func (p *mockTraceProcessor) ProcessTraceData(ctx context.Context, td data.TraceData) error {
 	p.TotalSpans += len(td.Spans)
 	if p.MustFail {
 		return fmt.Errorf("this processor must fail")
@@ -165,14 +165,14 @@ func (p *mockTraceDataProcessor) ProcessTraceData(ctx context.Context, td data.T
 	return nil
 }
 
-type mockMetricsDataProcessor struct {
+type mockMetricsProcessor struct {
 	TotalMetrics int
 	MustFail     bool
 }
 
-var _ MetricsDataProcessor = &mockMetricsDataProcessor{}
+var _ MetricsProcessor = &mockMetricsProcessor{}
 
-func (p *mockMetricsDataProcessor) ProcessMetricsData(ctx context.Context, td data.MetricsData) error {
+func (p *mockMetricsProcessor) ProcessMetricsData(ctx context.Context, td data.MetricsData) error {
 	p.TotalMetrics += len(td.Metrics)
 	if p.MustFail {
 		return fmt.Errorf("this processor must fail")

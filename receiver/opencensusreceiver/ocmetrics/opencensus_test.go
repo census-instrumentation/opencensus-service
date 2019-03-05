@@ -330,7 +330,7 @@ func newMetricAppender() *metricAppender {
 	return &metricAppender{metricsPerNode: make(map[*commonpb.Node][]*metricspb.Metric)}
 }
 
-var _ processor.MetricsDataProcessor = (*metricAppender)(nil)
+var _ processor.MetricsProcessor = (*metricAppender)(nil)
 
 func (sa *metricAppender) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
 	sa.Lock()
@@ -341,7 +341,7 @@ func (sa *metricAppender) ProcessMetricsData(ctx context.Context, md data.Metric
 	return nil
 }
 
-func ocReceiverOnGRPCServer(t *testing.T, sr processor.MetricsDataProcessor, opts ...Option) (oci *Receiver, port int, done func()) {
+func ocReceiverOnGRPCServer(t *testing.T, sr processor.MetricsProcessor, opts ...Option) (oci *Receiver, port int, done func()) {
 	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
 		t.Fatalf("Failed to find an available address to run the gRPC server: %v", err)

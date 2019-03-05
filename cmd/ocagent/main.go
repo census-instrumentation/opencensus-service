@@ -117,8 +117,8 @@ func runOCAgent() {
 		log.Fatalf("Config: failed to create exporters from YAML: %v", err)
 	}
 
-	commonSpanSink := processor.NewMultiTraceDataProcessor(traceExporters)
-	commonMetricsSink := processor.NewMultiMetricsDataProcessor(metricsExporters)
+	commonSpanSink := processor.NewMultiTraceProcessor(traceExporters)
+	commonMetricsSink := processor.NewMultiMetricsProcessor(metricsExporters)
 
 	// Add other receivers here as they are implemented
 	ocReceiverDoneFn, err := runOCReceiver(logger, &agentConfig, commonSpanSink, commonMetricsSink)
@@ -213,7 +213,7 @@ func runZPages(port int) func() error {
 	return srv.Close
 }
 
-func runOCReceiver(logger *zap.Logger, acfg *config.Config, tdp processor.TraceDataProcessor, mdp processor.MetricsDataProcessor) (doneFn func() error, err error) {
+func runOCReceiver(logger *zap.Logger, acfg *config.Config, tdp processor.TraceProcessor, mdp processor.MetricsProcessor) (doneFn func() error, err error) {
 	tlsCredsOption, hasTLSCreds, err := acfg.OpenCensusReceiverTLSCredentialsServerOption()
 	if err != nil {
 		return nil, fmt.Errorf("OpenCensus receiver TLS Credentials: %v", err)
@@ -270,7 +270,7 @@ func runOCReceiver(logger *zap.Logger, acfg *config.Config, tdp processor.TraceD
 	return doneFn, nil
 }
 
-func runJaegerReceiver(collectorThriftPort, collectorHTTPPort int, next processor.TraceDataProcessor) (doneFn func() error, err error) {
+func runJaegerReceiver(collectorThriftPort, collectorHTTPPort int, next processor.TraceProcessor) (doneFn func() error, err error) {
 	jtr, err := jaegerreceiver.New(context.Background(), &jaegerreceiver.Configuration{
 		CollectorThriftPort: collectorThriftPort,
 		CollectorHTTPPort:   collectorHTTPPort,
@@ -292,7 +292,7 @@ func runJaegerReceiver(collectorThriftPort, collectorHTTPPort int, next processo
 	return doneFn, nil
 }
 
-func runZipkinReceiver(addr string, next processor.TraceDataProcessor) (doneFn func() error, err error) {
+func runZipkinReceiver(addr string, next processor.TraceProcessor) (doneFn func() error, err error) {
 	zi, err := zipkinreceiver.New(addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the Zipkin receiver: %v", err)
@@ -308,7 +308,7 @@ func runZipkinReceiver(addr string, next processor.TraceDataProcessor) (doneFn f
 	return doneFn, nil
 }
 
-func runZipkinScribeReceiver(config *config.ScribeReceiverConfig, next processor.TraceDataProcessor) (doneFn func() error, err error) {
+func runZipkinScribeReceiver(config *config.ScribeReceiverConfig, next processor.TraceProcessor) (doneFn func() error, err error) {
 	zs, err := scribe.NewReceiver(config.Address, config.Port, config.Category)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the Zipkin Scribe receiver: %v", err)
@@ -324,7 +324,7 @@ func runZipkinScribeReceiver(config *config.ScribeReceiverConfig, next processor
 	return doneFn, nil
 }
 
-func runPrometheusReceiver(v *viper.Viper, next processor.MetricsDataProcessor) (doneFn func() error, err error) {
+func runPrometheusReceiver(v *viper.Viper, next processor.MetricsProcessor) (doneFn func() error, err error) {
 	pmr, err := prometheusreceiver.New(v.Sub("receivers.prometheus"))
 	if err != nil {
 		return nil, err

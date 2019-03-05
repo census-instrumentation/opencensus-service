@@ -60,7 +60,7 @@ type jReceiver struct {
 	// mu protects the fields of this type
 	mu sync.Mutex
 
-	nextProcessor processor.TraceDataProcessor
+	nextProcessor processor.TraceProcessor
 
 	startOnce sync.Once
 	stopOnce  sync.Once
@@ -170,7 +170,7 @@ func (jr *jReceiver) TraceSource() string {
 	return traceSource
 }
 
-func (jr *jReceiver) StartTraceReception(ctx context.Context, nextProcessor processor.TraceDataProcessor) error {
+func (jr *jReceiver) StartTraceReception(ctx context.Context, nextProcessor processor.TraceProcessor) error {
 	jr.mu.Lock()
 	defer jr.mu.Unlock()
 

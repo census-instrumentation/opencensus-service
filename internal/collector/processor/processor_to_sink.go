@@ -26,10 +26,10 @@ type protoProcessorSink struct {
 	protoProcessor SpanProcessor
 }
 
-var _ (processor.TraceDataProcessor) = (*protoProcessorSink)(nil)
+var _ (processor.TraceProcessor) = (*protoProcessorSink)(nil)
 
 // WrapWithSpanSink wraps a processor to be used as a span sink by receivers.
-func WrapWithSpanSink(format string, p SpanProcessor) processor.TraceDataProcessor {
+func WrapWithSpanSink(format string, p SpanProcessor) processor.TraceProcessor {
 	return &protoProcessorSink{
 		sourceFormat:   format,
 		protoProcessor: p,

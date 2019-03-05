@@ -97,7 +97,7 @@ func (pr *Preceiver) MetricsSource() string {
 
 // StartMetricsReception is the method that starts Prometheus scraping and it
 // is controlled by having previously defined a Configuration using perhaps New.
-func (pr *Preceiver) StartMetricsReception(ctx context.Context, nextProcessor processor.MetricsDataProcessor) error {
+func (pr *Preceiver) StartMetricsReception(ctx context.Context, nextProcessor processor.MetricsProcessor) error {
 	var err = errAlreadyStarted
 	pr.startOnce.Do(func() {
 		if nextProcessor == nil {
@@ -118,7 +118,7 @@ func (pr *Preceiver) StartMetricsReception(ctx context.Context, nextProcessor pr
 }
 
 // Flush triggers the Flush method on the underlying Prometheus scrapers and instructs
-// them to immediately sned over the metrics they've collected, to the MetricsDataProcessor.
+// them to immediately sned over the metrics they've collected, to the MetricsProcessor.
 func (pr *Preceiver) Flush() {
 	pr.recv.Flush()
 }
@@ -130,7 +130,7 @@ func (pr *Preceiver) StopMetricsReception(ctx context.Context) error {
 }
 
 type promMetricsReceiverToOpenCensusMetricsReceiver struct {
-	nextProcessor processor.MetricsDataProcessor
+	nextProcessor processor.MetricsProcessor
 }
 
 var _ promreceiver.MetricsSink = (*promMetricsReceiverToOpenCensusMetricsReceiver)(nil)

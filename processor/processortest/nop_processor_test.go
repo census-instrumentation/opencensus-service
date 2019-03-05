@@ -24,7 +24,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/exporter/exportertest"
 )
 
-func TestNopTraceDataProcessorNoErrors(t *testing.T) {
+func TestNopTraceProcessorNoErrors(t *testing.T) {
 	sink := new(exportertest.SinkTraceExporter)
 	ntp := NewNopTraceProcessor(sink)
 	want := data.TraceData{
@@ -40,7 +40,7 @@ func TestNopTraceDataProcessorNoErrors(t *testing.T) {
 	}
 }
 
-func TestNopMetricsDataProcessorNoErrors(t *testing.T) {
+func TestNopMetricsProcessorNoErrors(t *testing.T) {
 	sink := new(exportertest.SinkMetricsExporter)
 	nmp := NewNopMetricsProcessor(sink)
 	want := data.MetricsData{

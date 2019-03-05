@@ -96,15 +96,15 @@ func (ocr *Receiver) TraceSource() string {
 
 // StartTraceReception exclusively runs the Trace receiver on the gRPC server.
 // To start both Trace and Metrics receivers/services, please use Start.
-func (ocr *Receiver) StartTraceReception(ctx context.Context, ts processor.TraceDataProcessor) error {
-	err := ocr.registerTraceDataProcessor(ts)
+func (ocr *Receiver) StartTraceReception(ctx context.Context, ts processor.TraceProcessor) error {
+	err := ocr.registerTraceProcessor(ts)
 	if err != nil && err != errAlreadyStarted {
 		return err
 	}
 	return ocr.startServer()
 }
 
-func (ocr *Receiver) registerTraceDataProcessor(ts processor.TraceDataProcessor) error {
+func (ocr *Receiver) registerTraceProcessor(ts processor.TraceProcessor) error {
 	var err = errAlreadyStarted
 
 	ocr.startTraceReceiverOnce.Do(func() {
@@ -125,15 +125,15 @@ func (ocr *Receiver) MetricsSource() string {
 
 // StartMetricsReception exclusively runs the Metrics receiver on the gRPC server.
 // To start both Trace and Metrics receivers/services, please use Start.
-func (ocr *Receiver) StartMetricsReception(ctx context.Context, ms processor.MetricsDataProcessor) error {
-	err := ocr.registerMetricsDataProcessor(ms)
+func (ocr *Receiver) StartMetricsReception(ctx context.Context, ms processor.MetricsProcessor) error {
+	err := ocr.registerMetricsProcessor(ms)
 	if err != nil && err != errAlreadyStarted {
 		return err
 	}
 	return ocr.startServer()
 }
 
-func (ocr *Receiver) registerMetricsDataProcessor(ms processor.MetricsDataProcessor) error {
+func (ocr *Receiver) registerMetricsProcessor(ms processor.MetricsProcessor) error {
 	var err = errAlreadyStarted
 
 	ocr.startMetricsReceiverOnce.Do(func() {
@@ -179,11 +179,11 @@ func (ocr *Receiver) StopMetricsReception(ctx context.Context) error {
 }
 
 // Start runs all the receivers/services namely, Trace and Metrics services.
-func (ocr *Receiver) Start(ctx context.Context, ts processor.TraceDataProcessor, ms processor.MetricsDataProcessor) error {
-	if err := ocr.registerTraceDataProcessor(ts); err != nil && err != errAlreadyStarted {
+func (ocr *Receiver) Start(ctx context.Context, ts processor.TraceProcessor, ms processor.MetricsProcessor) error {
+	if err := ocr.registerTraceProcessor(ts); err != nil && err != errAlreadyStarted {
 		return err
 	}
-	if err := ocr.registerMetricsDataProcessor(ms); err != nil && err != errAlreadyStarted {
+	if err := ocr.registerMetricsProcessor(ms); err != nil && err != errAlreadyStarted {
 		return err
 	}
 

@@ -79,7 +79,7 @@ func (zc *ZipkinConfig) EndpointURL() string {
 
 // ZipkinExportersFromViper unmarshals the viper and returns an exporter.TraceExporter targeting
 // Zipkin according to the configuration settings.
-func ZipkinExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataProcessor, mdps []processor.MetricsDataProcessor, doneFns []func() error, err error) {
+func ZipkinExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
 	var cfg struct {
 		Zipkin *ZipkinConfig `mapstructure:"zipkin"`
 	}
@@ -109,7 +109,7 @@ func ZipkinExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataProcess
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Cannot configure Zipkin exporter: %v", err)
 	}
-	tdps = append(tdps, zle)
+	tps = append(tps, zle)
 	doneFns = append(doneFns, zle.stop)
 	return
 }

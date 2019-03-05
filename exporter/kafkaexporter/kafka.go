@@ -29,9 +29,9 @@ type kafkaConfig struct {
 	Topic   string   `mapstructure:"topic,omitempty"`
 }
 
-// KafkaExportersFromViper unmarshals the viper and returns an processor.TraceDataProcessor targeting
+// KafkaExportersFromViper unmarshals the viper and returns an processor.TraceProcessor targeting
 // Kafka according to the configuration settings.
-func KafkaExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataProcessor, mdps []processor.MetricsDataProcessor, doneFns []func() error, err error) {
+func KafkaExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
 	var cfg struct {
 		Kafka *kafkaConfig `mapstructure:"kafka"`
 	}
@@ -53,7 +53,7 @@ func KafkaExportersFromViper(v *viper.Viper) (tdps []processor.TraceDataProcesso
 		return nil, nil, nil, fmt.Errorf("Cannot configure Kafka Trace exporter: %v", kerr)
 	}
 
-	tdps = append(tdps, exporterwrapper.NewExporterWrapper("kafka", kde))
+	tps = append(tps, exporterwrapper.NewExporterWrapper("kafka", kde))
 	doneFns = append(doneFns, func() error {
 		kde.Flush()
 		return nil
