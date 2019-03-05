@@ -21,8 +21,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/data"
-	"github.com/census-instrumentation/opencensus-service/processor"
 	"github.com/spf13/viper"
 
 	// TODO: once this repository has been transferred to the
@@ -45,10 +45,10 @@ type prometheusConfig struct {
 
 var errBlankPrometheusAddress = errors.New("expecting a non-blank address to run the Prometheus metrics handler")
 
-// PrometheusExportersFromViper unmarshals the viper and returns processor.MetricsProcessors
+// PrometheusExportersFromViper unmarshals the viper and returns consumer.MetricsConsumers
 // targeting Prometheus according to the configuration settings.
 // It allows HTTP clients to scrape it on endpoint path "/metrics".
-func PrometheusExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
+func PrometheusExportersFromViper(v *viper.Viper) (tps []consumer.TraceConsumer, mps []consumer.MetricsConsumer, doneFns []func() error, err error) {
 	var cfg struct {
 		Prometheus *prometheusConfig `mapstructure:"prometheus"`
 	}
@@ -101,9 +101,9 @@ type prometheusExporter struct {
 	exporter *prometheus.Exporter
 }
 
-var _ processor.MetricsProcessor = (*prometheusExporter)(nil)
+var _ consumer.MetricsConsumer = (*prometheusExporter)(nil)
 
-func (pe *prometheusExporter) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
+func (pe *prometheusExporter) ConsumeMetricsData(ctx context.Context, md data.MetricsData) error {
 	for _, metric := range md.Metrics {
 		_ = pe.exporter.ExportMetric(ctx, md.Node, md.Resource, metric)
 	}

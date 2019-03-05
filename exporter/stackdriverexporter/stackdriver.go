@@ -24,9 +24,9 @@ import (
 	"github.com/spf13/viper"
 	"go.opencensus.io/trace"
 
+	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/exporter/exporterwrapper"
-	"github.com/census-instrumentation/opencensus-service/processor"
 )
 
 type stackdriverConfig struct {
@@ -41,11 +41,11 @@ type stackdriverExporter struct {
 	exporter *stackdriver.Exporter
 }
 
-var _ processor.MetricsProcessor = (*stackdriverExporter)(nil)
+var _ consumer.MetricsConsumer = (*stackdriverExporter)(nil)
 
-// StackdriverTraceExportersFromViper unmarshals the viper and returns an processor.TraceProcessor targeting
+// StackdriverTraceExportersFromViper unmarshals the viper and returns an consumer.TraceConsumer targeting
 // Stackdriver according to the configuration settings.
-func StackdriverTraceExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
+func StackdriverTraceExportersFromViper(v *viper.Viper) (tps []consumer.TraceConsumer, mps []consumer.MetricsConsumer, doneFns []func() error, err error) {
 	var cfg struct {
 		Stackdriver *stackdriverConfig `mapstructure:"stackdriver"`
 	}
@@ -106,7 +106,7 @@ func StackdriverTraceExportersFromViper(v *viper.Viper) (tps []processor.TracePr
 	return
 }
 
-func (sde *stackdriverExporter) ProcessMetricsData(ctx context.Context, md data.MetricsData) error {
+func (sde *stackdriverExporter) ConsumeMetricsData(ctx context.Context, md data.MetricsData) error {
 	ctx, span := trace.StartSpan(ctx,
 		"opencensus.service.exporter.stackdriver.ExportMetricsData",
 		trace.WithSampler(trace.NeverSample()))

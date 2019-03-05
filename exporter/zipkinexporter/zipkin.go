@@ -31,9 +31,9 @@ import (
 	"go.opencensus.io/trace"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
+	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/observability"
-	"github.com/census-instrumentation/opencensus-service/processor"
 	spandatatranslator "github.com/census-instrumentation/opencensus-service/translator/trace/spandata"
 )
 
@@ -79,7 +79,7 @@ func (zc *ZipkinConfig) EndpointURL() string {
 
 // ZipkinExportersFromViper unmarshals the viper and returns an exporter.TraceExporter targeting
 // Zipkin according to the configuration settings.
-func ZipkinExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
+func ZipkinExportersFromViper(v *viper.Viper) (tps []consumer.TraceConsumer, mps []consumer.MetricsConsumer, doneFns []func() error, err error) {
 	var cfg struct {
 		Zipkin *ZipkinConfig `mapstructure:"zipkin"`
 	}
@@ -192,7 +192,7 @@ func (ze *zipkinExporter) stop() error {
 	return ze.reporter.Close()
 }
 
-func (ze *zipkinExporter) ProcessTraceData(ctx context.Context, td data.TraceData) (zerr error) {
+func (ze *zipkinExporter) ConsumeTraceData(ctx context.Context, td data.TraceData) (zerr error) {
 	ctx, span := trace.StartSpan(ctx,
 		"opencensus.service.exporter.zipkin.ExportTrace",
 		trace.WithSampler(trace.NeverSample()))

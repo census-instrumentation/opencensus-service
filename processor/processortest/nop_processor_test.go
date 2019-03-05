@@ -30,7 +30,7 @@ func TestNopTraceProcessorNoErrors(t *testing.T) {
 	want := data.TraceData{
 		Spans: make([]*tracepb.Span, 7),
 	}
-	if err := ntp.ProcessTraceData(context.Background(), want); err != nil {
+	if err := ntp.ConsumeTraceData(context.Background(), want); err != nil {
 		t.Errorf("Wanted nil got error")
 		return
 	}
@@ -46,7 +46,7 @@ func TestNopMetricsProcessorNoErrors(t *testing.T) {
 	want := data.MetricsData{
 		Metrics: make([]*metricspb.Metric, 7),
 	}
-	if err := nmp.ProcessMetricsData(context.Background(), want); err != nil {
+	if err := nmp.ConsumeMetricsData(context.Background(), want); err != nil {
 		t.Errorf("Wanted nil got error")
 		return
 	}

@@ -21,8 +21,8 @@ import (
 	"github.com/honeycombio/opencensus-exporter/honeycomb"
 	"github.com/spf13/viper"
 
+	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/exporter/exporterwrapper"
-	"github.com/census-instrumentation/opencensus-service/processor"
 )
 
 type honeycombConfig struct {
@@ -32,7 +32,7 @@ type honeycombConfig struct {
 
 // HoneycombTraceExportersFromViper unmarshals the viper and returns an exporter.TraceExporter
 // targeting Honeycomb according to the configuration settings.
-func HoneycombTraceExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
+func HoneycombTraceExportersFromViper(v *viper.Viper) (tps []consumer.TraceConsumer, mps []consumer.MetricsConsumer, doneFns []func() error, err error) {
 	var cfg struct {
 		Honeycomb *honeycombConfig `mapstructure:"honeycomb"`
 	}

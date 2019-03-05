@@ -25,11 +25,11 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
+	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/internal/compression"
 	"github.com/census-instrumentation/opencensus-service/internal/compression/grpc"
 	"github.com/census-instrumentation/opencensus-service/observability"
-	"github.com/census-instrumentation/opencensus-service/processor"
 )
 
 type opencensusConfig struct {
@@ -60,11 +60,11 @@ var (
 	ErrUnableToGetTLSCreds = errors.New("OpenCensus exporter unable to read TLS credentials")
 )
 
-var _ processor.TraceProcessor = (*ocagentExporter)(nil)
+var _ consumer.TraceConsumer = (*ocagentExporter)(nil)
 
-// OpenCensusTraceExportersFromViper unmarshals the viper and returns an processor.TraceProcessor targeting
+// OpenCensusTraceExportersFromViper unmarshals the viper and returns an consumer.TraceConsumer targeting
 // OpenCensus Agent/Collector according to the configuration settings.
-func OpenCensusTraceExportersFromViper(v *viper.Viper) (tps []processor.TraceProcessor, mps []processor.MetricsProcessor, doneFns []func() error, err error) {
+func OpenCensusTraceExportersFromViper(v *viper.Viper) (tps []consumer.TraceConsumer, mps []consumer.MetricsConsumer, doneFns []func() error, err error) {
 	var cfg struct {
 		OpenCensus *opencensusConfig `mapstructure:"opencensus"`
 	}
@@ -129,7 +129,7 @@ func OpenCensusTraceExportersFromViper(v *viper.Viper) (tps []processor.TracePro
 
 const exporterTagValue = "oc_trace"
 
-func (oce *ocagentExporter) ProcessTraceData(ctx context.Context, td data.TraceData) error {
+func (oce *ocagentExporter) ConsumeTraceData(ctx context.Context, td data.TraceData) error {
 	// Get an exporter worker round-robin
 	exporter := oce.exporters[atomic.AddUint32(&oce.counter, 1)%uint32(len(oce.exporters))]
 	err := exporter.ExportTraceServiceRequest(
