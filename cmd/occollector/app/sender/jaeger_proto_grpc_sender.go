@@ -16,7 +16,6 @@ package sender
 
 import (
 	"context"
-	"fmt"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -30,14 +29,14 @@ import (
 // JaegerProtoGRPCSender forwards spans encoded in the jaeger proto
 // format, to a grpc server.
 type JaegerProtoGRPCSender struct {
-	client *jaegerproto.CollectorServiceClient
+	client jaegerproto.CollectorServiceClient
 	logger *zap.Logger
 }
 
 // NewJaegerProtoGRPCSender returns a new GRPC-backend span sender.
 // The collector endpoint should be of the form "hostname:14250".
 func NewJaegerProtoGRPCSender(collectorEndpoint string, zlogger *zap.Logger) *JaegerProtoGRPCSender {
-	client := grpc.Dial(collectorEndpoint, grpc.WithInsecure())
+	client, _ := grpc.Dial(collectorEndpoint, grpc.WithInsecure())
 	collectorServiceClient := jaegerproto.NewCollectorServiceClient(client)
 	s := &JaegerProtoGRPCSender{
 		client: collectorServiceClient,
@@ -54,7 +53,7 @@ func (s *JaegerProtoGRPCSender) ProcessSpans(td data.TraceData, spanFormat strin
 		return err
 	}
 
-	_, err := s.client.PostSpans(context.Background(), &jaegerproto.PostSpansRequest{Batch: *protoBatch})
+	_, err = s.client.PostSpans(context.Background(), &jaegerproto.PostSpansRequest{Batch: *protoBatch})
 	if err != nil {
 		return err
 	}
