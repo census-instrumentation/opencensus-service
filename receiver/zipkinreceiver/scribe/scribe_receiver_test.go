@@ -35,7 +35,7 @@ import (
 
 func TestNonEqualCategoryIsIgnored(t *testing.T) {
 	sink := &mockTraceSink{}
-	traceReceiver, err := NewReceiver("", 0, "not-zipkin", nil)
+	traceReceiver, err := NewReceiver("", 0, "not-zipkin")
 	if err != nil {
 		t.Fatalf("Failed to create receiver: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestScribeReceiverPortAlreadyInUse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to convert %s to an int: %v", portStr, err)
 	}
-	traceReceiver, err := NewReceiver("", uint16(port), "zipkin", nil)
+	traceReceiver, err := NewReceiver("", uint16(port), "zipkin")
 	if err != nil {
 		t.Fatalf("Failed to create receiver: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestScribeReceiverServer(t *testing.T) {
 	const host = ""
 	const port = 9410
 
-	traceReceiver, err := NewReceiver(host, port, "zipkin", nil)
+	traceReceiver, err := NewReceiver(host, port, "zipkin")
 	if err != nil {
 		t.Fatalf("Failed to create receiver: %v", err)
 	}

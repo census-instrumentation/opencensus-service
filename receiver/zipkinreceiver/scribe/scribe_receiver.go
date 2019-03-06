@@ -20,7 +20,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/apache/thrift/lib/go/thrift"
@@ -30,54 +29,15 @@ import (
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/observability"
 	"github.com/census-instrumentation/opencensus-service/receiver"
-	"github.com/census-instrumentation/opencensus-service/receiver/factorytemplate"
 	zipkintranslator "github.com/census-instrumentation/opencensus-service/translator/trace/zipkin"
 )
 
 var (
 	errAlreadyStarted = errors.New("already started")
 	errAlreadyStopped = errors.New("already stopped")
-
-	// Factory implements the interface to build the receiver from configuration.
-	Factory receiver.TraceReceiverFactory
 )
 
 var _ receiver.TraceReceiver = (*scribeReceiver)(nil)
-
-// config carries the settings for the Zipkin Scribe receiver.
-type config struct {
-	// Address is an IP address or a name that can be resolved to a local address.
-	//
-	// It can use a name, but this is not recommended, because it will create
-	// a listener for at most one of the host's IP addresses.
-	//
-	// The default value bind to all available interfaces on the local computer.
-	Address string `mapstructure:"address"`
-	Port    uint16 `mapstructure:"port"`
-	// Category is the string that will be used to identify the scribe log messages
-	// that contain Zipkin spans.
-	Category string `mapstructure:"category"`
-}
-
-func newDefaultCfg() interface{} {
-	return &config{
-		Port:     9410,
-		Category: "zipkin",
-	}
-}
-
-func newReceiver(cfg interface{}, next consumer.TraceConsumer) (receiver.TraceReceiver, error) {
-	config := cfg.(*config)
-	return NewReceiver(config.Address, config.Port, config.Category, next)
-}
-
-func init() {
-	factory, err := factorytemplate.NewTraceReceiverFactory(strings.ToLower(traceSource), newDefaultCfg, newReceiver)
-	if err != nil {
-		panic("failed to create zipkin-scribe factory: " + err.Error())
-	}
-	Factory = factory
-}
 
 // scribeReceiver implements the receiver.TraceReceiver for Zipkin Scribe protocol.
 type scribeReceiver struct {
@@ -92,7 +52,7 @@ type scribeReceiver struct {
 }
 
 // NewReceiver creates the Zipkin Scribe receiver with the given parameters.
-func NewReceiver(addr string, port uint16, category string, next consumer.TraceConsumer) (receiver.TraceReceiver, error) {
+func NewReceiver(addr string, port uint16, category string) (receiver.TraceReceiver, error) {
 	r := &scribeReceiver{
 		addr: addr,
 		port: port,
