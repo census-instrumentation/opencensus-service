@@ -177,7 +177,7 @@ func (f *factory) configFromViper(v *viper.Viper) (cfg interface{}, err error) {
 	}
 
 	cfg = f.newDefaultCfg()
-	err = v.UnmarshalKey("receivers."+f.Type(), cfg)
+	err = v.Unmarshal(cfg)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -96,10 +97,79 @@ func TestNewTraceReceiverFactory(t *testing.T) {
 	}
 }
 
+func TestNewMetricsReceiverFactory(t *testing.T) {
+	type args struct {
+		receiverType  string
+		newDefaultCfg func() interface{}
+		newReceiver   func(interface{}) (receiver.MetricsReceiver, error)
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    interface{}
+		wantErr error
+	}{
+		{
+			name:    "empty receiverType",
+			want:    nil,
+			wantErr: ErrEmptyReciverType,
+		},
+		{
+			name: "nil newDefaultCfg",
+			args: args{
+				receiverType: "friendlyReceiverTypeName",
+			},
+			want:    nil,
+			wantErr: ErrNilNewDefaultCfg,
+		},
+		{
+			name: "nil newReceiver",
+			args: args{
+				receiverType:  "friendlyReceiverTypeName",
+				newDefaultCfg: newMockReceiverDefaultCfg,
+			},
+			want:    nil,
+			wantErr: ErrNilNewReceiver,
+		},
+		{
+			name: "happy path",
+			args: args{
+				receiverType:  "friendlyReceiverTypeName",
+				newDefaultCfg: newMockReceiverDefaultCfg,
+				newReceiver:   newMockMetricsReceiver,
+			},
+			want: &metricsReceiverFactory{
+				factory: factory{
+					receiverType:  "friendlyReceiverTypeName",
+					newDefaultCfg: newMockReceiverDefaultCfg,
+				},
+				newReceiver: newMockMetricsReceiver,
+			},
+			wantErr: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewMetricsReceiverFactory(tt.args.receiverType, tt.args.newDefaultCfg, tt.args.newReceiver)
+			if err != tt.wantErr {
+				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got == nil && tt.want == nil {
+				return
+			}
+			want := tt.want.(receiver.MetricsReceiverFactory)
+			if got.Type() != want.Type() {
+				t.Errorf("New() = %v, want %v", got, want)
+			}
+		})
+	}
+}
+
 func Test_traceReceiverFactory_NewFromViper(t *testing.T) {
-	factories := []receiver.TraceReceiverFactory{
-		checkedBuildReceiverFactory(t, "mockReceiver", newMockReceiverDefaultCfg, newMockReceiver),
-		checkedBuildReceiverFactory(t, "altMockReceiver", altNewMockReceiverDefaultCfg, newMockReceiver),
+	factories := map[string]receiver.TraceReceiverFactory{
+		"mockreceiver":    checkedBuildReceiverFactory(t, "mockReceiver", newMockReceiverDefaultCfg, newMockReceiver),
+		"altmockreceiver": checkedBuildReceiverFactory(t, "altMockReceiver", altNewMockReceiverDefaultCfg, newMockReceiver),
 	}
 
 	v := viper.New()
@@ -108,9 +178,34 @@ func Test_traceReceiverFactory_NewFromViper(t *testing.T) {
 		t.Fatalf("failed to read config file for test: %v", err)
 	}
 
+	const subTree = "configurations.test-receivers"
+	v = v.Sub(subTree)
+	if v == nil {
+		t.Fatalf("failed to find expected sub-tree %q on the configuration", subTree)
+	}
+
 	var got []mockReceiverCfg
-	for _, factory := range factories {
-		r, _, err := factory.NewFromViper(v)
+	for subKey := range v.AllSettings() {
+		subCfg := v.Sub(subKey)
+		if subCfg == nil {
+			t.Fatalf("missing expected section %q", subKey)
+		}
+
+		factory, hasFactory := factories[subKey]
+		if !hasFactory {
+			// Try to get from the "type"
+			receiverType := subCfg.GetString("type")
+			if receiverType == "" {
+				t.Fatalf("there is no factory for %q and the corresponding \"type\" entry is empty", subKey)
+			}
+			factory, hasFactory = factories[receiverType]
+			if !hasFactory {
+				t.Fatalf("there is no factory for type %q (see section %q)", receiverType, subKey)
+			}
+			subKey = receiverType
+		}
+
+		r, _, err := factory.NewFromViper(subCfg)
 		if err != nil {
 			t.Fatalf("failed to create receiver from factory: %v", err)
 		}
@@ -126,6 +221,21 @@ func Test_traceReceiverFactory_NewFromViper(t *testing.T) {
 			Address: "altMockReceiverAddress",
 			Port:    123,
 		},
+		{
+			Address: "1.2.3.4",
+			Port:    333,
+		},
+	}
+
+	sort.Slice(got, func(i, j int) bool {
+		return got[i].Address < got[j].Address
+	})
+	sort.Slice(want, func(i, j int) bool {
+		return want[i].Address < want[j].Address
+	})
+
+	if len(got) != len(want) {
+		t.Fatalf("len(got) = %d, len(want) = %d", len(got), len(want))
 	}
 
 	for i := range got {
