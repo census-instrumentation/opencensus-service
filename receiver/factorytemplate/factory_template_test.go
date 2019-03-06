@@ -250,7 +250,7 @@ func Test_traceReceiverFactory_NewFromViper(t *testing.T) {
 func Test_traceReceiverFactory_NewFromViper_Errors(t *testing.T) {
 	errNewReceiver := errors.New("failed to create receiver")
 	type args struct {
-		v *viper.Viper
+		v    *viper.Viper
 		next consumer.TraceConsumer
 	}
 	tests := []struct {
@@ -261,28 +261,28 @@ func Test_traceReceiverFactory_NewFromViper_Errors(t *testing.T) {
 		{
 			name: "nil next",
 			args: args{
-				v: viper.New(), 
+				v: viper.New(),
 			},
 			wantErr: ErrNilNext,
 		},
 		{
 			name: "nil viper",
 			args: args{
-				next: exportertest.NewNopTraceExporter(), 
+				next: exportertest.NewNopTraceExporter(),
 			},
 			wantErr: ErrNilViper,
 		},
 		{
 			name: "err newReceiver",
 			args: args{
-				v: viper.New(), 
-				next: exportertest.NewNopTraceExporter(), 
+				v:    viper.New(),
+				next: exportertest.NewNopTraceExporter(),
 			},
 			wantErr: errNewReceiver,
 		},
 	}
 
-	newTraceReceiverAlwaysFail := func (cfg interface{}, next consumer.TraceConsumer) (receiver.TraceReceiver, error) {
+	newTraceReceiverAlwaysFail := func(cfg interface{}, next consumer.TraceConsumer) (receiver.TraceReceiver, error) {
 		return nil, errNewReceiver
 	}
 	factory, err := NewTraceReceiverFactory(
@@ -335,7 +335,7 @@ func Test_metricsReceiverFactory_NewFromViper(t *testing.T) {
 func Test_metricsReceiverFactory_NewFromViper_Errors(t *testing.T) {
 	errNewReceiver := errors.New("failed to create receiver")
 	type args struct {
-		v *viper.Viper
+		v    *viper.Viper
 		next consumer.MetricsConsumer
 	}
 	tests := []struct {
@@ -346,28 +346,28 @@ func Test_metricsReceiverFactory_NewFromViper_Errors(t *testing.T) {
 		{
 			name: "nil next",
 			args: args{
-				v: viper.New(), 
+				v: viper.New(),
 			},
 			wantErr: ErrNilNext,
 		},
 		{
 			name: "nil viper",
 			args: args{
-				next: exportertest.NewNopMetricsExporter(), 
+				next: exportertest.NewNopMetricsExporter(),
 			},
 			wantErr: ErrNilViper,
 		},
 		{
 			name: "err newReceiver",
 			args: args{
-				v: viper.New(), 
-				next: exportertest.NewNopMetricsExporter(), 
+				v:    viper.New(),
+				next: exportertest.NewNopMetricsExporter(),
 			},
 			wantErr: errNewReceiver,
 		},
 	}
 
-	newMetricsReceiverAlwaysFail := func (cfg interface{}, next consumer.MetricsConsumer) (receiver.MetricsReceiver, error) {
+	newMetricsReceiverAlwaysFail := func(cfg interface{}, next consumer.MetricsConsumer) (receiver.MetricsReceiver, error) {
 		return nil, errNewReceiver
 	}
 
