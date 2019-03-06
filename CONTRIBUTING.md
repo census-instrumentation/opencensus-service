@@ -55,6 +55,8 @@ $ make install-tools # Only first time.
 $ make
 ```
 
+*Note:* the default build target requires tools that are installed at `$(go env GOPATH)/bin`, ensure that `$(go env GOPATH)/bin` is included in your `PATH`.
+
 ## Creating a PR
 
 Checkout a new branch, make modifications, build locally, and push the branch to your fork
