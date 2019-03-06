@@ -35,7 +35,7 @@ import (
 
 func TestNonEqualCategoryIsIgnored(t *testing.T) {
 	sink := &mockTraceSink{}
-	traceReceiver, err := NewReceiver("", 0, "not-zipkin")
+	traceReceiver, err := NewReceiver("", 0, "not-zipkin", sink)
 	if err != nil {
 		t.Fatalf("Failed to create receiver: %v", err)
 	}
@@ -74,11 +74,11 @@ func TestScribeReceiverPortAlreadyInUse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to convert %s to an int: %v", portStr, err)
 	}
-	traceReceiver, err := NewReceiver("", uint16(port), "zipkin")
+	traceReceiver, err := NewReceiver("", uint16(port), "zipkin", nil)
 	if err != nil {
 		t.Fatalf("Failed to create receiver: %v", err)
 	}
-	err = traceReceiver.StartTraceReception(context.Background(), &mockTraceSink{})
+	err = traceReceiver.StartTraceReception(context.Background(), nil)
 	if err == nil {
 		traceReceiver.StopTraceReception(context.Background())
 		t.Fatal("conflict on port was expected")
@@ -90,11 +90,6 @@ func TestScribeReceiverServer(t *testing.T) {
 	const host = ""
 	const port = 9410
 
-	traceReceiver, err := NewReceiver(host, port, "zipkin")
-	if err != nil {
-		t.Fatalf("Failed to create receiver: %v", err)
-	}
-
 	messages := []*scribe.LogEntry{
 		{
 			Category: "zipkin",
@@ -103,7 +98,13 @@ func TestScribeReceiverServer(t *testing.T) {
 		},
 	}
 	sink := newMockTraceSink(len(messages))
-	traceReceiver.StartTraceReception(context.Background(), sink)
+
+	traceReceiver, err := NewReceiver(host, port, "zipkin", sink)
+	if err != nil {
+		t.Fatalf("Failed to create receiver: %v", err)
+	}
+
+	traceReceiver.StartTraceReception(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("Failed to start trace reception: %v", err)
 	}

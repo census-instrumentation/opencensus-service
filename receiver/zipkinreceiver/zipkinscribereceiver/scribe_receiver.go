@@ -52,7 +52,7 @@ type scribeReceiver struct {
 }
 
 // NewReceiver creates the Zipkin Scribe receiver with the given parameters.
-func NewReceiver(addr string, port uint16, category string) (receiver.TraceReceiver, error) {
+func NewReceiver(addr string, port uint16, category string, nextConsumer consumer.TraceConsumer) (receiver.TraceReceiver, error) {
 	r := &scribeReceiver{
 		addr: addr,
 		port: port,
@@ -60,6 +60,7 @@ func NewReceiver(addr string, port uint16, category string) (receiver.TraceRecei
 			category:            category,
 			msgDecoder:          base64.StdEncoding.WithPadding('='),
 			tBinProtocolFactory: thrift.NewTBinaryProtocolFactory(true, false),
+			nextConsumer:        nextConsumer,
 			defaultCtx:          observability.ContextWithReceiverName(context.Background(), "zipkin-scribe"),
 		},
 	}
@@ -73,18 +74,17 @@ func (r *scribeReceiver) TraceSource() string {
 	return traceSource
 }
 
-func (r *scribeReceiver) StartTraceReception(ctx context.Context, nextConsumer consumer.TraceConsumer) error {
+func (r *scribeReceiver) StartTraceReception(ctx context.Context, asyncErrorChan chan<- error) error {
 	r.Lock()
 	defer r.Unlock()
 
-	if nextConsumer == nil {
+	if r.collector.nextConsumer == nil {
 		return errors.New("trace reception requires a non-nil destination")
 	}
 
 	err := errAlreadyStarted
 	r.startOnce.Do(func() {
 		err = nil
-		r.collector.nextConsumer = nextConsumer
 		serverSocket, sockErr := thrift.NewTServerSocket(r.addr + ":" + strconv.Itoa(int(r.port)))
 		if sockErr != nil {
 			err = sockErr
