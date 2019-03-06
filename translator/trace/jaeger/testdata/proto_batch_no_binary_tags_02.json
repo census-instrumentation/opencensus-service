@@ -5,8 +5,8 @@
     },
     "spans": [
       {
-        "trace_id": 5951113872249657919,
-        "span_id": 6585752,
+        "trace_id": "AAAAAAAAAABSlpqJVVcaPw==",
+        "span_id": "AAAAAABkfZg=",
         "operation_name": "get",
         "start_time": 1485467191639875,
         "duration": 22938,
@@ -24,18 +24,18 @@
         ]
       },
       {
-          "trace_id": 5951113872249657919,
+          "trace_id": "AAAAAAAAAABSlpqJVVcaPw==",
           "span_id": 6585753,
           "operation_name": "get",
           "references": [
             {
               "ref_type": "CHILD_OF",
-              "trace_id": 5951113872249657919,
-              "spanId": 6585752
+              "trace_id": "AAAAAAAAAABSlpqJVVcaPw==",
+              "spanId": "AAAAAABkfZg="
             },
             {
               "ref_type": "FOLLOWS_FROM",
-              "trace_id": 5951113872249657919,
+              "trace_id": "AAAAAAAAAABSlpqJVVcaPw==",
               "span_id": 6866147
             }
           ],
@@ -50,7 +50,7 @@
           ]
         },
         {
-            "trace_id": 5951113872249657919,
+            "trace_id": "AAAAAAAAAABSlpqJVVcaPw==",
             "span_id": 6585752,
             "operation_name": "get2",
             "start_time": 1485467192639875,
