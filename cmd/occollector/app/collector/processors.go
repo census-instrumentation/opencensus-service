@@ -74,7 +74,7 @@ func buildQueuedSpanProcessor(
 			DiscoveryMinPeers:  thriftTChannelSenderOpts.DiscoveryMinPeers,
 			ConnCheckTimeout:   thriftTChannelSenderOpts.DiscoveryConnCheckTimeout,
 		}
-		tchreporter, err := tchrepbuilder.CreateReporter(metrics.NullFactory, logger)
+		tchreporter, err := tchrepbuilder.CreateReporter(logger)
 		if err != nil {
 			logger.Fatal("Cannot create tchannel reporter.", zap.Error(err))
 			return nil, nil, err
