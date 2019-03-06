@@ -15,7 +15,6 @@
 package jaeger
 
 import (
-	"errors"
 	"fmt"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
