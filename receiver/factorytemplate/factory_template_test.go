@@ -16,6 +16,7 @@ package factorytemplate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -24,7 +25,8 @@ import (
 	"github.com/spf13/viper"
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/census-instrumentation/opencensus-service/processor"
+	"github.com/census-instrumentation/opencensus-service/consumer"
+	"github.com/census-instrumentation/opencensus-service/exporter/exportertest"
 	"github.com/census-instrumentation/opencensus-service/receiver"
 )
 
@@ -32,7 +34,7 @@ func TestNewTraceReceiverFactory(t *testing.T) {
 	type args struct {
 		receiverType  string
 		newDefaultCfg func() interface{}
-		newReceiver   func(interface{}) (receiver.TraceReceiver, error)
+		newReceiver   func(interface{}, consumer.TraceConsumer) (receiver.TraceReceiver, error)
 	}
 	tests := []struct {
 		name    string
@@ -67,14 +69,14 @@ func TestNewTraceReceiverFactory(t *testing.T) {
 			args: args{
 				receiverType:  "friendlyReceiverTypeName",
 				newDefaultCfg: newMockReceiverDefaultCfg,
-				newReceiver:   newMockReceiver,
+				newReceiver:   newMockTraceReceiver,
 			},
 			want: &traceReceiverFactory{
 				factory: factory{
 					receiverType:  "friendlyReceiverTypeName",
 					newDefaultCfg: newMockReceiverDefaultCfg,
 				},
-				newReceiver: newMockReceiver,
+				newReceiver: newMockTraceReceiver,
 			},
 			wantErr: nil,
 		},
@@ -83,7 +85,7 @@ func TestNewTraceReceiverFactory(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewTraceReceiverFactory(tt.args.receiverType, tt.args.newDefaultCfg, tt.args.newReceiver)
 			if err != tt.wantErr {
-				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewTraceReceiverFactory() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got == nil && tt.want == nil {
@@ -91,7 +93,7 @@ func TestNewTraceReceiverFactory(t *testing.T) {
 			}
 			want := tt.want.(receiver.TraceReceiverFactory)
 			if got.Type() != want.Type() {
-				t.Errorf("New() = %v, want %v", got, want)
+				t.Errorf("NewTraceReceiverFactory() = %v, want %v", got, want)
 			}
 		})
 	}
@@ -101,7 +103,7 @@ func TestNewMetricsReceiverFactory(t *testing.T) {
 	type args struct {
 		receiverType  string
 		newDefaultCfg func() interface{}
-		newReceiver   func(interface{}) (receiver.MetricsReceiver, error)
+		newReceiver   func(interface{}, consumer.MetricsConsumer) (receiver.MetricsReceiver, error)
 	}
 	tests := []struct {
 		name    string
@@ -152,7 +154,7 @@ func TestNewMetricsReceiverFactory(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewMetricsReceiverFactory(tt.args.receiverType, tt.args.newDefaultCfg, tt.args.newReceiver)
 			if err != tt.wantErr {
-				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewMetricsReceiverFactory() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got == nil && tt.want == nil {
@@ -160,7 +162,7 @@ func TestNewMetricsReceiverFactory(t *testing.T) {
 			}
 			want := tt.want.(receiver.MetricsReceiverFactory)
 			if got.Type() != want.Type() {
-				t.Errorf("New() = %v, want %v", got, want)
+				t.Errorf("NewMetricsReceiverFactory() = %v, want %v", got, want)
 			}
 		})
 	}
@@ -168,8 +170,8 @@ func TestNewMetricsReceiverFactory(t *testing.T) {
 
 func Test_traceReceiverFactory_NewFromViper(t *testing.T) {
 	factories := map[string]receiver.TraceReceiverFactory{
-		"mockreceiver":    checkedBuildReceiverFactory(t, "mockReceiver", newMockReceiverDefaultCfg, newMockReceiver),
-		"altmockreceiver": checkedBuildReceiverFactory(t, "altMockReceiver", altNewMockReceiverDefaultCfg, newMockReceiver),
+		"mockreceiver":    checkedBuildReceiverFactory(t, "mockReceiver", newMockReceiverDefaultCfg, newMockTraceReceiver),
+		"altmockreceiver": checkedBuildReceiverFactory(t, "altMockReceiver", altNewMockReceiverDefaultCfg, newMockTraceReceiver),
 	}
 
 	v := viper.New()
@@ -205,7 +207,7 @@ func Test_traceReceiverFactory_NewFromViper(t *testing.T) {
 			subKey = receiverType
 		}
 
-		r, _, err := factory.NewFromViper(subCfg)
+		r, _, err := factory.NewFromViper(subCfg, exportertest.NewNopTraceExporter())
 		if err != nil {
 			t.Fatalf("failed to create receiver from factory: %v", err)
 		}
@@ -245,6 +247,64 @@ func Test_traceReceiverFactory_NewFromViper(t *testing.T) {
 	}
 }
 
+func Test_traceReceiverFactory_NewFromViper_Errors(t *testing.T) {
+	errNewReceiver := errors.New("failed to create receiver")
+	type args struct {
+		v *viper.Viper
+		next consumer.TraceConsumer
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr error
+	}{
+		{
+			name: "nil next",
+			args: args{
+				v: viper.New(), 
+			},
+			wantErr: ErrNilNext,
+		},
+		{
+			name: "nil viper",
+			args: args{
+				next: exportertest.NewNopTraceExporter(), 
+			},
+			wantErr: ErrNilViper,
+		},
+		{
+			name: "err newReceiver",
+			args: args{
+				v: viper.New(), 
+				next: exportertest.NewNopTraceExporter(), 
+			},
+			wantErr: errNewReceiver,
+		},
+	}
+
+	newTraceReceiverAlwaysFail := func (cfg interface{}, next consumer.TraceConsumer) (receiver.TraceReceiver, error) {
+		return nil, errNewReceiver
+	}
+	factory, err := NewTraceReceiverFactory(
+		"mockTraceReceiver",
+		newMockReceiverDefaultCfg,
+		newTraceReceiverAlwaysFail,
+	)
+	if err != nil {
+		t.Fatalf("failed to create factory: %v", err)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := factory.NewFromViper(tt.args.v, tt.args.next)
+			if err != tt.wantErr {
+				t.Errorf("NewFromViper() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
 func Test_metricsReceiverFactory_NewFromViper(t *testing.T) {
 	factory, err := NewMetricsReceiverFactory(
 		"mockMetricsReceiver",
@@ -256,7 +316,7 @@ func Test_metricsReceiverFactory_NewFromViper(t *testing.T) {
 	}
 
 	v := viper.New()
-	r, _, err := factory.NewFromViper(v)
+	r, _, err := factory.NewFromViper(v, exportertest.NewNopMetricsExporter())
 	if err != nil {
 		t.Fatalf("failed to create receiver from factory: %v", err)
 	}
@@ -272,17 +332,76 @@ func Test_metricsReceiverFactory_NewFromViper(t *testing.T) {
 	}
 }
 
+func Test_metricsReceiverFactory_NewFromViper_Errors(t *testing.T) {
+	errNewReceiver := errors.New("failed to create receiver")
+	type args struct {
+		v *viper.Viper
+		next consumer.MetricsConsumer
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr error
+	}{
+		{
+			name: "nil next",
+			args: args{
+				v: viper.New(), 
+			},
+			wantErr: ErrNilNext,
+		},
+		{
+			name: "nil viper",
+			args: args{
+				next: exportertest.NewNopMetricsExporter(), 
+			},
+			wantErr: ErrNilViper,
+		},
+		{
+			name: "err newReceiver",
+			args: args{
+				v: viper.New(), 
+				next: exportertest.NewNopMetricsExporter(), 
+			},
+			wantErr: errNewReceiver,
+		},
+	}
+
+	newMetricsReceiverAlwaysFail := func (cfg interface{}, next consumer.MetricsConsumer) (receiver.MetricsReceiver, error) {
+		return nil, errNewReceiver
+	}
+
+	factory, err := NewMetricsReceiverFactory(
+		"mockMetricsReceiver",
+		newMockReceiverDefaultCfg,
+		newMetricsReceiverAlwaysFail,
+	)
+	if err != nil {
+		t.Fatalf("failed to create factory: %v", err)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := factory.NewFromViper(tt.args.v, tt.args.next)
+			if err != tt.wantErr {
+				t.Errorf("NewFromViper() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
 func Test_factory_AddDefaultConfig(t *testing.T) {
 	tests := []struct {
 		factory receiver.TraceReceiverFactory
 		want    mockReceiverCfg
 	}{
 		{
-			factory: checkedBuildReceiverFactory(t, "mockReceiver", newMockReceiverDefaultCfg, newMockReceiver),
+			factory: checkedBuildReceiverFactory(t, "mockReceiver", newMockReceiverDefaultCfg, newMockTraceReceiver),
 			want:    *newMockReceiverDefaultCfg().(*mockReceiverCfg),
 		},
 		{
-			factory: checkedBuildReceiverFactory(t, "altMockReceiver", altNewMockReceiverDefaultCfg, newMockReceiver),
+			factory: checkedBuildReceiverFactory(t, "altMockReceiver", altNewMockReceiverDefaultCfg, newMockTraceReceiver),
 			want:    *altNewMockReceiverDefaultCfg().(*mockReceiverCfg),
 		},
 	}
@@ -309,17 +428,17 @@ func Examplefactory_AddDefaultConfig() {
 	templateArgs := []struct {
 		receiverType  string
 		newDefaultCfg func() interface{}
-		newReceiver   func(interface{}) (receiver.TraceReceiver, error)
+		newReceiver   func(interface{}, consumer.TraceConsumer) (receiver.TraceReceiver, error)
 	}{
 		{
 			receiverType:  "mockReceiver",
 			newDefaultCfg: newMockReceiverDefaultCfg,
-			newReceiver:   newMockReceiver,
+			newReceiver:   newMockTraceReceiver,
 		},
 		{
 			receiverType:  "altMockReceiver",
 			newDefaultCfg: altNewMockReceiverDefaultCfg,
-			newReceiver:   newMockReceiver,
+			newReceiver:   newMockTraceReceiver,
 		},
 	}
 
@@ -351,7 +470,7 @@ func checkedBuildReceiverFactory(
 	t *testing.T,
 	receiverType string,
 	newDefaultCfg func() interface{},
-	newReceiver func(interface{}) (receiver.TraceReceiver, error),
+	newReceiver func(interface{}, consumer.TraceConsumer) (receiver.TraceReceiver, error),
 ) receiver.TraceReceiverFactory {
 	factory, err := NewTraceReceiverFactory(receiverType, newDefaultCfg, newReceiver)
 	if err != nil {
@@ -383,13 +502,13 @@ func altNewMockReceiverDefaultCfg() interface{} {
 	}
 }
 
-func newMockReceiver(cfg interface{}) (receiver.TraceReceiver, error) {
+func newMockTraceReceiver(cfg interface{}, next consumer.TraceConsumer) (receiver.TraceReceiver, error) {
 	return &mockReceiver{
 		config: cfg.(*mockReceiverCfg),
 	}, nil
 }
 
-func newMockMetricsReceiver(cfg interface{}) (receiver.MetricsReceiver, error) {
+func newMockMetricsReceiver(cfg interface{}, next consumer.MetricsConsumer) (receiver.MetricsReceiver, error) {
 	return &mockReceiver{
 		config: cfg.(*mockReceiverCfg),
 	}, nil
@@ -405,7 +524,7 @@ func (mr *mockReceiver) TraceSource() string {
 	return "mockReceiver"
 }
 
-func (mr *mockReceiver) StartTraceReception(ctx context.Context, nextProcessor processor.TraceDataProcessor) error {
+func (mr *mockReceiver) StartTraceReception(ctx context.Context, nextConsumer consumer.TraceConsumer) error {
 	if mr == nil {
 		panic("mockReceiver is nil")
 	}
@@ -426,7 +545,7 @@ func (mr *mockReceiver) MetricsSource() string {
 	return "mockReceiver"
 }
 
-func (mr *mockReceiver) StartMetricsReception(ctx context.Context, nextProcessor processor.MetricsDataProcessor) error {
+func (mr *mockReceiver) StartMetricsReception(ctx context.Context, nextConsumer consumer.MetricsConsumer) error {
 	if mr == nil {
 		panic("mockReceiver is nil")
 	}

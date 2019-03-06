@@ -66,9 +66,9 @@ func newDefaultCfg() interface{} {
 	}
 }
 
-func newReceiver(cfg interface{}) (receiver.TraceReceiver, error) {
+func newReceiver(cfg interface{}, next consumer.TraceConsumer) (receiver.TraceReceiver, error) {
 	config := cfg.(*config)
-	return NewReceiver(config.Address, config.Port, config.Category)
+	return NewReceiver(config.Address, config.Port, config.Category, next)
 }
 
 func init() {
@@ -92,7 +92,7 @@ type scribeReceiver struct {
 }
 
 // NewReceiver creates the Zipkin Scribe receiver with the given parameters.
-func NewReceiver(addr string, port uint16, category string) (receiver.TraceReceiver, error) {
+func NewReceiver(addr string, port uint16, category string, next consumer.TraceConsumer) (receiver.TraceReceiver, error) {
 	r := &scribeReceiver{
 		addr: addr,
 		port: port,

@@ -310,7 +310,7 @@ func runZipkinReceiver(addr string, next consumer.TraceConsumer) (doneFn func() 
 }
 
 func runZipkinScribeReceiver(config *config.ScribeReceiverConfig, next consumer.TraceConsumer) (doneFn func() error, err error) {
-	zs, err := scribe.NewReceiver(config.Address, config.Port, config.Category)
+	zs, err := scribe.NewReceiver(config.Address, config.Port, config.Category, next)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the Zipkin Scribe receiver: %v", err)
 	}

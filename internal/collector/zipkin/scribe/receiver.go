@@ -32,7 +32,7 @@ import (
 func Start(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor) (receiver.TraceReceiver, error) {
 	factory := scribe.Factory
 	ss := processor.WrapWithSpanSink(factory.Type(), spanProc)
-	sr, cfg, err := factory.NewFromViper(v)
+	sr, cfg, err := factory.NewFromViper(v, ss)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the %s trace receiver: %v", factory.Type(), err)
 	}

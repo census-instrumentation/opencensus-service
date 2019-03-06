@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/receiver"
 )
 
@@ -32,6 +33,8 @@ var (
 	ErrNilNewDefaultCfg = errors.New("nil newDefaultCfg")
 	// ErrNilNewReceiver is returned when a nil newReceiver is given.
 	ErrNilNewReceiver = errors.New("nil newReceiver")
+	// ErrNilNext is returned when a nil next is given.
+	ErrNilNext = errors.New("nil next")
 	// ErrNilViper is returned when the required viper parameter was nil.
 	ErrNilViper = errors.New("nil Viper instance")
 )
@@ -46,14 +49,14 @@ type factory struct {
 
 type traceReceiverFactory struct {
 	factory
-	newReceiver func(interface{}) (receiver.TraceReceiver, error)
+	newReceiver func(interface{}, consumer.TraceConsumer) (receiver.TraceReceiver, error)
 }
 
 var _ (receiver.TraceReceiverFactory) = (*traceReceiverFactory)(nil)
 
 type metricsReceiverFactory struct {
 	factory
-	newReceiver func(interface{}) (receiver.MetricsReceiver, error)
+	newReceiver func(interface{}, consumer.MetricsConsumer) (receiver.MetricsReceiver, error)
 }
 
 var _ (receiver.MetricsReceiverFactory) = (*metricsReceiverFactory)(nil)
@@ -72,7 +75,7 @@ var _ (receiver.MetricsReceiverFactory) = (*metricsReceiverFactory)(nil)
 func NewTraceReceiverFactory(
 	receiverType string,
 	newDefaulfCfg func() interface{},
-	newReceiver func(interface{}) (receiver.TraceReceiver, error),
+	newReceiver func(interface{}, consumer.TraceConsumer) (receiver.TraceReceiver, error),
 ) (receiver.TraceReceiverFactory, error) {
 	if receiverType == "" {
 		return nil, ErrEmptyReciverType
@@ -107,7 +110,7 @@ func NewTraceReceiverFactory(
 func NewMetricsReceiverFactory(
 	receiverType string,
 	newDefaulfCfg func() interface{},
-	newReceiver func(interface{}) (receiver.MetricsReceiver, error),
+	newReceiver func(interface{}, consumer.MetricsConsumer) (receiver.MetricsReceiver, error),
 ) (receiver.MetricsReceiverFactory, error) {
 	if receiverType == "" {
 		return nil, ErrEmptyReciverType
@@ -135,12 +138,15 @@ func (f *factory) Type() string {
 
 // NewFromViper takes a viper.Viper configuration and creates a new TraceReceiver.
 // Returning also the configuration used to create it.
-func (trf *traceReceiverFactory) NewFromViper(v *viper.Viper) (receiver.TraceReceiver, interface{}, error) {
+func (trf *traceReceiverFactory) NewFromViper(v *viper.Viper, next consumer.TraceConsumer) (receiver.TraceReceiver, interface{}, error) {
+	if next == nil {
+		return nil, nil, ErrNilNext
+	}
 	cfg, err := trf.configFromViper(v)
 	if err != nil {
 		return nil, nil, err
 	}
-	r, err := trf.newReceiver(cfg)
+	r, err := trf.newReceiver(cfg, next)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -150,12 +156,15 @@ func (trf *traceReceiverFactory) NewFromViper(v *viper.Viper) (receiver.TraceRec
 
 // NewFromViper takes a viper.Viper configuration and creates a new TraceReceiver.
 // Returning also the configuration used to create it.
-func (mrf *metricsReceiverFactory) NewFromViper(v *viper.Viper) (receiver.MetricsReceiver, interface{}, error) {
+func (mrf *metricsReceiverFactory) NewFromViper(v *viper.Viper, next consumer.MetricsConsumer) (receiver.MetricsReceiver, interface{}, error) {
+	if next == nil {
+		return nil, nil, ErrNilNext
+	}
 	cfg, err := mrf.configFromViper(v)
 	if err != nil {
 		return nil, nil, err
 	}
-	r, err := mrf.newReceiver(cfg)
+	r, err := mrf.newReceiver(cfg, next)
 	if err != nil {
 		return nil, nil, err
 	}
