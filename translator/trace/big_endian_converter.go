@@ -102,17 +102,3 @@ func BytesToInt64SpanID(b []byte) (int64, error) {
 	id, err := BytesToUInt64SpanID(b)
 	return int64(id), err
 }
-
-// TraceIDBytesToUnsignedLowAndHigh converts 16byte TraceID to BigEndian format
-// and returns two uint64 integers as required by Jaeger format.
-func TraceIDBytesToUnsignedLowAndHigh(traceID []byte) (traceIDLow, traceIDHigh uint64) {
-	traceIDHigh = binary.BigEndian.Uint64(traceID[:8])
-	traceIDLow = binary.BigEndian.Uint64(traceID[8:])
-	return traceIDLow, traceIDHigh
-}
-
-// OcIDBytesToUnsignedInt converts 8byte SpanID to BigEndian format
-// and returns an uint64 integer as required by Jaeger format.
-func OcIDBytesToUnsignedInt(b []byte) (id uint64) {
-	return binary.BigEndian.Uint64(b)
-}

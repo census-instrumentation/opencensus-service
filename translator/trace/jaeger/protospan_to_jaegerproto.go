@@ -161,21 +161,21 @@ func ocLinksToJaegerReferencesProto(ocSpanLinks *tracepb.Span_Links) ([]jaeger.S
 	for _, ocLink := range ocLinks {
 		var traceID jaeger.TraceID
 		// Checks for nil/wrongLen traceID are already done in ocSpansToJaegerSpansProto()
-		traceIDLow, traceIDHigh := tracetranslator.TraceIDBytesToUnsignedLowAndHigh(ocLink.TraceId)
+		traceIDLow, traceIDHigh, err := tracetranslator.BytesToUInt64TraceID(ocLink.TraceId)
+		if err != nil {
+			return nil, err
+		}
 		traceID = jaeger.TraceID{
 			Low:  traceIDLow,
 			High: traceIDHigh,
 		}
 
 		var spanID jaeger.SpanID
-		if ocLink.SpanId == nil {
-			return nil, errNilID
-		}
-		if len(ocLink.SpanId) != 8 {
-			return nil, errWrongLenID
+		uSpanID, err := tracetranslator.BytesToUInt64SpanID(ocLink.SpanId)
+		if err != nil {
+			return nil, err
 		}
 
-		uSpanID := tracetranslator.OcIDBytesToUnsignedInt(ocLink.SpanId)
 		if uSpanID == 0 {
 			return nil, errZeroSpanID
 		}
@@ -437,29 +437,20 @@ func ocSpansToJaegerSpansProto(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) 
 	jSpans := make([]*jaeger.Span, 0, len(ocSpans))
 	for _, ocSpan := range ocSpans {
 		var traceID jaeger.TraceID
-		if ocSpan.TraceId == nil {
-			return nil, errNilTraceID
-		} else if len(ocSpan.TraceId) != 16 {
-			return nil, errWrongLenTraceID
-		} else {
-			traceIDLow, traceIDHigh := tracetranslator.TraceIDBytesToUnsignedLowAndHigh(ocSpan.TraceId)
-			if traceIDLow == 0 && traceIDHigh == 0 {
-				return nil, errZeroTraceID
-			}
-			traceID = jaeger.TraceID{
-				Low:  traceIDLow,
-				High: traceIDHigh,
-			}
+		traceIDLow, traceIDHigh, err := tracetranslator.BytesToUInt64TraceID(ocSpan.TraceId)
+		if err != nil {
+			return nil, err
+		}
+		if traceIDLow == 0 && traceIDHigh == 0 {
+			return nil, errZeroTraceID
+		}
+		traceID = jaeger.TraceID{
+			Low:  traceIDLow,
+			High: traceIDHigh,
 		}
 
 		var spanID jaeger.SpanID
-		if ocSpan.SpanId == nil {
-			return nil, errNilID
-		}
-		if len(ocSpan.SpanId) != 8 {
-			return nil, errWrongLenID
-		}
-		uSpanID := tracetranslator.OcIDBytesToUnsignedInt(ocSpan.SpanId)
+		uSpanID, err := tracetranslator.BytesToUInt64SpanID(ocSpan.SpanId)
 		if uSpanID == 0 {
 			return nil, errZeroSpanID
 		}
@@ -472,12 +463,9 @@ func ocSpansToJaegerSpansProto(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) 
 
 		// OC ParentSpanId can be nil/empty: only attempt conversion if not nil/empty.
 		if len(ocSpan.ParentSpanId) != 0 {
-			if len(ocSpan.ParentSpanId) != 8 {
-				return nil, fmt.Errorf("OC incorrect parent span ID: %v", errWrongLenID)
-			}
-			uParentSpanID := tracetranslator.OcIDBytesToUnsignedInt(ocSpan.ParentSpanId)
-			if uParentSpanID == 0 {
-				return nil, fmt.Errorf("OC incorrect parent span ID: %v", errZeroSpanID)
+			uParentSpanID, err := tracetranslator.BytesToUInt64SpanID(ocSpan.ParentSpanId)
+			if err != nil {
+				return nil, fmt.Errorf("OC incorrect parent span ID: %v", err)
 			}
 
 			jReferences = append(jReferences, jaeger.SpanRef{
