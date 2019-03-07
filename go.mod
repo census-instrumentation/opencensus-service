@@ -22,6 +22,7 @@ require (
 	github.com/facebookgo/muster v0.0.0-20150708232844-fd3d7953fd52 // indirect
 	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
 	github.com/facebookgo/subset v0.0.0-20150612182917-8dac2c3c4870 // indirect
+	github.com/go-kit/kit v0.8.0
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/gogo/googleapis v1.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect
@@ -51,7 +52,6 @@ require (
 	github.com/opentracing/opentracing-go v1.0.2 // indirect
 	github.com/openzipkin/zipkin-go v0.1.3
 	github.com/orijtech/prometheus-go-metrics-exporter v0.0.2
-	github.com/orijtech/promreceiver v0.0.3
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.0

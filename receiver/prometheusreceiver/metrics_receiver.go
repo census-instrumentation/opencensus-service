@@ -28,7 +28,6 @@ import (
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/receiver"
-	"github.com/orijtech/promreceiver"
 	"github.com/prometheus/prometheus/config"
 )
 
@@ -42,7 +41,7 @@ type Configuration struct {
 // Preceiver is the type that provides Prometheus scraper/receiver functionality.
 type Preceiver struct {
 	startOnce sync.Once
-	recv      *promreceiver.Receiver
+	recv      *preceiver
 	cfg       *Configuration
 }
 
@@ -107,12 +106,12 @@ func (pr *Preceiver) StartMetricsReception(ctx context.Context, nextConsumer con
 
 		tms := &promMetricsReceiverToOpenCensusMetricsReceiver{nextConsumer: nextConsumer}
 		cfg := pr.cfg
-		pr.recv, err = promreceiver.ReceiverFromConfig(
+		pr.recv, err = receiverFromConfig(
 			context.Background(),
 			tms,
 			cfg.ScrapeConfig,
-			promreceiver.WithBufferPeriod(cfg.BufferPeriod),
-			promreceiver.WithBufferCount(cfg.BufferCount))
+			WithBufferPeriod(cfg.BufferPeriod),
+			WithBufferCount(cfg.BufferCount))
 	})
 	return err
 }
@@ -133,7 +132,7 @@ type promMetricsReceiverToOpenCensusMetricsReceiver struct {
 	nextConsumer consumer.MetricsConsumer
 }
 
-var _ promreceiver.MetricsSink = (*promMetricsReceiverToOpenCensusMetricsReceiver)(nil)
+var _ metricsSink = (*promMetricsReceiverToOpenCensusMetricsReceiver)(nil)
 
 var errNilRequest = errors.New("expecting a non-nil request")
 
