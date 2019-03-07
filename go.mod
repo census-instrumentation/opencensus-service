@@ -50,7 +50,6 @@ require (
 	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/opentracing/opentracing-go v1.0.2 // indirect
 	github.com/openzipkin/zipkin-go v0.1.3
-	github.com/orijtech/prometheus-go-metrics-exporter v0.0.2
 	github.com/orijtech/promreceiver v0.0.3
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/philhofer/fwd v1.0.0 // indirect

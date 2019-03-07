@@ -25,10 +25,6 @@ import (
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/spf13/viper"
 
-	// TODO: once this repository has been transferred to the
-	// official census-ecosystem location, update this import path.
-	"github.com/orijtech/prometheus-go-metrics-exporter"
-
 	prometheus_golang "github.com/prometheus/client_golang/prometheus"
 )
 
@@ -66,11 +62,11 @@ func PrometheusExportersFromViper(v *viper.Viper) (tps []consumer.TraceConsumer,
 		return
 	}
 
-	opts := prometheus.Options{
+	opts := Options{
 		Namespace:   pcfg.Namespace,
 		ConstLabels: pcfg.ConstLabels,
 	}
-	pe, err := prometheus.New(opts)
+	pe, err := New(opts)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -98,7 +94,7 @@ func PrometheusExportersFromViper(v *viper.Viper) (tps []consumer.TraceConsumer,
 }
 
 type prometheusExporter struct {
-	exporter *prometheus.Exporter
+	exporter *Exporter
 }
 
 var _ consumer.MetricsConsumer = (*prometheusExporter)(nil)
