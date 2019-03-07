@@ -36,7 +36,8 @@ type JaegerProtoGRPCSender struct {
 // NewJaegerProtoGRPCSender returns a new GRPC-backend span sender.
 // The collector endpoint should be of the form "hostname:14250".
 func NewJaegerProtoGRPCSender(collectorEndpoint string, zlogger *zap.Logger) *JaegerProtoGRPCSender {
-	client, _ := grpc.Dial(collectorEndpoint, grpc.WithInsecure())
+	client, err := grpc.Dial(collectorEndpoint, grpc.WithInsecure())
+	zlogger.Fatal("Failed to dail grpc connection", zap.Error(err))
 	collectorServiceClient := jaegerproto.NewCollectorServiceClient(client)
 	s := &JaegerProtoGRPCSender{
 		client: collectorServiceClient,
@@ -50,11 +51,13 @@ func NewJaegerProtoGRPCSender(collectorEndpoint string, zlogger *zap.Logger) *Ja
 func (s *JaegerProtoGRPCSender) ProcessSpans(td data.TraceData, spanFormat string) error {
 	protoBatch, err := jaegertranslator.OCProtoToJaegerProto(td)
 	if err != nil {
+		s.logger.Warn("Error translating OC proto batch to Jaeger proto", zap.Error(err))
 		return err
 	}
 
 	_, err = s.client.PostSpans(context.Background(), &jaegerproto.PostSpansRequest{Batch: *protoBatch})
 	if err != nil {
+		s.logger.Warn("Error sending grpc batch", zap.Error(err))
 		return err
 	}
 
