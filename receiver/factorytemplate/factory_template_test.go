@@ -391,40 +391,25 @@ func Test_metricsReceiverFactory_NewFromViper_Errors(t *testing.T) {
 	}
 }
 
-func Test_factory_AddDefaultConfig(t *testing.T) {
-	tests := []struct {
-		factory receiver.TraceReceiverFactory
-		want    mockReceiverCfg
-	}{
-		{
-			factory: checkedBuildReceiverFactory(t, "mockReceiver", newMockReceiverDefaultCfg, newMockTraceReceiver),
-			want:    *newMockReceiverDefaultCfg().(*mockReceiverCfg),
-		},
-		{
-			factory: checkedBuildReceiverFactory(t, "altMockReceiver", altNewMockReceiverDefaultCfg, newMockTraceReceiver),
-			want:    *altNewMockReceiverDefaultCfg().(*mockReceiverCfg),
-		},
+func Test_factory_DefaultConfig(t *testing.T) {
+	factory, err := NewMetricsReceiverFactory(
+		"mockMetricsReceiver",
+		newMockReceiverDefaultCfg,
+		newMockMetricsReceiver,
+	)
+	if err != nil {
+		t.Fatalf("failed to create factory: %v", err)
 	}
-
-	v := viper.New()
-	for _, test := range tests {
-		test.factory.AddDefaultConfig(v)
+	cfg := factory.DefaultConfig()
+	if cfg == nil {
+		t.Fatalf("should have returned a non-nil config")
 	}
-
-	// Now check if defaults can be recreated from the added configs
-	for i, test := range tests {
-		var got mockReceiverCfg
-		err := v.Sub("receivers").UnmarshalKey(test.factory.Type(), &got)
-		if err != nil {
-			t.Fatalf("failed to unmarshal default config for test[%d]: %v", i, err)
-		}
-		if !reflect.DeepEqual(got, test.want) {
-			t.Fatalf("got = %v, want = %v for test[%d]", got, test.want, i)
-		}
+	if _, ok := cfg.(*mockReceiverCfg); !ok {
+		t.Fatalf("type assertion for default config failed")
 	}
 }
 
-func Examplefactory_AddDefaultConfig() {
+func Examplefactory_DefaultConfig() {
 	templateArgs := []struct {
 		receiverType  string
 		newDefaultCfg func() interface{}
@@ -450,7 +435,7 @@ func Examplefactory_AddDefaultConfig() {
 
 	v := viper.New()
 	for _, factory := range factories {
-		factory.AddDefaultConfig(v)
+		v.SetDefault("receivers."+factory.Type(), factory.DefaultConfig())
 	}
 
 	c := v.AllSettings()

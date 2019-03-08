@@ -172,10 +172,10 @@ func (mrf *metricsReceiverFactory) NewFromViper(v *viper.Viper, next consumer.Me
 	return r, cfg, nil
 }
 
-// AddDefaultConfig returns the default configuration for the receiver
+// DefaultConfig gets the default configuration for the receiver
 // created by this factory.
-func (f *factory) AddDefaultConfig(v *viper.Viper) {
-	v.SetDefault("receivers."+f.Type(), f.newDefaultCfg())
+func (f *factory) DefaultConfig() interface{} {
+	return f.newDefaultCfg()
 }
 
 // configFromViper takes a viper.Viper, generates a default config and returns the

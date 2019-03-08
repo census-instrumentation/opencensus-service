@@ -28,9 +28,9 @@ type TraceReceiverFactory interface {
 	// NewFromViper takes a viper.Viper config and creates a new TraceReceiver which uses next as the
 	// next TraceConsumer in the pipeline. Returning also the configuration used to create it.
 	NewFromViper(v *viper.Viper, next consumer.TraceConsumer) (receiver TraceReceiver, config interface{}, err error)
-	// AddDefaultConfig adds the default configuration for the TraceReceivers
+	// DefaultConfig gets the default configuration for the TraceReceiver
 	// created by this factory.
-	AddDefaultConfig(v *viper.Viper)
+	DefaultConfig() interface{}
 }
 
 // MetricsReceiverFactory is an interface that builds a new MetricsReceiver based on
@@ -41,7 +41,7 @@ type MetricsReceiverFactory interface {
 	// NewFromViper takes a viper.Viper config and creates a new MetricsReceiver which uses next as the
 	// next MetricsConsumer in the pipeline. Returning also the configuration used to create it.
 	NewFromViper(v *viper.Viper, next consumer.MetricsConsumer) (receiver MetricsReceiver, config interface{}, err error)
-	// AddDefaultConfig adds the default configuration for the MetricReceivers
+	// DefaultConfig gets the default configuration for the MetricsReceiver
 	// created by this factory.
-	AddDefaultConfig(v *viper.Viper)
+	DefaultConfig() interface{}
 }
