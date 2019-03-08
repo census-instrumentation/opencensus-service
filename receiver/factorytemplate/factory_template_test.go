@@ -409,6 +409,27 @@ func Test_factory_DefaultConfig(t *testing.T) {
 	}
 }
 
+func TestInvalidConfig(t *testing.T) {
+	factory, err := NewMetricsReceiverFactory(
+		"mockMetricsReceiver",
+		newMockReceiverDefaultCfg,
+		newMockMetricsReceiver,
+	)
+	if err != nil {
+		t.Fatalf("failed to create factory: %v", err)
+	}
+
+	v := viper.New()
+	v.Set("address", "myaddress")
+	v.Set("port", "not_a_number")
+
+	ne := exportertest.NewNopMetricsExporter()
+	_, _, err = factory.NewFromViper(v, ne)
+	if err == nil {
+		t.Fatal("NewFromViper() got nil error for invalid config")
+	}
+}
+	
 func Examplefactory_DefaultConfig() {
 	templateArgs := []struct {
 		receiverType  string
