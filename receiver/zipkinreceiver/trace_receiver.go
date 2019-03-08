@@ -46,6 +46,12 @@ import (
 	zipkintranslator "github.com/census-instrumentation/opencensus-service/translator/trace/zipkin"
 )
 
+var (
+	errNilNextConsumer = errors.New("nil nextConsumer")
+	errAlreadyStarted  = errors.New("already started")
+	errAlreadyStopped  = errors.New("already stopped")
+)
+
 // ZipkinReceiver type is used to handle spans received in the Zipkin format.
 type ZipkinReceiver struct {
 	// mu protects the fields of this struct
@@ -66,6 +72,10 @@ var _ http.Handler = (*ZipkinReceiver)(nil)
 
 // New creates a new zipkinreceiver.ZipkinReceiver reference.
 func New(address string, nextConsumer consumer.TraceConsumer) (*ZipkinReceiver, error) {
+	if nextConsumer == nil {
+		return nil, errNilNextConsumer
+	}
+
 	zr := &ZipkinReceiver{
 		addr:         address,
 		nextConsumer: nextConsumer,
@@ -82,11 +92,6 @@ func (zr *ZipkinReceiver) address() string {
 	}
 	return addr
 }
-
-var (
-	errAlreadyStarted = errors.New("already started")
-	errAlreadyStopped = errors.New("already stopped")
-)
 
 const traceSource string = "Zipkin"
 

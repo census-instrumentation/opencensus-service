@@ -33,8 +33,9 @@ import (
 )
 
 var (
-	errAlreadyStarted = errors.New("already started")
-	errAlreadyStopped = errors.New("already stopped")
+	errNilNextConsumer = errors.New("nil nextConsumer")
+	errAlreadyStarted  = errors.New("already started")
+	errAlreadyStopped  = errors.New("already stopped")
 )
 
 var _ receiver.TraceReceiver = (*scribeReceiver)(nil)
@@ -50,10 +51,6 @@ type scribeReceiver struct {
 	startOnce sync.Once
 	stopOnce  sync.Once
 }
-
-var (
-	errNilNextConsumer = errors.New("nil nextConsumer")
-)
 
 // NewReceiver creates the Zipkin Scribe receiver with the given parameters.
 func NewReceiver(addr string, port uint16, category string, nextConsumer consumer.TraceConsumer) (receiver.TraceReceiver, error) {
