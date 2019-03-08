@@ -51,8 +51,16 @@ type scribeReceiver struct {
 	stopOnce  sync.Once
 }
 
+var (
+	errNilNextConsumer = errors.New("nil nextConsumer")
+)
+
 // NewReceiver creates the Zipkin Scribe receiver with the given parameters.
 func NewReceiver(addr string, port uint16, category string, nextConsumer consumer.TraceConsumer) (receiver.TraceReceiver, error) {
+	if nextConsumer == nil {
+		return nil, errNilNextConsumer
+	}
+
 	r := &scribeReceiver{
 		addr: addr,
 		port: port,
@@ -77,10 +85,6 @@ func (r *scribeReceiver) TraceSource() string {
 func (r *scribeReceiver) StartTraceReception(ctx context.Context, asyncErrorChan chan<- error) error {
 	r.Lock()
 	defer r.Unlock()
-
-	if r.collector.nextConsumer == nil {
-		return errors.New("trace reception requires a non-nil destination")
-	}
 
 	err := errAlreadyStarted
 	r.startOnce.Do(func() {
