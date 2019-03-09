@@ -25,24 +25,13 @@ import (
 	"github.com/census-instrumentation/opencensus-service/observability"
 )
 
-type nopMetricsExporter int
-
-var _ view.Exporter = (*nopMetricsExporter)(nil)
-
-func (cme *nopMetricsExporter) ExportView(vd *view.Data) {}
-
 // SetupRecordedMetricsTest does setup the testing environment to check the metrics recorded by receivers, producers or exporters.
-// The returned function should be deferred "defer SetupRecordedMetricsTest()()".
-func SetupRecordedMetricsTest() func() {
-	// Register a nop metrics exporter for the OC library.
-	nmp := new(nopMetricsExporter)
-	view.RegisterExporter(nmp)
-
-	// Now for the stats exporter
+// The returned function should be deferred.
+func SetupRecordedMetricsTest() (doneFn func()) {
+	// Register views
 	view.Register(observability.AllViews...)
 
 	return func() {
-		view.UnregisterExporter(nmp)
 		view.Unregister(observability.AllViews...)
 	}
 }
