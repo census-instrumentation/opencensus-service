@@ -42,7 +42,7 @@ var _ view.Exporter = (*nopMetricsExporter)(nil)
 func (cme *nopMetricsExporter) ExportView(vd *view.Data) {}
 
 // SetupRecordedMetricsTest does setup the testing environment to check the metrics recorded by receivers, producers or exporters.
-// The returned function should be deferred "defer SetupRecordedMetricsTest(t)()".
+// The returned function should be deferred "defer SetupRecordedMetricsTest()()".
 func SetupRecordedMetricsTest() func() {
 	// Register a nop metrics exporter for the OC library.
 	nmp := new(nopMetricsExporter)
