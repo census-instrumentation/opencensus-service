@@ -15,7 +15,6 @@
 package jaeger
 
 import (
-	"encoding/binary"
 	"fmt"
 	"time"
 
@@ -161,7 +160,7 @@ func ocLinksToJaegerReferencesProto(ocSpanLinks *tracepb.Span_Links) ([]jaeger.S
 	for _, ocLink := range ocLinks {
 		var traceID jaeger.TraceID
 		// Checks for nil/wrongLen traceID are already done in ocSpansToJaegerSpansProto()
-		traceIDLow, traceIDHigh, err := tracetranslator.BytesToUInt64TraceID(ocLink.TraceId)
+		traceIDHigh, traceIDLow, err := tracetranslator.BytesToUInt64TraceID(ocLink.TraceId)
 		if err != nil {
 			return nil, err
 		}
@@ -255,7 +254,7 @@ func ocSpanAttributesToJaegerTagsProto(ocAttribs *tracepb.Span_Attributes) []jae
 
 func ocTimeEventsToJaegerLogsProto(ocSpanTimeEvents *tracepb.Span_TimeEvents) []jaeger.Log {
 	if ocSpanTimeEvents == nil || ocSpanTimeEvents.TimeEvent == nil {
-		return []jaeger.Log{}
+		return nil
 	}
 
 	ocTimeEvents := ocSpanTimeEvents.TimeEvent
@@ -292,10 +291,15 @@ func ocAnnotationToJagerTagsProto(annotation *tracepb.Span_TimeEvent_Annotation)
 		return []jaeger.KeyValue{}
 	}
 
+	strDescription := truncableStringToStr(annotation.Description)
+	if strDescription == "" {
+		return ocSpanAttributesToJaegerTagsProto(annotation.Attributes)
+	}
+
 	// TODO: Find a better tag for Annotation description.
 	jKV := jaeger.KeyValue{
 		Key:   ocTimeEventAnnotationDescription,
-		VStr:  truncableStringToStr(annotation.Description),
+		VStr:  strDescription,
 		VType: jaeger.ValueType_STRING,
 	}
 	return append(ocSpanAttributesToJaegerTagsProto(annotation.Attributes), jKV)
@@ -306,15 +310,6 @@ func ocMessageEventToJaegerTagsProto(msgEvent *tracepb.Span_TimeEvent_MessageEve
 		return []jaeger.KeyValue{}
 	}
 
-	msgEventID := make([]byte, 8)
-	binary.BigEndian.PutUint64(msgEventID, uint64(msgEvent.Id))
-
-	uncompressedSize := make([]byte, 8)
-	binary.BigEndian.PutUint64(uncompressedSize, uint64(msgEvent.UncompressedSize))
-
-	compressedSize := make([]byte, 8)
-	binary.BigEndian.PutUint64(compressedSize, uint64(msgEvent.CompressedSize))
-
 	// TODO: Find a better tag for Message event.
 	msgTypeStr := msgEvent.Type.String()
 	jaegerKVs := []jaeger.KeyValue{
@@ -324,19 +319,19 @@ func ocMessageEventToJaegerTagsProto(msgEvent *tracepb.Span_TimeEvent_MessageEve
 			VType: jaeger.ValueType_STRING,
 		},
 		{
-			Key:     ocTimeEventMessageEventID,
-			VBinary: msgEventID,
-			VType:   jaeger.ValueType_BINARY,
+			Key:    ocTimeEventMessageEventID,
+			VInt64: int64(msgEvent.Id),
+			VType:  jaeger.ValueType_INT64,
 		},
 		{
-			Key:     ocTimeEventMessageEventUSize,
-			VBinary: uncompressedSize,
-			VType:   jaeger.ValueType_BINARY,
+			Key:    ocTimeEventMessageEventUSize,
+			VInt64: int64(msgEvent.UncompressedSize),
+			VType:  jaeger.ValueType_INT64,
 		},
 		{
-			Key:     ocTimeEventMessageEventCSize,
-			VBinary: compressedSize,
-			VType:   jaeger.ValueType_BINARY,
+			Key:    ocTimeEventMessageEventCSize,
+			VInt64: int64(msgEvent.CompressedSize),
+			VType:  jaeger.ValueType_INT64,
 		},
 	}
 	return jaegerKVs
@@ -437,7 +432,7 @@ func ocSpansToJaegerSpansProto(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) 
 	jSpans := make([]*jaeger.Span, 0, len(ocSpans))
 	for _, ocSpan := range ocSpans {
 		var traceID jaeger.TraceID
-		traceIDLow, traceIDHigh, err := tracetranslator.BytesToUInt64TraceID(ocSpan.TraceId)
+		traceIDHigh, traceIDLow, err := tracetranslator.BytesToUInt64TraceID(ocSpan.TraceId)
 		if err != nil {
 			return nil, err
 		}

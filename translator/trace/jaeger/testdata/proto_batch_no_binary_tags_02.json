@@ -1,59 +1,60 @@
 {
     "process": {
-      "service_name": "api",
-      "tags": []
+      "service_name": "api"
     },
     "spans": [
       {
         "trace_id": "AAAAAAAAAABSlpqJVVcaPw==",
         "span_id": "AAAAAABkfZg=",
         "operation_name": "get",
-        "start_time": 1485467191639875,
+        "start_time": "2017-01-26T21:46:30.639875Z",
         "duration": 22938,
         "tags": [
           {
             "key": "peer.service",
-            "v_type": "STRING",
             "v_str": "AAAAAAAAMDk="
           },
           {
             "key": "span.kind",
-            "v_type": "STRING",
             "v_str": "server"
           }
         ]
       },
       {
           "trace_id": "AAAAAAAAAABSlpqJVVcaPw==",
-          "span_id": 6585753,
+          "span_id": "AAAAAABkfZk=",
           "operation_name": "get",
           "references": [
             {
-              "ref_type": "CHILD_OF",
               "trace_id": "AAAAAAAAAABSlpqJVVcaPw==",
               "spanId": "AAAAAABkfZg="
             },
             {
-              "ref_type": "FOLLOWS_FROM",
+              "ref_type": 1,
               "trace_id": "AAAAAAAAAABSlpqJVVcaPw==",
-              "span_id": 6866147
+              "span_id": "AAAAAABoxOM="
             }
           ],
-          "start_time": 1485467191639875,
+          "start_time": "2017-01-26T21:46:30.639875Z",
           "duration": 22938,
           "tags": [
             {
               "key": "span.kind",
-              "v_type": "STRING",
               "v_str": "server"
             }
           ]
         },
         {
             "trace_id": "AAAAAAAAAABSlpqJVVcaPw==",
-            "span_id": 6585752,
+            "span_id": "AAAAAABkfZA=",
             "operation_name": "get2",
-            "start_time": 1485467192639875,
+            "references": [
+              {
+                "trace_id": "AAAAAAAAAABSlpqJVVcaPw==",
+                "spanId": "AAAAAABkfZg="
+              }
+            ],
+              "start_time": "2017-01-26T21:46:30.639875Z",
             "duration": 22938
           }
         ]
