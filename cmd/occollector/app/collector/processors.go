@@ -21,7 +21,6 @@ import (
 
 	tchReporter "github.com/jaegertracing/jaeger/cmd/agent/app/reporter/tchannel"
 	"github.com/spf13/viper"
-	"github.com/uber/jaeger-lib/metrics"
 	"go.uber.org/zap"
 
 	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/builder"

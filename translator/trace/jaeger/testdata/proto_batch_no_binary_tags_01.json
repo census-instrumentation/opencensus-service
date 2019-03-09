@@ -4,7 +4,6 @@
     "tags": [
       {
         "key": "hostname",
-        "v_type": 0,
         "v_str": "api246-sjc1"
       },
       {
@@ -14,37 +13,30 @@
       },
       {
         "key": "start.time",
-        "v_type": 0,
         "v_str": "2017-01-26T21:46:30.639875Z"
       },
       {
         "key": "ip",
-        "v_type": 0,
         "v_str": "10.53.69.61"
       },
       {
         "key": "opencensus.exporterversion",
-        "v_type": 0,
         "v_str": "someVersion"
       },
       {
         "key": "a.bool",
-        "v_type": 0,
         "v_str": "true"
       },
       {
         "key": "a.double",
-        "v_type": 0,
         "v_str": "1234.56789"
       },
       {
         "key": "a.long",
-        "v_type": 0,
         "v_str": "123456789"
       },
       {
         "key": "a.binary",
-        "v_type": 0,
         "v_str": "AQIDBAMCAQ=="
       }
     ]
@@ -56,7 +48,7 @@
       "references": [
         {
           "trace_id" : "AAAAAAAAAABSlpqJVVcaPw==",
-          "span_id" : "AAAAAABkfZg=",
+          "span_id" : "AAAAAABoxOM=",
           "refType" : "CHILD_OF"
         }
       ],
@@ -66,12 +58,10 @@
       "tags": [
         {
           "key": "http.url",
-          "v_type": 0,
           "v_str": "http://127.0.0.1:15598/client_transactions"
         },
         {
           "key": "span.kind",
-          "v_type": 0,
           "v_str": "server"
         },
         {
@@ -91,7 +81,6 @@
         },
         {
           "key": "peer.service",
-          "v_type": 0,
           "v_str": "rtapi"
         },
         {
@@ -105,22 +94,20 @@
           "timestamp": "2017-01-26T21:46:30.639875Z",
           "fields": [
             {
-              "key": "message.id",
-              "v_int64": 0,
+              "key": "oc.timeevent.messageevent.id",
               "v_type": 2
             },
             {
-              "key": "message.type",
-              "v_str": "SENT",
-              "v_type": 0
+              "key": "oc.timeevent.messageevent.type",
+              "v_str": "SENT"
             },
             {
-              "key": "message.compressed_size",
+              "key": "oc.timeevent.messageevent.csize",
               "v_int64": 512,
               "v_type": 2
             },
             {
-              "key": "message.uncompressed_size",
+              "key": "oc.timeevent.messageevent.usize",
               "v_int64": 1024,
               "v_type": 2
             }
@@ -131,7 +118,6 @@
           "fields": [
             {
               "key": "key1",
-              "v_type": 0,
               "v_str": "value1"
             }
           ]
@@ -141,12 +127,10 @@
           "fields": [
             {
               "key": "event",
-              "v_type": 0,
               "v_str": "nothing"
             },
             {
-              "key": "description",
-              "v_type": 0,
+              "key": "oc.timeevent.annotation.description",
               "v_str": "annotation description"
             }
           ]
