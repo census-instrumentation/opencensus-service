@@ -50,12 +50,10 @@ func SetupRecordedMetricsTest() func() {
 
 	// Now for the stats exporter
 	view.Register(observability.AllViews...)
-	fmt.Printf("Setup Executed.\n")
 
 	return func() {
 		view.UnregisterExporter(nmp)
 		view.Unregister(observability.AllViews...)
-		fmt.Printf("Done Executed.\n")
 	}
 }
 
@@ -143,7 +141,6 @@ func checkValueForView(vName string, wantTags []tag.Tag, value int64) error {
 	sortTags(wantTags)
 
 	rows, err := view.RetrieveData(vName)
-	fmt.Printf("Name: %s Rows: %v\n", vName, rows)
 	if err != nil {
 		return fmt.Errorf("Error retrieving view data for view Name %s", vName)
 	}

@@ -50,7 +50,7 @@ func TestNopTraceExporter_WithErrors(t *testing.T) {
 	}
 }
 
-func TestNoopMetricsExporter_NoErrors(t *testing.T) {
+func TestNopMetricsExporter_NoErrors(t *testing.T) {
 	nme := NewNopMetricsExporter()
 	md := data.MetricsData{
 		Metrics: make([]*metricspb.Metric, 7),
@@ -63,7 +63,7 @@ func TestNoopMetricsExporter_NoErrors(t *testing.T) {
 	}
 }
 
-func TestNoopMetricsExporter_WithErrors(t *testing.T) {
+func TestNopMetricsExporter_WithErrors(t *testing.T) {
 	want := errors.New("MyError")
 	nme := NewNopMetricsExporter(WithReturnError(want))
 	md := data.MetricsData{
