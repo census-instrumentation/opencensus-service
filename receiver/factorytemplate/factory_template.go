@@ -19,8 +19,10 @@ package factorytemplate
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/receiver"
@@ -137,39 +139,39 @@ func (f *factory) Type() string {
 }
 
 // NewFromViper takes a viper.Viper configuration and creates a new TraceReceiver.
-// Returning also the configuration used to create it.
-func (trf *traceReceiverFactory) NewFromViper(v *viper.Viper, next consumer.TraceConsumer) (receiver.TraceReceiver, interface{}, error) {
+func (trf *traceReceiverFactory) NewFromViper(v *viper.Viper, next consumer.TraceConsumer, logger *zap.Logger) (receiver.TraceReceiver, error) {
 	if next == nil {
-		return nil, nil, ErrNilNext
+		return nil, ErrNilNext
 	}
 	cfg, err := trf.configFromViper(v)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	r, err := trf.newReceiver(cfg, next)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return r, cfg, nil
+	logger.Info("Trace receiver created", zap.String("type", trf.Type()), zap.String("config", fmt.Sprintf("%+v", cfg)))
+	return r, nil
 }
 
 // NewFromViper takes a viper.Viper configuration and creates a new TraceReceiver.
-// Returning also the configuration used to create it.
-func (mrf *metricsReceiverFactory) NewFromViper(v *viper.Viper, next consumer.MetricsConsumer) (receiver.MetricsReceiver, interface{}, error) {
+func (mrf *metricsReceiverFactory) NewFromViper(v *viper.Viper, next consumer.MetricsConsumer, logger *zap.Logger) (receiver.MetricsReceiver, error) {
 	if next == nil {
-		return nil, nil, ErrNilNext
+		return nil, ErrNilNext
 	}
 	cfg, err := mrf.configFromViper(v)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	r, err := mrf.newReceiver(cfg, next)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return r, cfg, nil
+	logger.Info("Metrics receiver created", zap.String("type", mrf.Type()), zap.String("config", fmt.Sprintf("%+v", cfg)))
+	return r, nil
 }
 
 // DefaultConfig gets the default configuration for the receiver

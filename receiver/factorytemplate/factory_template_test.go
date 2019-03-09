@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/census-instrumentation/opencensus-service/consumer"
@@ -207,7 +208,7 @@ func Test_traceReceiverFactory_NewFromViper(t *testing.T) {
 			subKey = receiverType
 		}
 
-		r, _, err := factory.NewFromViper(subCfg, exportertest.NewNopTraceExporter())
+		r, err := factory.NewFromViper(subCfg, exportertest.NewNopTraceExporter(), zap.NewNop())
 		if err != nil {
 			t.Fatalf("failed to create receiver from factory: %v", err)
 		}
@@ -296,7 +297,7 @@ func Test_traceReceiverFactory_NewFromViper_Errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := factory.NewFromViper(tt.args.v, tt.args.next)
+			_, err := factory.NewFromViper(tt.args.v, tt.args.next, zap.NewNop())
 			if err != tt.wantErr {
 				t.Errorf("NewFromViper() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -316,7 +317,7 @@ func Test_metricsReceiverFactory_NewFromViper(t *testing.T) {
 	}
 
 	v := viper.New()
-	r, _, err := factory.NewFromViper(v, exportertest.NewNopMetricsExporter())
+	r, err := factory.NewFromViper(v, exportertest.NewNopMetricsExporter(), zap.NewNop())
 	if err != nil {
 		t.Fatalf("failed to create receiver from factory: %v", err)
 	}
@@ -382,7 +383,7 @@ func Test_metricsReceiverFactory_NewFromViper_Errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := factory.NewFromViper(tt.args.v, tt.args.next)
+			_, err := factory.NewFromViper(tt.args.v, tt.args.next, zap.NewNop())
 			if err != tt.wantErr {
 				t.Errorf("NewFromViper() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -424,12 +425,12 @@ func TestInvalidConfig(t *testing.T) {
 	v.Set("port", "not_a_number")
 
 	ne := exportertest.NewNopMetricsExporter()
-	_, _, err = factory.NewFromViper(v, ne)
+	_, err = factory.NewFromViper(v, ne, zap.NewNop())
 	if err == nil {
 		t.Fatal("NewFromViper() got nil error for invalid config")
 	}
 }
-	
+
 func Examplefactory_DefaultConfig() {
 	templateArgs := []struct {
 		receiverType  string
