@@ -47,7 +47,7 @@ func Start(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create the OpenCensus trace receiver: %v", err)
 	}
-	ss := processor.WrapWithSpanSink("oc", spanProc)
+	ss := processor.WrapWithSpanSink(spanProc)
 	if err := ocr.StartTraceReception(context.Background(), ss); err != nil {
 		return nil, fmt.Errorf("Cannot bind Opencensus receiver to address %q: %v", addr, err)
 	}

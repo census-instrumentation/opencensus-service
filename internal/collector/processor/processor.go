@@ -15,6 +15,10 @@
 package processor
 
 import (
+	"context"
+
+	"github.com/census-instrumentation/opencensus-service/observability"
+
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
@@ -27,13 +31,12 @@ import (
 // SpanProcessor handles batches of spans converted to OpenCensus proto format.
 type SpanProcessor interface {
 	// ProcessSpans processes spans and return with the number of spans that failed and an error.
-	ProcessSpans(td data.TraceData, spanFormat string) error
+	ProcessSpans(ctx context.Context, td data.TraceData) error
 	// TODO: (@pjanotti) For shutdown improvement, the interface needs a method to attempt that.
 }
 
 // Keys and stats for telemetry.
 var (
-	TagSourceFormatKey, _ = tag.NewKey("format")
 	TagServiceNameKey, _  = tag.NewKey("service")
 	TagExporterNameKey, _ = tag.NewKey("exporter")
 
@@ -49,7 +52,7 @@ func MetricTagKeys(level telemetry.Level) []tag.Key {
 		tagKeys = append(tagKeys, TagServiceNameKey)
 		fallthrough
 	case telemetry.Normal:
-		tagKeys = append(tagKeys, TagSourceFormatKey)
+		tagKeys = append(tagKeys, observability.TagKeyReceiver)
 		fallthrough
 	case telemetry.Basic:
 		tagKeys = append(tagKeys, TagExporterNameKey)
@@ -116,10 +119,9 @@ func ServiceNameForNode(node *commonpb.Node) string {
 	return serviceName
 }
 
-// StatsTagsForBatch gets the stat tags based on the specified processorName, serviceName, and spanFormat.
-func StatsTagsForBatch(processorName, serviceName, spanFormat string) []tag.Mutator {
+// StatsTagsForBatch gets the stat tags based on the specified processorName and serviceName.
+func StatsTagsForBatch(processorName, serviceName string) []tag.Mutator {
 	statsTags := []tag.Mutator{
-		tag.Upsert(TagSourceFormatKey, spanFormat),
 		tag.Upsert(TagServiceNameKey, serviceName),
 		tag.Upsert(TagExporterNameKey, processorName),
 	}

@@ -50,7 +50,7 @@ func Start(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor)
 		return nil, err
 	}
 
-	ss := processor.WrapWithSpanSink("jaeger", spanProc)
+	ss := processor.WrapWithSpanSink(spanProc)
 	if err := jtr.StartTraceReception(ctx, ss); err != nil {
 		return nil, err
 	}

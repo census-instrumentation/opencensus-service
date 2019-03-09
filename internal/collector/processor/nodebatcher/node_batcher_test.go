@@ -15,6 +15,7 @@
 package nodebatcher
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -29,17 +30,16 @@ import (
 type bucketIDTestInput struct {
 	node     *commonpb.Node
 	resource *resourcepb.Resource
-	format   string
 }
 
 func BenchmarkGenBucketID(b *testing.B) {
 	sender := newTestSender()
 	batcher := NewBatcher("test", zap.NewNop(), sender).(*batcher)
-	gens := map[string]func(*commonpb.Node, *resourcepb.Resource, string) string{
+	gens := map[string]func(*commonpb.Node, *resourcepb.Resource) string{
 		"composite-md5": batcher.genBucketID,
 	}
 
-	inputSmall := bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}}, nil, "oc"}
+	inputSmall := bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}}, nil}
 	inputBig := bucketIDTestInput{
 		&commonpb.Node{
 			ServiceInfo: &commonpb.ServiceInfo{Name: "svc-i-am-a-cat"},
@@ -51,14 +51,13 @@ func BenchmarkGenBucketID(b *testing.B) {
 			"skarisskarisskarisdf":  "bsdfasdfasdfasdfasdf",
 			"iamacatiamacatiamacat": "bsdfasdfasdfasdfasdf",
 		}},
-		"oc",
 	}
 
 	for genName, gen := range gens {
 		for name, input := range map[string]bucketIDTestInput{"smallInput": inputSmall, "bigInput": inputBig} {
 			b.Run(genName+"-"+name, func(b *testing.B) {
 				for n := 0; n < b.N; n++ {
-					gen(input.node, input.resource, input.format)
+					gen(input.node, input.resource)
 				}
 			})
 		}
@@ -73,22 +72,16 @@ func TestGenBucketID(t *testing.T) {
 		input2 bucketIDTestInput
 	}{
 		{
-			"different span formats",
-			false,
-			bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}}, nil, "oc"},
-			bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}}, nil, "zipkin"},
-		},
-		{
 			"identical but different node objects",
 			true,
-			bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}}, nil, "oc"},
-			bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}}, nil, "oc"},
+			bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}}, nil},
+			bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}}, nil},
 		},
 		{
 			"different nodes",
 			false,
-			bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}}, nil, "oc"},
-			bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc2"}}, nil, "oc"},
+			bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}}, nil},
+			bucketIDTestInput{&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc2"}}, nil},
 		},
 		{
 			"different resources",
@@ -96,12 +89,10 @@ func TestGenBucketID(t *testing.T) {
 			bucketIDTestInput{
 				&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}},
 				&resourcepb.Resource{Labels: map[string]string{"a": "b"}},
-				"oc",
 			},
 			bucketIDTestInput{
 				&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}},
 				&resourcepb.Resource{Labels: map[string]string{"a": "c"}},
-				"oc",
 			},
 		},
 		{
@@ -110,12 +101,10 @@ func TestGenBucketID(t *testing.T) {
 			bucketIDTestInput{
 				&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}},
 				&resourcepb.Resource{Labels: map[string]string{"a": "b"}},
-				"oc",
 			},
 			bucketIDTestInput{
 				&commonpb.Node{ServiceInfo: &commonpb.ServiceInfo{Name: "svc"}},
 				&resourcepb.Resource{Labels: map[string]string{"a": "b"}},
-				"oc",
 			},
 		},
 	}
@@ -124,8 +113,8 @@ func TestGenBucketID(t *testing.T) {
 			sender := newTestSender()
 			batcher := NewBatcher("test", zap.NewNop(), sender).(*batcher)
 
-			key1 := batcher.genBucketID(tc.input1.node, tc.input1.resource, tc.input1.format)
-			key2 := batcher.genBucketID(tc.input2.node, tc.input2.resource, tc.input2.format)
+			key1 := batcher.genBucketID(tc.input1.node, tc.input1.resource)
+			key2 := batcher.genBucketID(tc.input2.node, tc.input2.resource)
 
 			if tc.match != (key1 == key2) {
 				t.Errorf("Keys should be matching=%v but were matching=%v", tc.match, key1 == key2)
@@ -150,7 +139,7 @@ func TestConcurrentNodeAdds(t *testing.T) {
 			},
 			Spans: spans,
 		}
-		go batcher.ProcessSpans(td, "oc")
+		go batcher.ProcessSpans(context.Background(), td)
 	}
 
 	err := sender.waitFor(requestCount*spansPerRequest, 3*time.Second)
@@ -196,21 +185,21 @@ func TestBucketRemove(t *testing.T) {
 		},
 		Spans: spans,
 	}
-	batcher.ProcessSpans(request, "oc")
+	batcher.ProcessSpans(context.Background(), request)
 
 	err := sender.waitFor(spansPerRequest, 1*time.Second)
 	if err != nil {
 		t.Errorf("failed to wait for sender %s", err)
 	}
 
-	if batcher.getBucket(batcher.genBucketID(request.Node, nil, "oc")) == nil {
+	if batcher.getBucket(batcher.genBucketID(request.Node, nil)) == nil {
 		t.Errorf("Bucket should exist but does not.")
 	}
 
 	// Doesn't seem to be a great way to test this without waiting
 	<-time.After(2 * time.Duration(removeAfterTicks) * tickTime)
 
-	if batcher.getBucket(batcher.genBucketID(request.Node, nil, "oc")) != nil {
+	if batcher.getBucket(batcher.genBucketID(request.Node, nil)) != nil {
 		t.Errorf("Bucket should be deleted but is not.")
 	}
 }
@@ -231,7 +220,7 @@ func TestConcurrentBatchAdds(t *testing.T) {
 			},
 			Spans: spans,
 		}
-		go batcher.ProcessSpans(request, "oc")
+		go batcher.ProcessSpans(context.Background(), request)
 	}
 
 	err := sender.waitFor(requestCount*spansPerRequest, 2*time.Second)
@@ -267,7 +256,7 @@ func BenchmarkConcurrentBatchAdds(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			batcher.ProcessSpans(request, "oc")
+			batcher.ProcessSpans(context.Background(), request)
 		}
 	})
 
@@ -294,7 +283,7 @@ func newTestSender() *testSender {
 	}
 }
 
-func (ts *testSender) ProcessSpans(td data.TraceData, spanFormat string) error {
+func (ts *testSender) ProcessSpans(ctx context.Context, td data.TraceData) error {
 	ts.reqChan <- td
 	return nil
 }

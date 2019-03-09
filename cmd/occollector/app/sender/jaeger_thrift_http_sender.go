@@ -16,6 +16,7 @@ package sender
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -80,7 +81,7 @@ func NewJaegerThriftHTTPSender(
 }
 
 // ProcessSpans sends the received data to the configured Jaeger Thrift end-point.
-func (s *JaegerThriftHTTPSender) ProcessSpans(td data.TraceData, spanFormat string) error {
+func (s *JaegerThriftHTTPSender) ProcessSpans(ctx context.Context, td data.TraceData) error {
 	// TODO: (@pjanotti) In case of failure the translation to Jaeger Thrift is going to be remade, cache it somehow.
 	tBatch, err := jaegertranslator.OCProtoToJaegerThrift(td)
 	if err != nil {

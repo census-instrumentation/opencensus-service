@@ -107,14 +107,14 @@ func NewBatcher(name string, logger *zap.Logger, sender processor.SpanProcessor,
 
 // ProcessSpans implements batcher as a SpanProcessor and takes the provided spans and adds them to
 // batches
-func (b *batcher) ProcessSpans(td data.TraceData, spanFormat string) error {
-	bucketID := b.genBucketID(td.Node, td.Resource, spanFormat)
-	bucket := b.getOrAddBucket(bucketID, td.Node, td.Resource, spanFormat)
-	bucket.add(td.Spans)
+func (b *batcher) ProcessSpans(ctx context.Context, td data.TraceData) error {
+	bucketID := b.genBucketID(td.Node, td.Resource)
+	bucket := b.getOrAddBucket(bucketID, td.Node, td.Resource)
+	bucket.add(ctx, td.Spans)
 	return nil
 }
 
-func (b *batcher) genBucketID(node *commonpb.Node, resource *resourcepb.Resource, spanFormat string) string {
+func (b *batcher) genBucketID(node *commonpb.Node, resource *resourcepb.Resource) string {
 	h := md5.New()
 	if node != nil {
 		nodeKey, err := proto.Marshal(node)
@@ -132,7 +132,7 @@ func (b *batcher) genBucketID(node *commonpb.Node, resource *resourcepb.Resource
 			h.Write(resourceKey)
 		}
 	}
-	return fmt.Sprintf("%x", h.Sum([]byte(spanFormat)))
+	return fmt.Sprintf("%x", h.Sum([]byte{}))
 }
 
 func (b *batcher) getBucket(bucketID string) *nodeBatcher {
@@ -144,11 +144,10 @@ func (b *batcher) getBucket(bucketID string) *nodeBatcher {
 }
 
 func (b *batcher) getOrAddBucket(
-	bucketID string, node *commonpb.Node, resource *resourcepb.Resource, spanFormat string,
-) *nodeBatcher {
+	bucketID string, node *commonpb.Node, resource *resourcepb.Resource) *nodeBatcher {
 	bucket, alreadyStored := b.buckets.LoadOrStore(
 		bucketID,
-		newNodeBucket(b, node, resource, spanFormat, b.sendBatchSize, b.timeout, b.logger),
+		newNodeBucket(b, node, resource, b.sendBatchSize, b.timeout, b.logger),
 	)
 	// Add this bucket to a random ticker
 	if !alreadyStored {
@@ -172,7 +171,6 @@ type nodeBatcher struct {
 	currBatch     *batch
 	node          *commonpb.Node
 	resource      *resourcepb.Resource // TODO(skaris) remove when resource is added to span
-	spanFormat    string
 	logger        *zap.Logger
 
 	dead            uint32
@@ -184,7 +182,6 @@ func newNodeBucket(
 	parent *batcher,
 	node *commonpb.Node,
 	resource *resourcepb.Resource,
-	spanFormat string,
 	sendBatchSize uint32,
 	timeout time.Duration,
 	logger *zap.Logger,
@@ -195,7 +192,6 @@ func newNodeBucket(
 		currBatch:     newBatch(initialBatchCapacity, sendBatchSize),
 		node:          node,
 		resource:      resource,
-		spanFormat:    spanFormat,
 		lastSent:      int64(0),
 		logger:        logger,
 
@@ -207,7 +203,7 @@ func newNodeBucket(
 	return nb
 }
 
-func (nb *nodeBatcher) add(spans []*tracepb.Span) {
+func (nb *nodeBatcher) add(ctx context.Context, spans []*tracepb.Span) {
 	// Reset cycles untouched to 0
 	atomic.StoreUint32(&nb.cyclesUntouched, 0)
 	// Add will always add these spans to the current batch, if ok is false it means that
@@ -223,12 +219,11 @@ func (nb *nodeBatcher) add(spans []*tracepb.Span) {
 	}
 	if atomic.LoadUint32(&nb.dead) == nodeStatusDead || cutBatch {
 		statsTags := processor.StatsTagsForBatch(
-			nb.parent.name, processor.ServiceNameForNode(nb.node), nb.spanFormat,
-		)
+			nb.parent.name, processor.ServiceNameForNode(nb.node))
 		if cutBatch {
-			stats.RecordWithTags(context.Background(), statsTags, statBatchSizeTriggerSend.M(1))
+			stats.RecordWithTags(ctx, statsTags, statBatchSizeTriggerSend.M(1))
 		} else {
-			stats.RecordWithTags(context.Background(), statsTags, statBatchOnDeadNode.M(1))
+			stats.RecordWithTags(ctx, statsTags, statBatchOnDeadNode.M(1))
 		}
 		// Shoot off event so that we don't block this add on other adds
 		go nb.cutBatch(b)
@@ -263,8 +258,7 @@ func (nb *nodeBatcher) cutBatch(b *batch) {
 func (nb *nodeBatcher) sendBatch(batch *batch) {
 	spans := batch.getSpans()
 	statsTags := processor.StatsTagsForBatch(
-		nb.parent.name, processor.ServiceNameForNode(nb.node), nb.spanFormat,
-	)
+		nb.parent.name, processor.ServiceNameForNode(nb.node))
 	stats.RecordWithTags(context.Background(), statsTags, statBatchSize.M(int64(len(spans))))
 
 	if len(spans) == 0 {
@@ -275,7 +269,8 @@ func (nb *nodeBatcher) sendBatch(batch *batch) {
 		Resource: nb.resource,
 		Spans:    spans,
 	}
-	err := nb.parent.sender.ProcessSpans(td, nb.spanFormat)
+	// TODO: Set the right context
+	err := nb.parent.sender.ProcessSpans(context.Background(), td)
 	// Assumed that the next processor always handles a batch, and doesn't error
 	if err != nil {
 		nb.logger.Error(
@@ -343,8 +338,7 @@ func (bt *bucketTicker) start() {
 					} else if b.getCurrentItemCount() > 0 {
 						// If the batch is non-empty, go ahead and cut it
 						statsTags := processor.StatsTagsForBatch(
-							nb.parent.name, processor.ServiceNameForNode(nb.node), nb.spanFormat,
-						)
+							nb.parent.name, processor.ServiceNameForNode(nb.node))
 						stats.RecordWithTags(context.Background(), statsTags, statTimeoutTriggerSend.M(1))
 						nb.cutBatch(b)
 					} else {
@@ -421,6 +415,7 @@ func (b *batch) add(spans []*tracepb.Span) (cut bool, closed bool) {
 		b.grow(openTill)
 	}
 
+	// Why not: copy(b.items.Load().([]*tracepb.Span)[openFrom:openTill], spans)?
 	for spanIndex, span := range spans {
 		b.items.Load().([]*tracepb.Span)[openFrom+uint32(spanIndex)] = span
 	}

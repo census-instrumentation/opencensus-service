@@ -40,7 +40,7 @@ func Start(logger *zap.Logger, v *viper.Viper, spanProc processor.SpanProcessor)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create the Zipkin Scribe receiver: %v", err)
 	}
-	ss := processor.WrapWithSpanSink("zipkin-scribe", spanProc)
+	ss := processor.WrapWithSpanSink(spanProc)
 
 	if err := sr.StartTraceReception(context.Background(), ss); err != nil {
 		return nil, fmt.Errorf("Cannot start Zipkin Scribe receiver %+v: %v", rOpts, err)
