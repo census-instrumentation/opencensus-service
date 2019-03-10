@@ -29,6 +29,10 @@ import (
 	tracetranslator "github.com/census-instrumentation/opencensus-service/translator/trace"
 )
 
+var (
+	unknownProcessProto = &jaeger.Process{ServiceName: "unknown-service-name"}
+)
+
 // OCProtoToJaegerProto translates OpenCensus trace data into the Jaeger Proto for GRPC.
 func OCProtoToJaegerProto(td data.TraceData) (*jaeger.Batch, error) {
 	jSpans, err := ocSpansToJaegerSpansProto(td.Spans)
@@ -47,7 +51,7 @@ func OCProtoToJaegerProto(td data.TraceData) (*jaeger.Batch, error) {
 // Replica of protospan_to_jaegerthrift.ocNodeToJaegerProcess
 func ocNodeToJaegerProcessProto(node *commonpb.Node) *jaeger.Process {
 	if node == nil {
-		return nil
+		return unknownProcessProto
 	}
 
 	var jTags []jaeger.KeyValue
