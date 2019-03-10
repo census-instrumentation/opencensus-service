@@ -54,7 +54,7 @@
       ],
       "operation_name": "get",
       "start_time": "2017-01-26T21:46:30.639875Z",
-      "duration": 22938,
+      "duration": 22938000,
       "tags": [
         {
           "key": "http.url",
