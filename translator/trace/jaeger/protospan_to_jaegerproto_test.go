@@ -89,6 +89,13 @@ func TestOCProtoToJaegerProto(t *testing.T) {
 				return jSpan.Tags[i].Key < jSpan.Tags[j].Key
 			})
 		}
+		for _, jSpan := range jSpans {
+			for _, jSpanLog := range jSpan.Logs {
+				sort.Slice(jSpanLog.Fields, func(i, j int) bool {
+					return jSpanLog.Fields[i].Key < jSpanLog.Fields[j].Key
+				})
+			}
+		}
 
 		gjson, _ := json.Marshal(gotJBatch)
 		wjson, _ := json.Marshal(wantJBatch)
