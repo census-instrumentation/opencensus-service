@@ -91,7 +91,7 @@
       ],
       "logs": [
         {
-          "timestamp": "2017-01-26T21:46:31.639875Z",
+          "timestamp": "2017-01-26T21:46:31.639874Z",
           "fields": [
             {
               "key": "oc.timeevent.messageevent.id",
