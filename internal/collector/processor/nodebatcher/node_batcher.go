@@ -164,7 +164,8 @@ func (b *batcher) removeBucket(bucketID string) {
 
 type nodeBatch struct {
 	mu              sync.RWMutex
-	items           []*tracepb.Span
+	items           [][]*tracepb.Span
+	totalItemCount  uint32
 	cyclesUntouched uint32
 	dead            uint32
 	lastSent        int64
@@ -186,33 +187,44 @@ func newNodeBatch(
 		format:   format,
 		node:     node,
 		resource: resource,
-		items:    make([]*tracepb.Span, 0, initialBatchCapacity),
+		items:    make([][]*tracepb.Span, 0, initialBatchCapacity),
 	}
 }
 
 func (nb *nodeBatch) add(spans []*tracepb.Span) {
 	nb.mu.Lock()
-	nb.items = append(nb.items, spans...)
+	nb.items = append(nb.items, spans)
+	nb.totalItemCount = nb.totalItemCount + uint32(len(spans))
 	nb.cyclesUntouched = 0
+	itemCount := nb.totalItemCount
 
-	var itemsToProcess []*tracepb.Span
-	if uint32(len(nb.items)) > nb.parent.sendBatchSize || nb.dead == nodeStatusDead {
+	var itemsToProcess [][]*tracepb.Span
+	if nb.totalItemCount > nb.parent.sendBatchSize || nb.dead == nodeStatusDead {
 		itemsToProcess = nb.items
-		nb.items = make([]*tracepb.Span, 0, len(nb.items))
+		nb.items = make([][]*tracepb.Span, 0, len(nb.items))
 		nb.lastSent = time.Now().UnixNano()
+		nb.totalItemCount = 0
 	}
 	nb.mu.Unlock()
 
 	if len(itemsToProcess) > 0 {
-		td := data.TraceData{
-			Node:     nb.node,
-			Resource: nb.resource,
-			Spans:    itemsToProcess,
-		}
-
-		// TODO: This process should be done in an async way, perhaps with a channel + goroutine worker(s)
-		_ = nb.parent.sender.ProcessSpans(td, nb.format)
+		nb.sendItems(itemsToProcess, itemCount)
 	}
+}
+
+func (nb *nodeBatch) sendItems(itemsToProcess [][]*tracepb.Span, itemCount uint32) {
+	tdItems := make([]*tracepb.Span, itemCount)
+	for _, items := range itemsToProcess {
+		tdItems = append(tdItems, items...)
+	}
+	td := data.TraceData{
+		Node:     nb.node,
+		Resource: nb.resource,
+		Spans:    tdItems,
+	}
+
+	// TODO: This process should be done in an async way, perhaps with a channel + goroutine worker(s)
+	_ = nb.parent.sender.ProcessSpans(td, nb.format)
 }
 
 type bucketTicker struct {
@@ -249,56 +261,55 @@ func (bt *bucketTicker) add(bucketID string) {
 }
 
 func (bt *bucketTicker) start() {
-	bt.once.Do(func() {
-		for {
-			select {
-			case <-bt.ticker.C:
-				for nbKey := range bt.nodes {
-					nb := bt.parent.getBucket(nbKey)
-					// Need to check nil here incase the node was deleted from the parent batcher, but
-					// not deleted from bt.nodes
-					if nb == nil {
-						// re-delete just in case
-						delete(bt.nodes, nbKey)
-						continue
-					} else {
-						bt.processNodeBatch(nbKey, nb)
-					}
+	bt.once.Do(bt.runTicker)
+}
+
+func (bt *bucketTicker) runTicker() {
+	for {
+		select {
+		case <-bt.ticker.C:
+			for nbKey := range bt.nodes {
+				nb := bt.parent.getBucket(nbKey)
+				// Need to check nil here incase the node was deleted from the parent batcher, but
+				// not deleted from bt.nodes
+				if nb == nil {
+					// re-delete just in case
+					delete(bt.nodes, nbKey)
+					continue
+				} else {
+					bt.processNodeBatch(nbKey, nb)
 				}
-			case newBucketKey := <-bt.pendingNodes:
-				bt.nodes[newBucketKey] = true
-			case <-bt.stopCn:
-				bt.ticker.Stop()
-				return
 			}
+		case newBucketKey := <-bt.pendingNodes:
+			bt.nodes[newBucketKey] = true
+		case <-bt.stopCn:
+			bt.ticker.Stop()
+			return
 		}
-	})
+	}
 }
 
 func (bt *bucketTicker) processNodeBatch(nbKey string, nb *nodeBatch) {
 	nb.mu.Lock()
-	if len(nb.items) > 0 {
+	if nb.totalItemCount > 0 {
 		// If the batch is non-empty, go ahead and send it
-		var itemsToProcess []*tracepb.Span
+		itemCount := nb.totalItemCount
+		var itemsToProcess [][]*tracepb.Span
 		if nb.lastSent+bt.parent.timeout.Nanoseconds() < time.Now().UnixNano() {
 			itemsToProcess = nb.items
-			nb.items = make([]*tracepb.Span, 0, initialBatchCapacity)
+			nb.items = make([][]*tracepb.Span, 0, initialBatchCapacity)
 			nb.lastSent = time.Now().UnixNano()
+			nb.totalItemCount = 0
 		}
 		nb.mu.Unlock()
 
-		if itemsToProcess != nil {
+		if len(itemsToProcess) > 0 {
 			statsTags := processor.StatsTagsForBatch(
 				nb.parent.name, processor.ServiceNameForNode(nb.node), nb.format,
 			)
 			_ = stats.RecordWithTags(context.Background(), statsTags, statTimeoutTriggerSend.M(1))
 
-			td := data.TraceData{
-				Node:     nb.node,
-				Resource: nb.resource,
-				Spans:    itemsToProcess,
-			}
-			_ = nb.parent.sender.ProcessSpans(td, nb.format)
+			nb.sendItems(itemsToProcess, itemCount)
 		}
 	} else {
 		nb.cyclesUntouched++
