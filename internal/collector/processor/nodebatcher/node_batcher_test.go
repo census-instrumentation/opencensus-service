@@ -137,7 +137,7 @@ func TestGenBucketID(t *testing.T) {
 func TestConcurrentNodeAdds(t *testing.T) {
 	sender := newTestSender()
 	batcher := NewBatcher("test", zap.NewNop(), sender).(*batcher)
-	requestCount := 10000
+	requestCount := 1000
 	spansPerRequest := 100
 	waitForCn := sender.waitFor(requestCount*spansPerRequest, 3*time.Second)
 	for requestNum := 0; requestNum < requestCount; requestNum++ {
@@ -220,9 +220,9 @@ func TestBucketRemove(t *testing.T) {
 func TestConcurrentBatchAdds(t *testing.T) {
 	sender := newTestSender()
 	batcher := NewBatcher("test", zap.NewNop(), sender, WithSendBatchSize(128)).(*batcher)
-	requestCount := 10000
+	requestCount := 1000
 	spansPerRequest := 100
-	waitForCn := sender.waitFor(requestCount*spansPerRequest, 2*time.Second)
+	waitForCn := sender.waitFor(requestCount*spansPerRequest, 5*time.Second)
 	for requestNum := 0; requestNum < requestCount; requestNum++ {
 		spans := make([]*tracepb.Span, 0, spansPerRequest)
 		for spanIndex := 0; spanIndex < spansPerRequest; spanIndex++ {
