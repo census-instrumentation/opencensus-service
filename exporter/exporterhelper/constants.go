@@ -26,3 +26,10 @@ var (
 	// ErrNilPushMetricsData is returned when a nil pushMetricsData is given.
 	ErrNilPushMetricsData = errors.New("nil pushMetricsData")
 )
+
+const (
+	numDroppedMetricsAttribute  = "num_dropped_metrics"
+	numReceivedMetricsAttribute = "num_received_metrics"
+	numDroppedSpansAttribute    = "num_dropped_spans"
+	numReceivedSpansAttribute   = "num_received_spans"
+)

@@ -24,11 +24,6 @@ import (
 	"github.com/census-instrumentation/opencensus-service/exporter"
 )
 
-const (
-	numDroppedMetricsAttribute  = "num_dropped_metrics"
-	numReceivedMetricsAttribute = "num_received_metrics"
-)
-
 // PushMetricsData is a helper function that is similar to ConsumeMetricsData but also returns
 // the number of dropped metrics.
 type PushMetricsData func(ctx context.Context, td data.MetricsData) (droppedMetrics int, err error)

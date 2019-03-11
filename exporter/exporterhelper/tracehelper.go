@@ -24,11 +24,6 @@ import (
 	"github.com/census-instrumentation/opencensus-service/observability"
 )
 
-const (
-	numDroppedSpansAttribute  = "num_dropped_spans"
-	numReceivedSpansAttribute = "num_received_spans"
-)
-
 // PushTraceData is a helper function that is similar to ConsumeTraceData but also returns
 // the number of dropped spans.
 type PushTraceData func(ctx context.Context, td data.TraceData) (droppedSpans int, err error)
