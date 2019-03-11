@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	initialBatchCapacity     = uint32(512)
+	initialBatchCapacity     = uint32(16)
 	nodeStatusDead           = uint32(1)
 	tickerPendingNodesBuffer = 16
 
@@ -196,24 +196,26 @@ func (nb *nodeBatch) add(spans []*tracepb.Span) {
 	nb.items = append(nb.items, spans)
 	nb.totalItemCount = nb.totalItemCount + uint32(len(spans))
 	nb.cyclesUntouched = 0
-	itemCount := nb.totalItemCount
 
+	itemCount := nb.totalItemCount
 	var itemsToProcess [][]*tracepb.Span
 	if nb.totalItemCount > nb.parent.sendBatchSize || nb.dead == nodeStatusDead {
-		itemsToProcess = nb.items
-		nb.items = make([][]*tracepb.Span, 0, len(nb.items))
-		nb.lastSent = time.Now().UnixNano()
-		nb.totalItemCount = 0
+		itemsToProcess, itemCount = nb.getAndReset()
 	}
 	nb.mu.Unlock()
 
 	if len(itemsToProcess) > 0 {
-		nb.sendItems(itemsToProcess, itemCount)
+
+		nb.sendItems(itemsToProcess, itemCount, statBatchSizeTriggerSend)
 	}
 }
 
-func (nb *nodeBatch) sendItems(itemsToProcess [][]*tracepb.Span, itemCount uint32) {
-	tdItems := make([]*tracepb.Span, itemCount)
+func (nb *nodeBatch) sendItems(
+	itemsToProcess [][]*tracepb.Span,
+	itemCount uint32,
+	measure *stats.Int64Measure,
+) {
+	tdItems := make([]*tracepb.Span, 0, itemCount)
 	for _, items := range itemsToProcess {
 		tdItems = append(tdItems, items...)
 	}
@@ -223,8 +225,22 @@ func (nb *nodeBatch) sendItems(itemsToProcess [][]*tracepb.Span, itemCount uint3
 		Spans:    tdItems,
 	}
 
+	statsTags := processor.StatsTagsForBatch(
+		nb.parent.name, processor.ServiceNameForNode(nb.node), nb.format,
+	)
+	_ = stats.RecordWithTags(context.Background(), statsTags, measure.M(1))
+
 	// TODO: This process should be done in an async way, perhaps with a channel + goroutine worker(s)
 	_ = nb.parent.sender.ProcessSpans(td, nb.format)
+}
+
+func (nb *nodeBatch) getAndReset() ([][]*tracepb.Span, uint32) {
+	itemsToProcess := nb.items
+	itemsCount := nb.totalItemCount
+	nb.items = make([][]*tracepb.Span, 0, initialBatchCapacity)
+	nb.lastSent = time.Now().UnixNano()
+	nb.totalItemCount = 0
+	return itemsToProcess, itemsCount
 }
 
 type bucketTicker struct {
@@ -293,23 +309,15 @@ func (bt *bucketTicker) processNodeBatch(nbKey string, nb *nodeBatch) {
 	nb.mu.Lock()
 	if nb.totalItemCount > 0 {
 		// If the batch is non-empty, go ahead and send it
-		itemCount := nb.totalItemCount
+		var itemCount uint32
 		var itemsToProcess [][]*tracepb.Span
 		if nb.lastSent+bt.parent.timeout.Nanoseconds() < time.Now().UnixNano() {
-			itemsToProcess = nb.items
-			nb.items = make([][]*tracepb.Span, 0, initialBatchCapacity)
-			nb.lastSent = time.Now().UnixNano()
-			nb.totalItemCount = 0
+			itemsToProcess, itemCount = nb.getAndReset()
 		}
 		nb.mu.Unlock()
 
 		if len(itemsToProcess) > 0 {
-			statsTags := processor.StatsTagsForBatch(
-				nb.parent.name, processor.ServiceNameForNode(nb.node), nb.format,
-			)
-			_ = stats.RecordWithTags(context.Background(), statsTags, statTimeoutTriggerSend.M(1))
-
-			nb.sendItems(itemsToProcess, itemCount)
+			nb.sendItems(itemsToProcess, itemCount, statTimeoutTriggerSend)
 		}
 	} else {
 		nb.cyclesUntouched++
