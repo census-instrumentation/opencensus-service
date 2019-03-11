@@ -163,6 +163,7 @@ type nodeBatch struct {
 	items           []*tracepb.Span
 	cyclesUntouched uint32
 	dead            uint32
+	lastSent        int64
 
 	parent   *batcher
 	format   string
@@ -194,6 +195,7 @@ func (nb *nodeBatch) add(spans []*tracepb.Span) {
 	if uint32(len(nb.items)) > nb.parent.sendBatchSize || nb.dead == nodeStatusDead {
 		itemsToProcess = nb.items
 		nb.items = make([]*tracepb.Span, 0, len(nb.items))
+		nb.lastSent = time.Now().UnixNano()
 	}
 	nb.mu.Unlock()
 
@@ -250,36 +252,45 @@ func (bt *bucketTicker) start() {
 					nb := bt.parent.getBucket(nbKey)
 					// Need to check nil here incase the node was deleted from the parent batcher, but
 					// not deleted from bt.nodes
-					nb.mu.Lock()
 					if nb == nil {
 						// re-delete just in case
 						delete(bt.nodes, nbKey)
-						nb.mu.Unlock()
 						continue
-					} else if len(nb.items) > 0 {
-						// If the batch is non-empty, go ahead and cut it
-						statsTags := processor.StatsTagsForBatch(
-							nb.parent.name, processor.ServiceNameForNode(nb.node), nb.format,
-						)
-						_ = stats.RecordWithTags(context.Background(), statsTags, statTimeoutTriggerSend.M(1))
-						itemsToProcess := nb.items
-						nb.items = make([]*tracepb.Span, 0, initialBatchCapacity)
-						td := data.TraceData{
-							Node:     nb.node,
-							Resource: nb.resource,
-							Spans:    itemsToProcess,
-						}
-
-						_ = nb.parent.sender.ProcessSpans(td, nb.format)
 					} else {
-						nb.cyclesUntouched++
-						if nb.cyclesUntouched > nb.parent.removeAfterCycles {
-							nb.parent.removeBucket(nbKey)
-							delete(bt.nodes, nbKey)
-							nb.dead = nodeStatusDead
+						nb.mu.Lock()
+						if len(nb.items) > 0 {
+							// If the batch is non-empty, go ahead and send it
+							var itemsToProcess []*tracepb.Span
+							if nb.lastSent+bt.parent.timeout.Nanoseconds() < time.Now().UnixNano() {
+								itemsToProcess = nb.items
+								nb.items = make([]*tracepb.Span, 0, initialBatchCapacity)
+								nb.lastSent = time.Now().UnixNano()
+							}
+							nb.mu.Unlock()
+
+							if itemsToProcess != nil {
+								statsTags := processor.StatsTagsForBatch(
+									nb.parent.name, processor.ServiceNameForNode(nb.node), nb.format,
+								)
+								_ = stats.RecordWithTags(context.Background(), statsTags, statTimeoutTriggerSend.M(1))
+
+								td := data.TraceData{
+									Node:     nb.node,
+									Resource: nb.resource,
+									Spans:    itemsToProcess,
+								}
+								_ = nb.parent.sender.ProcessSpans(td, nb.format)
+							}
+						} else {
+							nb.cyclesUntouched++
+							if nb.cyclesUntouched > nb.parent.removeAfterCycles {
+								nb.parent.removeBucket(nbKey)
+								delete(bt.nodes, nbKey)
+								nb.dead = nodeStatusDead
+							}
+							nb.mu.Unlock()
 						}
 					}
-					nb.mu.Unlock()
 				}
 			case newBucketKey := <-bt.pendingNodes:
 				bt.nodes[newBucketKey] = true
