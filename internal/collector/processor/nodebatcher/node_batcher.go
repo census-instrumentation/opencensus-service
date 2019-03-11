@@ -52,7 +52,6 @@ const (
 // batcher is a composition of four main pieces. First is its buckets map which maps nodes to buckets.
 // Second is the nodebatcher which keeps a batch associated with a single node, and sends it downstream.
 // Third is a bucketTicker that ticks every so often and closes any open and not recently sent batches.
-// Fourth is a batch which accepts spans and return when it should be closed due to size.
 //
 // When we no longer have to batch by node, the following changes should be made:
 //   1) batcher should be removed and nodebatcher should be promoted to batcher
