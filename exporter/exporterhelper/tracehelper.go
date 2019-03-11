@@ -50,11 +50,11 @@ func (te *traceExporter) TraceExportFormat() string {
 // TODO: Add support for retries.
 func NewTraceExporter(exporterFormat string, pushTraceData PushTraceData, options ...ExporterOption) (exporter.TraceExporter, error) {
 	if exporterFormat == "" {
-		return nil, ErrEmptyExporterFormat
+		return nil, errEmptyExporterFormat
 	}
 
 	if pushTraceData == nil {
-		return nil, ErrNilPushTraceData
+		return nil, errNilPushTraceData
 	}
 
 	opts := newExporterOptions(options...)

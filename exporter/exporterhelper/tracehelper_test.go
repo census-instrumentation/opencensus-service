@@ -36,14 +36,14 @@ const (
 )
 
 func TestTraceExporter_InvalidName(t *testing.T) {
-	if _, err := NewTraceExporter("", newPushTraceData(0, nil)); err != ErrEmptyExporterFormat {
-		t.Fatalf("NewTraceExporter returns: Want %v Got %v", ErrEmptyExporterFormat, err)
+	if _, err := NewTraceExporter("", newPushTraceData(0, nil)); err != errEmptyExporterFormat {
+		t.Fatalf("NewTraceExporter returns: Want %v Got %v", errEmptyExporterFormat, err)
 	}
 }
 
 func TestTraceExporter_NilPushTraceData(t *testing.T) {
-	if _, err := NewTraceExporter(fakeExporterName, nil); err != ErrNilPushTraceData {
-		t.Fatalf("NewTraceExporter returns: Want %v Got %v", ErrNilPushTraceData, err)
+	if _, err := NewTraceExporter(fakeExporterName, nil); err != errNilPushTraceData {
+		t.Fatalf("NewTraceExporter returns: Want %v Got %v", errNilPushTraceData, err)
 	}
 }
 func TestTraceExporter_Default(t *testing.T) {

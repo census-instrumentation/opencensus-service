@@ -51,11 +51,11 @@ func (me *metricsExporter) ConsumeMetricsData(ctx context.Context, md data.Metri
 // TODO: Add support for retries.
 func NewMetricsExporter(exporterFormat string, pushMetricsData PushMetricsData, options ...ExporterOption) (exporter.MetricsExporter, error) {
 	if exporterFormat == "" {
-		return nil, ErrEmptyExporterFormat
+		return nil, errEmptyExporterFormat
 	}
 
 	if pushMetricsData == nil {
-		return nil, ErrNilPushMetricsData
+		return nil, errNilPushMetricsData
 	}
 
 	opts := newExporterOptions(options...)

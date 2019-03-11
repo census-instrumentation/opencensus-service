@@ -26,14 +26,14 @@ import (
 )
 
 func TestMetricsExporter_InvalidName(t *testing.T) {
-	if _, err := NewMetricsExporter("", newPushMetricsData(0, nil)); err != ErrEmptyExporterFormat {
-		t.Fatalf("NewMetricsExporter returns: Want %v Got %v", ErrEmptyExporterFormat, err)
+	if _, err := NewMetricsExporter("", newPushMetricsData(0, nil)); err != errEmptyExporterFormat {
+		t.Fatalf("NewMetricsExporter returns: Want %v Got %v", errEmptyExporterFormat, err)
 	}
 }
 
 func TestMetricsExporter_NilPushMetricsData(t *testing.T) {
-	if _, err := NewMetricsExporter(fakeExporterName, nil); err != ErrNilPushMetricsData {
-		t.Fatalf("NewMetricsExporter returns: Want %v Got %v", ErrNilPushMetricsData, err)
+	if _, err := NewMetricsExporter(fakeExporterName, nil); err != errNilPushMetricsData {
+		t.Fatalf("NewMetricsExporter returns: Want %v Got %v", errNilPushMetricsData, err)
 	}
 }
 func TestMetricsExporter_Default(t *testing.T) {

@@ -19,12 +19,12 @@ import (
 )
 
 var (
-	// ErrEmptyExporterFormat is returned when an empty name is given.
-	ErrEmptyExporterFormat = errors.New("empty exporter format")
-	// ErrNilPushTraceData is returned when a nil pushTraceData is given.
-	ErrNilPushTraceData = errors.New("nil pushTraceData")
-	// ErrNilPushMetricsData is returned when a nil pushMetricsData is given.
-	ErrNilPushMetricsData = errors.New("nil pushMetricsData")
+	// errEmptyExporterFormat is returned when an empty name is given.
+	errEmptyExporterFormat = errors.New("empty exporter format")
+	// errNilPushTraceData is returned when a nil pushTraceData is given.
+	errNilPushTraceData = errors.New("nil pushTraceData")
+	// errNilPushMetricsData is returned when a nil pushMetricsData is given.
+	errNilPushMetricsData = errors.New("nil pushMetricsData")
 )
 
 const (
