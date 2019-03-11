@@ -141,15 +141,19 @@ func (b *batcher) getBucket(bucketID string) *nodeBatch {
 func (b *batcher) getOrAddBucket(
 	bucketID string, node *commonpb.Node, resource *resourcepb.Resource, spanFormat string,
 ) *nodeBatch {
-	bucket, alreadyStored := b.buckets.LoadOrStore(
-		bucketID,
-		newNodeBatch(b, spanFormat, node, resource),
-	)
-	// Add this bucket to a random ticker
-	if !alreadyStored {
-		stats.Record(context.Background(), statNodesAddedToBatches.M(1))
-		b.tickers[rand.Intn(len(b.tickers))].add(bucketID)
+	bucket, loaded := b.buckets.Load(bucketID)
+	if !loaded {
+		bucket, loaded = b.buckets.LoadOrStore(
+			bucketID,
+			newNodeBatch(b, spanFormat, node, resource),
+		)
+		// Add this bucket to a random ticker
+		if !loaded {
+			stats.Record(context.Background(), statNodesAddedToBatches.M(1))
+			b.tickers[rand.Intn(len(b.tickers))].add(bucketID)
+		}
 	}
+
 	return bucket.(*nodeBatch)
 }
 
@@ -206,6 +210,7 @@ func (nb *nodeBatch) add(spans []*tracepb.Span) {
 			Spans:    itemsToProcess,
 		}
 
+		// TODO: This process should be done in an async way, perhaps with a channel + goroutine worker(s)
 		_ = nb.parent.sender.ProcessSpans(td, nb.format)
 	}
 }
@@ -257,39 +262,7 @@ func (bt *bucketTicker) start() {
 						delete(bt.nodes, nbKey)
 						continue
 					} else {
-						nb.mu.Lock()
-						if len(nb.items) > 0 {
-							// If the batch is non-empty, go ahead and send it
-							var itemsToProcess []*tracepb.Span
-							if nb.lastSent+bt.parent.timeout.Nanoseconds() < time.Now().UnixNano() {
-								itemsToProcess = nb.items
-								nb.items = make([]*tracepb.Span, 0, initialBatchCapacity)
-								nb.lastSent = time.Now().UnixNano()
-							}
-							nb.mu.Unlock()
-
-							if itemsToProcess != nil {
-								statsTags := processor.StatsTagsForBatch(
-									nb.parent.name, processor.ServiceNameForNode(nb.node), nb.format,
-								)
-								_ = stats.RecordWithTags(context.Background(), statsTags, statTimeoutTriggerSend.M(1))
-
-								td := data.TraceData{
-									Node:     nb.node,
-									Resource: nb.resource,
-									Spans:    itemsToProcess,
-								}
-								_ = nb.parent.sender.ProcessSpans(td, nb.format)
-							}
-						} else {
-							nb.cyclesUntouched++
-							if nb.cyclesUntouched > nb.parent.removeAfterCycles {
-								nb.parent.removeBucket(nbKey)
-								delete(bt.nodes, nbKey)
-								nb.dead = nodeStatusDead
-							}
-							nb.mu.Unlock()
-						}
+						bt.processNodeBatch(nbKey, nb)
 					}
 				}
 			case newBucketKey := <-bt.pendingNodes:
@@ -300,6 +273,42 @@ func (bt *bucketTicker) start() {
 			}
 		}
 	})
+}
+
+func (bt *bucketTicker) processNodeBatch(nbKey string, nb *nodeBatch) {
+	nb.mu.Lock()
+	if len(nb.items) > 0 {
+		// If the batch is non-empty, go ahead and send it
+		var itemsToProcess []*tracepb.Span
+		if nb.lastSent+bt.parent.timeout.Nanoseconds() < time.Now().UnixNano() {
+			itemsToProcess = nb.items
+			nb.items = make([]*tracepb.Span, 0, initialBatchCapacity)
+			nb.lastSent = time.Now().UnixNano()
+		}
+		nb.mu.Unlock()
+
+		if itemsToProcess != nil {
+			statsTags := processor.StatsTagsForBatch(
+				nb.parent.name, processor.ServiceNameForNode(nb.node), nb.format,
+			)
+			_ = stats.RecordWithTags(context.Background(), statsTags, statTimeoutTriggerSend.M(1))
+
+			td := data.TraceData{
+				Node:     nb.node,
+				Resource: nb.resource,
+				Spans:    itemsToProcess,
+			}
+			_ = nb.parent.sender.ProcessSpans(td, nb.format)
+		}
+	} else {
+		nb.cyclesUntouched++
+		if nb.cyclesUntouched > nb.parent.removeAfterCycles {
+			nb.parent.removeBucket(nbKey)
+			delete(bt.nodes, nbKey)
+			nb.dead = nodeStatusDead
+		}
+		nb.mu.Unlock()
+	}
 }
 
 func (bt *bucketTicker) stop() {
