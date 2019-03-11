@@ -136,9 +136,9 @@ func TestGenBucketID(t *testing.T) {
 
 func TestConcurrentNodeAdds(t *testing.T) {
 	sender := newTestSender()
-	batcher := NewBatcher("test", zap.NewNop(), sender, WithTimeout(250*time.Millisecond)).(*batcher)
-	requestCount := 2000
-	spansPerRequest := 3
+	batcher := NewBatcher("test", zap.NewNop(), sender).(*batcher)
+	requestCount := 10000
+	spansPerRequest := 100
 	for requestNum := 0; requestNum < requestCount; requestNum++ {
 		spans := make([]*tracepb.Span, 0, spansPerRequest)
 		for spanIndex := 0; spanIndex < spansPerRequest; spanIndex++ {
@@ -151,6 +151,45 @@ func TestConcurrentNodeAdds(t *testing.T) {
 			Spans: spans,
 		}
 		go batcher.ProcessSpans(td, "oc")
+	}
+
+	err := sender.waitFor(requestCount*spansPerRequest, 3*time.Second)
+	if err != nil {
+		t.Errorf("failed to wait for sender %s", err)
+	}
+	if len(sender.spansReceivedByName) != requestCount*spansPerRequest {
+		t.Errorf("Did not receive the correct number of spans. Got %d != expected %d.", len(sender.spansReceivedByName), requestCount*spansPerRequest)
+		return
+	}
+
+	for requestNum := 0; requestNum < requestCount; requestNum++ {
+		for spanIndex := 0; spanIndex < spansPerRequest; spanIndex++ {
+			name := getTestSpanName(requestNum, spanIndex).Value
+			if sender.spansReceivedByName[name] == nil {
+				t.Errorf("Did not receive span %s.", name)
+				return
+			}
+		}
+	}
+}
+
+func TestConcurrentNodeAddsv2(t *testing.T) {
+	sender := newTestSender()
+	batcherv2 := NewBatcherv2("test", zap.NewNop(), sender).(*batcherv2)
+	requestCount := 10000
+	spansPerRequest := 100
+	for requestNum := 0; requestNum < requestCount; requestNum++ {
+		spans := make([]*tracepb.Span, 0, spansPerRequest)
+		for spanIndex := 0; spanIndex < spansPerRequest; spanIndex++ {
+			spans = append(spans, &tracepb.Span{Name: getTestSpanName(requestNum, spanIndex)})
+		}
+		td := data.TraceData{
+			Node: &commonpb.Node{
+				ServiceInfo: &commonpb.ServiceInfo{Name: fmt.Sprintf("svc-%d", requestNum)},
+			},
+			Spans: spans,
+		}
+		go batcherv2.ProcessSpans(td, "oc")
 	}
 
 	err := sender.waitFor(requestCount*spansPerRequest, 3*time.Second)
@@ -219,7 +258,7 @@ func TestConcurrentBatchAdds(t *testing.T) {
 	sender := newTestSender()
 	batcher := NewBatcher("test", zap.NewNop(), sender, WithSendBatchSize(128)).(*batcher)
 	requestCount := 10000
-	spansPerRequest := 3
+	spansPerRequest := 100
 	for requestNum := 0; requestNum < requestCount; requestNum++ {
 		spans := make([]*tracepb.Span, 0, spansPerRequest)
 		for spanIndex := 0; spanIndex < spansPerRequest; spanIndex++ {
@@ -251,33 +290,92 @@ func TestConcurrentBatchAdds(t *testing.T) {
 	}
 }
 
-func BenchmarkConcurrentBatchAdds(b *testing.B) {
+func TestConcurrentBatchAddsV2(t *testing.T) {
 	sender := newTestSender()
-	batcher := NewBatcher("test", zap.NewNop(), sender).(*batcher)
+	batcherv2 := NewBatcherv2("test", zap.NewNop(), sender).(*batcherv2)
+	requestCount := 10000
+	spansPerRequest := 100
+	for requestNum := 0; requestNum < requestCount; requestNum++ {
+		spans := make([]*tracepb.Span, 0, spansPerRequest)
+		for spanIndex := 0; spanIndex < spansPerRequest; spanIndex++ {
+			spans = append(spans, &tracepb.Span{Name: getTestSpanName(requestNum, spanIndex)})
+		}
+		request := data.TraceData{
+			Node: &commonpb.Node{
+				ServiceInfo: &commonpb.ServiceInfo{Name: "svc"},
+			},
+			Spans: spans,
+		}
+		go batcherv2.ProcessSpans(request, "oc")
+	}
+
+	err := sender.waitFor(requestCount*spansPerRequest, 2*time.Second)
+	if err != nil {
+		t.Errorf("failed to wait for sender %s", err)
+	}
+	if len(sender.spansReceivedByName) != requestCount*spansPerRequest {
+		t.Errorf("Did not receive the correct number of spans. %d != %d", len(sender.spansReceivedByName), requestCount*spansPerRequest)
+	}
+
+	for requestNum := 0; requestNum < requestCount; requestNum++ {
+		for spanIndex := 0; spanIndex < spansPerRequest; spanIndex++ {
+			if name := sender.spansReceivedByName[getTestSpanName(requestNum, spanIndex).Value]; name == nil {
+				t.Errorf("Did not receive span %s.", name)
+			}
+		}
+	}
+}
+
+func BenchmarkConcurrentBatchAdds(b *testing.B) {
+	sender1 := newNopSender()
+	batcher := NewBatcher("test", zap.NewNop(), sender1).(*batcher)
+	sender2 := newNopSender()
+	batcherv2 := NewBatcherv2("test", zap.NewNop(), sender2).(*batcherv2)
+	spansPerRequest := 1000
+	var requests []data.TraceData
+	spans := make([]*tracepb.Span, 0, spansPerRequest)
+	for spanIndex := 0; spanIndex < spansPerRequest; spanIndex++ {
+		spans = append(spans, &tracepb.Span{Name: getTestSpanName(0, spanIndex)})
+	}
 	request := data.TraceData{
 		Node: &commonpb.Node{
 			ServiceInfo: &commonpb.ServiceInfo{Name: "svc"},
 		},
-		Spans: []*tracepb.Span{
-			{Name: getTestSpanName(0, 1)},
-			{Name: getTestSpanName(0, 2)},
-			{Name: getTestSpanName(0, 3)},
-		},
+		Spans: spans,
 	}
+	requests = append(requests, request)
 
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			batcher.ProcessSpans(request, "oc")
+	b.Run("v1", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for _, td := range requests {
+				_ = batcher.ProcessSpans(td, "oc")
+			}
 		}
 	})
 
-	b.ReportAllocs()
+	b.Run("v2", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for _, td := range requests {
+				_ = batcherv2.ProcessSpans(td, "oc")
+			}
+		}
+	})
 }
 
 func getTestSpanName(requestNum, index int) *tracepb.TruncatableString {
 	return &tracepb.TruncatableString{
 		Value: fmt.Sprintf("test-span-%d-%d", requestNum, index),
 	}
+}
+
+type nopSender struct{}
+
+func newNopSender() *nopSender {
+	return &nopSender{}
+}
+
+func (ts *nopSender) ProcessSpans(td data.TraceData, spanFormat string) error {
+	return nil
 }
 
 type testSender struct {

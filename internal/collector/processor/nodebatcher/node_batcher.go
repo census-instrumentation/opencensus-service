@@ -37,13 +37,13 @@ import (
 )
 
 const (
-	initialBatchCapacity     = uint32(512)
+	initialBatchCapacity     = uint32(128)
 	nodeStatusDead           = uint32(1)
 	batchStatusClosed        = uint32(1)
 	tickerPendingNodesBuffer = 16
 
 	defaultRemoveAfterCycles = uint32(10)
-	defaultSendBatchSize     = uint32(8192)
+	defaultSendBatchSize     = uint32(2048)
 	defaultNumTickers        = 4
 	defaultTickTime          = 1 * time.Second
 	defaultTimeout           = 1 * time.Second
@@ -231,7 +231,7 @@ func (nb *nodeBatcher) add(spans []*tracepb.Span) {
 			stats.RecordWithTags(context.Background(), statsTags, statBatchOnDeadNode.M(1))
 		}
 		// Shoot off event so that we don't block this add on other adds
-		go nb.cutBatch(b)
+		nb.cutBatch(b)
 	}
 }
 
@@ -385,6 +385,7 @@ type batch struct {
 	currCap       uint32
 	nextEmptyItem uint32
 	sendItemsSize uint32
+	jokes         int32
 
 	closed  uint32
 	growMu  sync.Mutex
@@ -417,12 +418,18 @@ func (b *batch) add(spans []*tracepb.Span) (cut bool, closed bool) {
 	openTill := atomic.AddUint32(&b.nextEmptyItem, uint32(len(spans)))
 	openFrom := openTill - uint32(len(spans))
 	currCap := atomic.LoadUint32(&b.currCap)
+	atomic.AddInt32(&b.jokes, 1)
 	if openTill > currCap {
-		b.grow(openTill)
-	}
-
-	for spanIndex, span := range spans {
-		b.items.Load().([]*tracepb.Span)[openFrom+uint32(spanIndex)] = span
+		atomic.AddInt32(&b.jokes, -1)
+		b.grow(openTill, openFrom)
+		for spanIndex, span := range spans {
+			b.items.Load().([]*tracepb.Span)[openFrom+uint32(spanIndex)] = span
+		}
+	} else {
+		for spanIndex, span := range spans {
+			b.items.Load().([]*tracepb.Span)[openFrom+uint32(spanIndex)] = span
+		}
+		atomic.AddInt32(&b.jokes, -1)
 	}
 
 	return openTill > b.sendItemsSize, false
@@ -442,7 +449,7 @@ func (b *batch) closeBatch() {
 	}
 }
 
-func (b *batch) grow(neededSize uint32) {
+func (b *batch) grow(neededSize, filledTo uint32) {
 	b.growMu.Lock()
 	defer b.growMu.Unlock()
 	currCap := atomic.LoadUint32(&b.currCap)
@@ -455,7 +462,13 @@ func (b *batch) grow(neededSize uint32) {
 	for newCap < neededSize {
 		newCap = newCap * 2
 	}
-	newItems := make([](*tracepb.Span), newCap, newCap)
+	newItems := make([]*tracepb.Span, newCap, newCap)
+	for atomic.LoadInt32(&b.jokes) != 0 {
+		// Another goroutine has claimed space that is not yet occupied, we need to let that routine
+		// finish before copying
+		fmt.Printf("jokes: %d\n", atomic.LoadInt32(&b.jokes))
+		runtime.Gosched()
+	}
 	copy(newItems, b.items.Load().([]*tracepb.Span))
 	b.items.Store(newItems)
 	// It is important that we store the new cap after copying all items, so
