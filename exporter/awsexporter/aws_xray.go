@@ -160,6 +160,7 @@ func (axe *awsXRayExporter) PushTraceData(ctx context.Context, td data.TraceData
 	if serviceName == "" {
 		serviceName = axe.defaultServiceName
 	}
+	// TODO: Consider to do this in the exporterhelper.
 	span := trace.FromContext(ctx)
 	if span.IsRecordingEvents() {
 		span.Annotate([]trace.Attribute{
