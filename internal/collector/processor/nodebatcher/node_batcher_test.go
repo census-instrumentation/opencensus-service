@@ -217,6 +217,49 @@ func TestBucketRemove(t *testing.T) {
 	}
 }
 
+func TestBucketTickerStop(t *testing.T) {
+	sender := newTestSender()
+	tickTime := 50 * time.Millisecond
+	removeAfterTicks := 2
+	batcher := NewBatcher(
+		"test",
+		zap.NewNop(),
+		sender,
+		WithTimeout(50*time.Millisecond),
+		WithTickTime(tickTime),
+		WithRemoveAfterTicks(removeAfterTicks),
+	).(*batcher)
+
+	// Stop all the tickers which should prevent the node batches from getting removed and the spans from timing
+	// out
+	for _, ticker := range batcher.tickers {
+		ticker.stop()
+	}
+
+	spansPerRequest := 3
+	waitForCn := sender.waitFor(spansPerRequest, 3*time.Duration(removeAfterTicks)*tickTime)
+	spans := make([]*tracepb.Span, 0, spansPerRequest)
+	for spanIndex := 0; spanIndex < spansPerRequest; spanIndex++ {
+		spans = append(spans, &tracepb.Span{Name: getTestSpanName(0, spanIndex)})
+	}
+	request := data.TraceData{
+		Node: &commonpb.Node{
+			ServiceInfo: &commonpb.ServiceInfo{Name: "svc"},
+		},
+		Spans: spans,
+	}
+	batcher.ProcessSpans(request, "oc")
+
+	err := <-waitForCn
+	if err == nil {
+		t.Errorf("Unexpectedly received spans")
+	}
+
+	if batcher.getBucket(batcher.genBucketID(request.Node, nil, "oc")) == nil {
+		t.Errorf("Bucket should not be deleted but is.")
+	}
+}
+
 func TestConcurrentBatchAdds(t *testing.T) {
 	sender := newTestSender()
 	batcher := NewBatcher("test", zap.NewNop(), sender, WithSendBatchSize(128)).(*batcher)
