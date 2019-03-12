@@ -205,7 +205,6 @@ func (nb *nodeBatch) add(spans []*tracepb.Span) {
 	nb.mu.Unlock()
 
 	if len(itemsToProcess) > 0 {
-
 		nb.sendItems(itemsToProcess, itemCount, statBatchSizeTriggerSend)
 	}
 }
@@ -237,7 +236,7 @@ func (nb *nodeBatch) sendItems(
 func (nb *nodeBatch) getAndReset() ([][]*tracepb.Span, uint32) {
 	itemsToProcess := nb.items
 	itemsCount := nb.totalItemCount
-	nb.items = make([][]*tracepb.Span, 0, initialBatchCapacity)
+	nb.items = make([][]*tracepb.Span, 0, len(itemsToProcess))
 	nb.lastSent = time.Now().UnixNano()
 	nb.totalItemCount = 0
 	return itemsToProcess, itemsCount
@@ -291,7 +290,6 @@ func (bt *bucketTicker) runTicker() {
 				if nb == nil {
 					// re-delete just in case
 					delete(bt.nodes, nbKey)
-					continue
 				} else {
 					bt.processNodeBatch(nbKey, nb)
 				}
