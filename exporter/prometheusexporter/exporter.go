@@ -52,13 +52,14 @@ type Options struct {
 
 // New is the constructor to make an Exporter with the defined Options.
 func New(o Options) (*Exporter, error) {
-	if o.Registry == nil {
-		o.Registry = prometheus.NewRegistry()
+	registry := o.Registry
+	if registry == nil {
+		registry = prometheus.NewRegistry()
 	}
-	collector := newCollector(o, o.Registry)
+	collector := newCollector(o, registry)
 	exp := &Exporter{
 		options:   o,
-		gatherer:  o.Registry,
+		gatherer:  registry,
 		collector: collector,
 		handler:   promhttp.HandlerFor(o.Registry, promhttp.HandlerOpts{}),
 	}
@@ -259,11 +260,7 @@ func protoLabelValuesToLabelValues(rubricLabelKeys []*metricspb.LabelKey, protoL
 		return nil, fmt.Errorf("len(LabelValues)=%d > len(labelKeys)=%d", len(protoLabelValues), len(rubricLabelKeys))
 	}
 	plainLabelValues := make([]string, len(rubricLabelKeys))
-	for i := 0; i < len(rubricLabelKeys); i++ {
-		if i >= len(protoLabelValues) {
-			continue
-		}
-		protoLabelValue := protoLabelValues[i]
+	for i, protoLabelValue := range protoLabelValues {
 		if protoLabelValue.Value != "" || protoLabelValue.HasValue {
 			plainLabelValues[i] = protoLabelValue.Value
 		}
@@ -272,6 +269,9 @@ func protoLabelValuesToLabelValues(rubricLabelKeys []*metricspb.LabelKey, protoL
 }
 
 func protoLabelKeysToLabels(protoLabelKeys []*metricspb.LabelKey) []string {
+	if len(protoLabelKeys) == 0 {
+		return nil
+	}
 	labelKeys := make([]string, 0, len(protoLabelKeys))
 	for _, protoLabelKey := range protoLabelKeys {
 		sanitizedKey := sanitize(protoLabelKey.GetKey())
@@ -286,9 +286,9 @@ func protoMetricToPrometheusMetric(ctx context.Context, point *metricspb.Point, 
 		dValue := value.DistributionValue
 
 		// Histograms are cumulative in Prometheus.
-		indicesMap := make(map[float64]int)
 		dBuckets := dValue.BucketOptions.GetExplicit().GetBounds()
 		buckets := make([]float64, 0, len(dValue.Buckets))
+		indicesMap := make(map[float64]int, len(dBuckets))
 		for index, bucket := range dBuckets {
 			if _, added := indicesMap[bucket]; !added {
 				indicesMap[bucket] = index
@@ -301,7 +301,7 @@ func protoMetricToPrometheusMetric(ctx context.Context, point *metricspb.Point, 
 		// cumulative indices and map them back by reverse index.
 		cumCount := uint64(0)
 
-		points := make(map[float64]uint64)
+		points := make(map[float64]uint64, len(buckets))
 		for _, bucket := range buckets {
 			index := indicesMap[bucket]
 			var countPerBucket uint64
@@ -342,7 +342,7 @@ func (c *collector) cloneMetricsData() map[string]*metricspb.Metric {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	metricsDataCopy := make(map[string]*metricspb.Metric)
+	metricsDataCopy := make(map[string]*metricspb.Metric, len(c.metricsData))
 	for signature, metric := range c.metricsData {
 		metricsDataCopy[signature] = metric
 	}
