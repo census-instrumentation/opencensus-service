@@ -52,14 +52,16 @@ type Options struct {
 
 // New is the constructor to make an Exporter with the defined Options.
 func New(o Options) (*Exporter, error) {
-	registry := o.Registry
-	if registry == nil {
-		registry = prometheus.NewRegistry()
+	// It is imperative that Options.Registry is non-nil when the
+	// Prometheus client uses it, but also that when creating
+	// the "collector" below, we use a non-nil Registry.
+	if o.Registry == nil {
+		o.Registry = prometheus.NewRegistry()
 	}
-	collector := newCollector(o, registry)
+	collector := newCollector(o, o.Registry)
 	exp := &Exporter{
 		options:   o,
-		gatherer:  registry,
+		gatherer:  o.Registry,
 		collector: collector,
 		handler:   promhttp.HandlerFor(o.Registry, promhttp.HandlerOpts{}),
 	}
