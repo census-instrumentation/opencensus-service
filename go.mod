@@ -15,7 +15,7 @@ require (
 	github.com/apache/thrift v0.0.0-20161221203622-b2a4d4ae21c7
 	github.com/aws/aws-sdk-go v1.15.68 // indirect
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
-	github.com/census-instrumentation/opencensus-proto v0.1.0-0.20181214143942-ba49f56771b8
+	github.com/census-instrumentation/opencensus-proto v0.2.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
 	github.com/facebookgo/limitgroup v0.0.0-20150612190941-6abd8d71ec01 // indirect
