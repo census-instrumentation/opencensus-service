@@ -37,7 +37,6 @@ require (
 	github.com/honeycombio/opencensus-exporter v0.0.0-20181101214123-9be2bb327b5a
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jaegertracing/jaeger v1.9.0
-	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
