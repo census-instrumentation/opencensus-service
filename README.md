@@ -121,6 +121,7 @@ the `opencensus` receiver is enabled on the Collector and required as a defined 
 
 A basic example of all available receivers is provided below. For detailed receiver configuration,
 please see the [receiver README.md](receiver/README.md).
+
 ```yaml
 receivers:
   opencensus:
