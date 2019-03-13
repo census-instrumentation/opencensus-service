@@ -358,6 +358,7 @@ $ docker run \
 ```
 
 It can be configured via command-line or config file:
+
 ```
 OpenCensus Collector
 
