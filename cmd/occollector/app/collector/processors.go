@@ -33,6 +33,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/tailsampling"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/sampling"
 	"github.com/census-instrumentation/opencensus-service/internal/config"
+	"github.com/census-instrumentation/opencensus-service/processor/multiconsumer"
 )
 
 func createExporters(v *viper.Viper, logger *zap.Logger) ([]func(), []consumer.TraceConsumer, []consumer.MetricsConsumer) {
@@ -58,11 +59,11 @@ func createExporters(v *viper.Viper, logger *zap.Logger) ([]func(), []consumer.T
 
 func buildQueuedSpanProcessor(
 	logger *zap.Logger, opts *builder.QueuedSpanProcessorCfg,
-) (closeFns []func(), queuedSpanProcessor processor.SpanProcessor, err error) {
+) (closeFns []func(), queuedSpanProcessor consumer.TraceConsumer, err error) {
 	logger.Info("Constructing queue processor with name", zap.String("name", opts.Name))
 
 	// build span batch sender from configured options
-	var spanSender processor.SpanProcessor
+	var spanSender consumer.TraceConsumer
 	switch opts.SenderType {
 	case builder.ThriftTChannelSenderType:
 		logger.Info("Initializing thrift-tChannel sender")
@@ -106,14 +107,12 @@ func buildQueuedSpanProcessor(
 		logger.Fatal("No senders or exporters configured.")
 	}
 
-	allSendersAndExporters := make([]processor.SpanProcessor, 0, 1+len(traceExporters))
+	allSendersAndExporters := make([]consumer.TraceConsumer, 0, 1+len(traceExporters))
 	if spanSender != nil {
 		allSendersAndExporters = append(allSendersAndExporters, spanSender)
 	}
 	for _, traceExporter := range traceExporters {
-		allSendersAndExporters = append(
-			allSendersAndExporters, processor.NewTraceExporterProcessor(traceExporter),
-		)
+		allSendersAndExporters = append(allSendersAndExporters, traceExporter)
 	}
 
 	var batchingOptions []nodebatcher.Option
@@ -144,11 +143,11 @@ func buildQueuedSpanProcessor(
 		}
 	}
 
-	queuedProcessors := make([]processor.SpanProcessor, 0, len(allSendersAndExporters))
+	queuedConsumers := make([]consumer.TraceConsumer, 0, len(allSendersAndExporters))
 	for _, senderOrExporter := range allSendersAndExporters {
 		// build queued span processor with underlying sender
-		queuedProcessors = append(
-			queuedProcessors,
+		queuedConsumers = append(
+			queuedConsumers,
 			queued.NewQueuedSpanProcessor(
 				senderOrExporter,
 				queued.Options.WithLogger(logger),
@@ -162,10 +161,10 @@ func buildQueuedSpanProcessor(
 			),
 		)
 	}
-	return doneFns, processor.NewMultiSpanProcessor(queuedProcessors), nil
+	return doneFns, processor.NewMultiSpanProcessor(queuedConsumers), nil
 }
 
-func buildSamplingProcessor(cfg *builder.SamplingCfg, nameToSpanProcessor map[string]processor.SpanProcessor, v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor, error) {
+func buildSamplingProcessor(cfg *builder.SamplingCfg, nameToTraceConsumer map[string]consumer.TraceConsumer, v *viper.Viper, logger *zap.Logger) (consumer.TraceConsumer, error) {
 	var policies []*tailsampling.Policy
 	seenExporter := make(map[string]bool)
 	for _, polCfg := range cfg.Policies {
@@ -190,14 +189,14 @@ func buildSamplingProcessor(cfg *builder.SamplingCfg, nameToSpanProcessor map[st
 			return nil, fmt.Errorf("unknown sampling policy %s", polCfg.Name)
 		}
 
-		var policyProcessors []processor.SpanProcessor
+		var policyProcessors []consumer.TraceConsumer
 		for _, exporter := range polCfg.Exporters {
 			if _, ok := seenExporter[exporter]; ok {
 				return nil, fmt.Errorf("multiple sampling polices pointing to exporter %q", exporter)
 			}
 			seenExporter[exporter] = true
 
-			policyProcessor, ok := nameToSpanProcessor[exporter]
+			policyProcessor, ok := nameToTraceConsumer[exporter]
 			if !ok {
 				return nil, fmt.Errorf("invalid exporter %q for sampling policy %q", exporter, polCfg.Name)
 			}
@@ -232,12 +231,12 @@ func buildSamplingProcessor(cfg *builder.SamplingCfg, nameToSpanProcessor map[st
 	return tailSamplingProcessor, err
 }
 
-func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor, []func()) {
+func startProcessor(v *viper.Viper, logger *zap.Logger) (consumer.TraceConsumer, []func()) {
 	// Build pipeline from its end: 1st exporters, the OC-proto queue processor, and
 	// finally the receivers.
 	var closeFns []func()
-	var spanProcessors []processor.SpanProcessor
-	nameToSpanProcessor := make(map[string]processor.SpanProcessor)
+	var traceConsumers []consumer.TraceConsumer
+	nameToTraceConsumer := make(map[string]consumer.TraceConsumer)
 	exportersCloseFns, traceExporters, metricsExporters := createExporters(v, logger)
 	closeFns = append(closeFns, exportersCloseFns...)
 	if len(traceExporters) > 0 {
@@ -246,19 +245,19 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor
 		// TODO: (@pjanotti) we should avoid this step in the long run, its an extra hop just to re-use
 		// the exporters: this can lose node information and it is not ideal for performance and delegates
 		// the retry/buffering to the exporters (that are designed to run within the tracing process).
-		traceExpProc := processor.NewTraceExporterProcessor(traceExporters...)
-		nameToSpanProcessor["exporters"] = traceExpProc
-		spanProcessors = append(spanProcessors, traceExpProc)
+		traceExpProc := multiconsumer.NewTraceProcessor(traceExporters)
+		nameToTraceConsumer["exporters"] = traceExpProc
+		traceConsumers = append(traceConsumers, traceExpProc)
 	}
 
 	// TODO: (@pjanotti) make use of metrics exporters
 	_ = metricsExporters
 
 	if builder.LoggingExporterEnabled(v) {
-		dbgProc := processor.NewTraceExporterProcessor(loggingexporter.NewTraceExporter(logger))
+		dbgProc, _ := loggingexporter.NewTraceExporter(logger)
 		// TODO: Add this to the exporters list and avoid treating it specially. Don't know all the implications.
-		nameToSpanProcessor["debug"] = dbgProc
-		spanProcessors = append(spanProcessors, dbgProc)
+		nameToTraceConsumer["debug"] = dbgProc
+		traceConsumers = append(traceConsumers, dbgProc)
 	}
 
 	multiProcessorCfg := builder.NewDefaultMultiSpanProcessorCfg().InitFromViper(v)
@@ -269,21 +268,21 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor
 			logger.Error("Failed to build the queued span processor", zap.Error(err))
 			os.Exit(1)
 		}
-		nameToSpanProcessor[queuedJaegerProcessorCfg.Name] = queuedJaegerProcessor
-		spanProcessors = append(spanProcessors, queuedJaegerProcessor)
+		nameToTraceConsumer[queuedJaegerProcessorCfg.Name] = queuedJaegerProcessor
+		traceConsumers = append(traceConsumers, queuedJaegerProcessor)
 		closeFns = append(closeFns, doneFns...)
 	}
 
-	if len(spanProcessors) == 0 {
+	if len(traceConsumers) == 0 {
 		logger.Warn("Nothing to do: no processor was enabled. Shutting down.")
 		os.Exit(1)
 	}
 
-	var tailSamplingProcessor processor.SpanProcessor
+	var tailSamplingProcessor consumer.TraceConsumer
 	samplingProcessorCfg := builder.NewDefaultSamplingCfg().InitFromViper(v)
 	if samplingProcessorCfg.Mode == builder.TailSampling {
 		var err error
-		tailSamplingProcessor, err = buildSamplingProcessor(samplingProcessorCfg, nameToSpanProcessor, v, logger)
+		tailSamplingProcessor, err = buildSamplingProcessor(samplingProcessorCfg, nameToTraceConsumer, v, logger)
 		if err != nil {
 			logger.Error("Falied to build the sampling processor", zap.Error(err))
 			os.Exit(1)
@@ -293,7 +292,7 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor
 			{
 				Name:        "tail-always-sampling",
 				Evaluator:   sampling.NewAlwaysSample(),
-				Destination: processor.NewMultiSpanProcessor(spanProcessors),
+				Destination: processor.NewMultiSpanProcessor(traceConsumers),
 			},
 		}
 		var err error
@@ -307,7 +306,7 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor
 
 	if tailSamplingProcessor != nil {
 		// SpanProcessors are going to go all via the tail sampling processor.
-		spanProcessors = []processor.SpanProcessor{tailSamplingProcessor}
+		traceConsumers = []consumer.TraceConsumer{tailSamplingProcessor}
 	}
 
 	// Wraps processors in a single one to be connected to all enabled receivers.
@@ -326,5 +325,5 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (processor.SpanProcessor
 			),
 		)
 	}
-	return processor.NewMultiSpanProcessor(spanProcessors, processorOptions...), closeFns
+	return processor.NewMultiSpanProcessor(traceConsumers, processorOptions...), closeFns
 }

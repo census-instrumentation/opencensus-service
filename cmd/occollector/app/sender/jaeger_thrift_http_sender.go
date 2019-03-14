@@ -16,6 +16,7 @@ package sender
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,6 +26,7 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	"go.uber.org/zap"
 
+	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/data"
 	jaegertranslator "github.com/census-instrumentation/opencensus-service/translator/trace/jaeger"
 )
@@ -40,6 +42,8 @@ type JaegerThriftHTTPSender struct {
 	client  *http.Client
 	logger  *zap.Logger
 }
+
+var _ consumer.TraceConsumer = (*JaegerThriftHTTPSender)(nil)
 
 // HTTPOption sets a parameter for the HttpCollector
 type HTTPOption func(s *JaegerThriftHTTPSender)
@@ -79,8 +83,8 @@ func NewJaegerThriftHTTPSender(
 	return s
 }
 
-// ProcessSpans sends the received data to the configured Jaeger Thrift end-point.
-func (s *JaegerThriftHTTPSender) ProcessSpans(td data.TraceData, spanFormat string) error {
+// ConsumeTraceData sends the received data to the configured Jaeger Thrift end-point.
+func (s *JaegerThriftHTTPSender) ConsumeTraceData(ctx context.Context, td data.TraceData) error {
 	// TODO: (@pjanotti) In case of failure the translation to Jaeger Thrift is going to be remade, cache it somehow.
 	tBatch, err := jaegertranslator.OCProtoToJaegerThrift(td)
 	if err != nil {

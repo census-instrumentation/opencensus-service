@@ -22,6 +22,7 @@ import (
 
 	jaegerproto "github.com/jaegertracing/jaeger/proto-gen/api_v2"
 
+	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/data"
 	jaegertranslator "github.com/census-instrumentation/opencensus-service/translator/trace/jaeger"
 )
@@ -32,6 +33,8 @@ type JaegerProtoGRPCSender struct {
 	client jaegerproto.CollectorServiceClient
 	logger *zap.Logger
 }
+
+var _ consumer.TraceConsumer = (*JaegerThriftHTTPSender)(nil)
 
 // NewJaegerProtoGRPCSender returns a new GRPC-backend span sender.
 // The collector endpoint should be of the form "hostname:14250".
@@ -47,8 +50,8 @@ func NewJaegerProtoGRPCSender(collectorEndpoint string, zlogger *zap.Logger) *Ja
 	return s
 }
 
-// ProcessSpans sends the batch to the configured Jaeger Proto-GRPC endpoint.
-func (s *JaegerProtoGRPCSender) ProcessSpans(td data.TraceData, spanFormat string) error {
+// ConsumeTraceData receives data.TraceData for processing by the JaegerProtoGRPCSender.
+func (s *JaegerProtoGRPCSender) ConsumeTraceData(ctx context.Context, td data.TraceData) error {
 	protoBatch, err := jaegertranslator.OCProtoToJaegerProto(td)
 	if err != nil {
 		s.logger.Warn("Error translating OC proto batch to Jaeger proto", zap.Error(err))

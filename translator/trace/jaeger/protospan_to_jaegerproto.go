@@ -209,7 +209,7 @@ func timestampToTimeProto(ts *timestamp.Timestamp) (t time.Time) {
 	if ts == nil {
 		return
 	}
-	return time.Unix(ts.Seconds, int64(ts.Nanos))
+	return time.Unix(ts.Seconds, int64(ts.Nanos)).UTC()
 }
 
 // Replica of protospan_to_jaegerthrift.ocSpanAttributesToJaegerTags

@@ -15,16 +15,18 @@
 package processor
 
 import (
+	"context"
 	"fmt"
 	"sync/atomic"
 	"testing"
 
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
+	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/data"
 )
 
 func TestMultiSpanProcessorMultiplexing(t *testing.T) {
-	processors := make([]SpanProcessor, 3)
+	processors := make([]consumer.TraceConsumer, 3)
 	for i := range processors {
 		processors[i] = &mockSpanProcessor{}
 	}
@@ -37,7 +39,7 @@ func TestMultiSpanProcessorMultiplexing(t *testing.T) {
 	var wantSpansCount = 0
 	for i := 0; i < 2; i++ {
 		wantSpansCount += len(td.Spans)
-		tt.ProcessSpans(td, "test")
+		tt.ConsumeTraceData(context.Background(), td)
 	}
 
 	for _, p := range processors {
@@ -50,7 +52,7 @@ func TestMultiSpanProcessorMultiplexing(t *testing.T) {
 }
 
 func TestMultiSpanProcessorWhenOneErrors(t *testing.T) {
-	processors := make([]SpanProcessor, 3)
+	processors := make([]consumer.TraceConsumer, 3)
 	for i := range processors {
 		processors[i] = &mockSpanProcessor{}
 	}
@@ -66,7 +68,7 @@ func TestMultiSpanProcessorWhenOneErrors(t *testing.T) {
 
 	var wantSpansCount = 0
 	for i := 0; i < 2; i++ {
-		err := tt.ProcessSpans(td, "test")
+		err := tt.ConsumeTraceData(context.Background(), td)
 		if err == nil {
 			t.Errorf("Wanted error got nil")
 			return
@@ -85,13 +87,13 @@ func TestMultiSpanProcessorWhenOneErrors(t *testing.T) {
 }
 
 func TestMultiSpanProcessorWithPreProcessFn(t *testing.T) {
-	processors := make([]SpanProcessor, 3)
+	processors := make([]consumer.TraceConsumer, 3)
 	for i := range processors {
 		processors[i] = &mockSpanProcessor{}
 	}
 
 	calledFnCount := int32(0)
-	testPreProcessFn := func(data.TraceData, string) {
+	testPreProcessFn := func(context.Context, data.TraceData) {
 		atomic.AddInt32(&calledFnCount, 1)
 	}
 
@@ -104,7 +106,7 @@ func TestMultiSpanProcessorWithPreProcessFn(t *testing.T) {
 	batchCount := 2
 	for i := 0; i < batchCount; i++ {
 		wantSpansCount += len(batch.Spans)
-		tt.ProcessSpans(batch, "test")
+		tt.ConsumeTraceData(context.Background(), batch)
 	}
 
 	for _, p := range processors {
@@ -130,7 +132,7 @@ func TestMultiSpanProcessorWithAddAttributesNoOverwrite(t *testing.T) {
 }
 
 func multiSpanProcessorWithAddAttributesTestHelper(t *testing.T, overwrite bool) {
-	processors := make([]SpanProcessor, 3)
+	processors := make([]consumer.TraceConsumer, 3)
 	for i := range processors {
 		processors[i] = &mockSpanProcessor{}
 	}
@@ -160,7 +162,7 @@ func multiSpanProcessorWithAddAttributesTestHelper(t *testing.T, overwrite bool)
 
 	spans := make([]*tracepb.Span, 0, len(td.Spans)*2)
 	for i := 0; i < 2; i++ {
-		tt.ProcessSpans(td, "test")
+		tt.ConsumeTraceData(context.Background(), td)
 		spans = append(spans, td.Spans...)
 	}
 
@@ -195,9 +197,9 @@ type mockSpanProcessor struct {
 	MustFail   bool
 }
 
-var _ SpanProcessor = &mockSpanProcessor{}
+var _ consumer.TraceConsumer = &mockSpanProcessor{}
 
-func (p *mockSpanProcessor) ProcessSpans(td data.TraceData, spanFormat string) error {
+func (p *mockSpanProcessor) ConsumeTraceData(ctx context.Context, td data.TraceData) error {
 	batchSize := len(td.Spans)
 	p.TotalSpans += batchSize
 	if p.MustFail {
