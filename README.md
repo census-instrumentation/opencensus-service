@@ -306,7 +306,7 @@ sampling:
     my-string-tag-filter:
       # exporters the policy applies to
       exporters:
-        - omnition
+        - jaeger
       policy: string-tag-filter
       configuration:
         tag: tag1
@@ -315,7 +315,7 @@ sampling:
           - value2
     my-numeric-tag-filter:
       exporters:
-        - jaeger
+        - zipkin
       policy: numeric-tag-filter
       configuration:
         tag: tag1
