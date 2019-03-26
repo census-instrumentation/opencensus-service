@@ -36,8 +36,6 @@ import (
 )
 
 func TestGrpcGateway_endToEnd(t *testing.T) {
-	t.Skip("gRPC Gateway version changed, fix this test.")
-
 	addr := ":35993"
 
 	// Set the buffer count to 1 to make it flush the test span immediately.
@@ -120,7 +118,6 @@ func TestGrpcGateway_endToEnd(t *testing.T) {
 			Node: &commonpb.Node{
 				Identifier: &commonpb.ProcessIdentifier{HostName: "testHost"},
 			},
-
 			Spans: []*tracepb.Span{
 				{
 					TraceId:   []byte{0x5B, 0x8E, 0xFF, 0xF7, 0x98, 0x3, 0x81, 0x3, 0xD2, 0x69, 0xB6, 0x33, 0x81, 0x3F, 0xC6, 0xC},
@@ -137,6 +134,7 @@ func TestGrpcGateway_endToEnd(t *testing.T) {
 					},
 				},
 			},
+			SourceFormat: "oc_trace",
 		},
 	}
 
