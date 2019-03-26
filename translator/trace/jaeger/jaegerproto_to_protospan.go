@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tracetranslator
+package jaeger
 
 import (
 	"encoding/base64"
@@ -26,16 +26,17 @@ import (
 	jmodel "github.com/jaegertracing/jaeger/model"
 
 	"github.com/census-instrumentation/opencensus-service/internal"
+	tracetranslator "github.com/census-instrumentation/opencensus-service/translator/trace"
 )
 
-// JaegerProtoToOCProtoBatch converts a slice of jaeger gRPC protobuf spans into oc ExportTraceServiceRequest
+// ProtoBatchToOCProtoBatch converts a slice of jaeger gRPC protobuf spans into oc ExportTraceServiceRequest
 // batches. Spans following a span with a set process are assumed to be from the same process (node).
-func JaegerProtoToOCProtoBatch(jSpans []*jmodel.Span) ([]*agenttracepb.ExportTraceServiceRequest, error) {
+func ProtoBatchToOCProtoBatch(jSpans []*jmodel.Span) ([]*agenttracepb.ExportTraceServiceRequest, error) {
 	ocSpans := make([]*tracepb.Span, 0, len(jSpans))
 	var ocNode *commonpb.Node
 	ocBatches := make([]*agenttracepb.ExportTraceServiceRequest, 0, len(jSpans))
 	for spanIndex, span := range jSpans {
-		ocSpan, err := JaegerProtoToOCProto(span)
+		ocSpan, err := ProtoSpanToOCProtoSpan(span)
 		if err != nil {
 			return nil, err
 		}
@@ -66,41 +67,6 @@ func JaegerProtoToOCProtoBatch(jSpans []*jmodel.Span) ([]*agenttracepb.ExportTra
 	return ocBatches, nil
 }
 
-// JaegerProtoToOCProto converts a jaeger gRPC protobuf span into a oc Span
-func JaegerProtoToOCProto(jSpan *jmodel.Span) (*tracepb.Span, error) {
-	_, kind, status, attributes := jKeyValuesToAttributes(jSpan.Tags)
-
-	traceID := make([]byte, 16)
-	jSpan.TraceID.MarshalTo(traceID)
-
-	spanID := make([]byte, 8)
-	jSpan.SpanID.MarshalTo(spanID)
-
-	parentSpanID := make([]byte, 8)
-	jParentSpan := jSpan.ParentSpanID()
-	jParentSpan.MarshalTo(parentSpanID)
-
-	var name *tracepb.TruncatableString
-	if jSpan.OperationName != "" {
-		name = &tracepb.TruncatableString{Value: jSpan.OperationName}
-	}
-
-	return &tracepb.Span{
-		TraceId:      traceID,
-		SpanId:       spanID,
-		ParentSpanId: parentSpanID,
-		Name:         name,
-		Kind:         kind,
-		StartTime:    internal.TimeToTimestamp(jSpan.StartTime),
-		EndTime:      internal.TimeToTimestamp(jSpan.StartTime.Add(time.Duration(jSpan.Duration) * time.Microsecond)),
-		Attributes:   attributes,
-		// TODO: StackTrace: OpenTracing defines a semantic key for "stack", should we attempt to its content to StackTrace?
-		TimeEvents: jProtoLogsToOCProtoTimeEvents(jSpan.Logs),
-		Links:      jProtoRefsToOCProtoLinks(jSpan.References),
-		Status:     status,
-	}, nil
-}
-
 func jProtoProcessToOCProtoNode(jProcess *jmodel.Process) *commonpb.Node {
 	if jProcess == nil {
 		return nil
@@ -113,7 +79,7 @@ func jProtoProcessToOCProtoNode(jProcess *jmodel.Process) *commonpb.Node {
 	}
 	attributes := make(map[string]string)
 	for _, tag := range jProcess.GetTags() {
-		// Special treatment for special keys in the tags.
+		// Some tags map to Jaeger node properties.
 		switch tag.Key {
 		case "hostname":
 			node.Identifier.HostName = tag.GetVStr()
@@ -161,7 +127,7 @@ func jKeyValuesToAttributes(
 	attributes := make(map[string]*tracepb.AttributeValue)
 
 	for _, kv := range kvs {
-		// First try to populate special opentracing defined tags from jaeger keyvalues.
+		// Populate special opentracing defined tags from jaeger keyvalues.
 		switch kv.Key {
 		case OpentracingKeySpanKind:
 			switch kv.GetVStr() {
@@ -174,9 +140,9 @@ func jKeyValuesToAttributes(
 			// It is expected to be an int
 			statusCodePtr = new(int32)
 			*statusCodePtr = int32(kv.GetVInt64())
-		case OpentracingKeyHTTPStatusMessage, OpentracingKeyStatusMessage:
+		case otKeyHTTPStatusMessage, otKeyStatusMessage:
 			statusMessage = kv.GetVStr()
-		case OpentracingKeyMessage:
+		case otKeyMessage:
 			message = kv.GetVStr()
 		}
 
@@ -290,4 +256,39 @@ func jProtoRefsToOCProtoLinks(jRefs []jmodel.SpanRef) *tracepb.Span_Links {
 		links = append(links, link)
 	}
 	return &tracepb.Span_Links{Link: links}
+}
+
+// ProtoSpanToOCProtoSpan converts a jaeger gRPC protobuf span into an OC Span.
+func ProtoSpanToOCProtoSpan(jSpan *jmodel.Span) (*tracepb.Span, error) {
+	_, kind, status, attributes := jKeyValuesToAttributes(jSpan.Tags)
+
+	traceID := make([]byte, 16)
+	jSpan.TraceID.MarshalTo(traceID)
+
+	spanID := make([]byte, 8)
+	jSpan.SpanID.MarshalTo(spanID)
+
+	parentSpanID := make([]byte, 8)
+	jParentSpan := jSpan.ParentSpanID()
+	jParentSpan.MarshalTo(parentSpanID)
+
+	var name *tracepb.TruncatableString
+	if jSpan.OperationName != "" {
+		name = &tracepb.TruncatableString{Value: jSpan.OperationName}
+	}
+
+	return &tracepb.Span{
+		TraceId:      traceID,
+		SpanId:       spanID,
+		ParentSpanId: parentSpanID,
+		Name:         name,
+		Kind:         kind,
+		StartTime:    internal.TimeToTimestamp(jSpan.StartTime),
+		EndTime:      internal.TimeToTimestamp(jSpan.StartTime.Add(time.Duration(jSpan.Duration) * time.Microsecond)),
+		Attributes:   attributes,
+		// TODO: StackTrace: OpenTracing defines a semantic key for "stack", should we attempt to its content to StackTrace?
+		TimeEvents: jProtoLogsToOCProtoTimeEvents(jSpan.Logs),
+		Links:      jProtoRefsToOCProtoLinks(jSpan.References),
+		Status:     status,
+	}, nil
 }

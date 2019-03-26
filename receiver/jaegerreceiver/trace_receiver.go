@@ -99,15 +99,16 @@ const (
 	defaultCompactThriftUDPPort = 6831
 	defaultBinaryThriftUDPPort  = 6832
 
-	traceSource string = "Jaeger"
-	defaultAgentPort = 5778
+	traceSource      string = "Jaeger"
+	defaultAgentPort        = 5778
 )
 
 // New creates a TraceReceiver that receives traffic as a collector with both Thrift and HTTP transports.
-func New(ctx context.Context, config *Configuration, nextConsumer consumer.TraceConsumer) (receiver.TraceReceiver, error) {
+func New(ctx context.Context, logger *zap.Logger, config *Configuration, nextConsumer consumer.TraceConsumer) (receiver.TraceReceiver, error) {
 	return &jReceiver{
 		config:          config,
 		defaultAgentCtx: observability.ContextWithReceiverName(context.Background(), "jaeger-agent"),
+		logger:          logger,
 		nextConsumer:    nextConsumer,
 	}, nil
 }

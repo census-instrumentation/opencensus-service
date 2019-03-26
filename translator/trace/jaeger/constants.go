@@ -31,6 +31,16 @@ const (
 	opencensusLanguage               = "opencensus.language"
 	opencensusExporterVersion        = "opencensus.exporterversion"
 	opencensusCoreLibVersion         = "opencensus.corelibversion"
+
+	// Opentracing tags
+	otKeySpanKind          = "span.kind"
+	otKeyHTTPStatusCode    = "http.status_code"
+	otKeyStatusCode        = "status_code"
+	otKeyHTTPStatusMessage = "http.status_message"
+	otKeyStatusMessage     = "status_message"
+	otKeyMessage           = "message"
+
+	annotationDescriptionKey = "description"
 )
 
 var (
