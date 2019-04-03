@@ -1,8 +1,9 @@
 module github.com/census-instrumentation/opencensus-service
 
 require (
+	cloud.google.com/go v0.37.1 // indirect
 	contrib.go.opencensus.io/exporter/aws v0.0.0-20181029163544-2befc13012d0
-	contrib.go.opencensus.io/exporter/ocagent v0.4.7
+	contrib.go.opencensus.io/exporter/ocagent v0.4.10
 	contrib.go.opencensus.io/exporter/stackdriver v0.9.2
 	github.com/Azure/azure-sdk-for-go v6.0.0-beta+incompatible // indirect
 	github.com/Azure/go-autorest v11.4.0+incompatible // indirect
@@ -10,6 +11,7 @@ require (
 	github.com/DataDog/opencensus-go-exporter-datadog v0.0.0-20181026070331-e7c4bd17b329
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/apache/thrift v0.0.0-20161221203622-b2a4d4ae21c7
+	github.com/aws/aws-sdk-go v1.18.6 // indirect
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/census-instrumentation/opencensus-proto v0.2.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
@@ -26,7 +28,6 @@ require (
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20190206021053-df38e1611dbe // indirect
-	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
 	github.com/gregjones/httpcache v0.0.0-20190203031600-7a902570cb17 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.8.5
@@ -42,18 +43,16 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/omnition/scribe-go v0.0.0-20190131012523-9e3c68f31124
-	github.com/onsi/ginkgo v1.7.0 // indirect
-	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/opentracing/opentracing-go v1.0.2 // indirect
-	github.com/openzipkin/zipkin-go v0.1.3
+	github.com/openzipkin/zipkin-go v0.1.6
 	github.com/orijtech/prometheus-go-metrics-exporter v0.0.3-0.20190313163149-b321c5297f60
 	github.com/orijtech/promreceiver v0.0.6
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.0
 	github.com/prashantv/protectmem v0.0.0-20171002184600-e20412882b3a // indirect
-	github.com/prometheus/client_golang v0.9.2
-	github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a
+	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
+	github.com/prometheus/procfs v0.0.0-20190117184657-bf6a532e95b1
 	github.com/prometheus/prometheus v0.0.0-20190131111325-62e591f928dd
 	github.com/rs/cors v1.6.0
 	github.com/samuel/go-zookeeper v0.0.0-20180130194729-c4fab1ac1bec // indirect
@@ -62,20 +61,19 @@ require (
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/viper v1.2.1
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
-	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/tinylib/msgp v1.0.2 // indirect
 	github.com/uber-go/atomic v1.3.2 // indirect
 	github.com/uber/jaeger-client-go v2.15.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.0.0+incompatible
 	github.com/uber/tchannel-go v1.10.0
 	github.com/yancl/opencensus-go-exporter-kafka v0.0.0-20181029030031-9c471c1bfbeb
-	go.opencensus.io v0.19.0
+	go.opencensus.io v0.19.3
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
-	golang.org/x/crypto v0.0.0-20190131182504-b8fe1690c613 // indirect
-	google.golang.org/api v0.1.0
-	google.golang.org/genproto v0.0.0-20190215211957-bd968387e4aa // indirect
+	golang.org/x/net v0.0.0-20190320064053-1272bf9dcd53 // indirect
+	golang.org/x/oauth2 v0.0.0-20190319182350-c85d3e98c914 // indirect
+	google.golang.org/api v0.2.0
 	google.golang.org/grpc v1.19.1
 	gopkg.in/DataDog/dd-trace-go.v1 v1.4.0 // indirect
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
