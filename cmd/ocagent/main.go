@@ -113,9 +113,11 @@ func runOCAgent() {
 		log.Fatalf("Failed to start net/http/pprof: %v", err)
 	}
 
-	traceExporters, metricsExporters, closeFns, err := config.ExportersFromViperConfig(logger, viperCfg)
-	if err != nil {
-		log.Fatalf("Config: failed to create exporters from YAML: %v", err)
+	traceExporters, metricsExporters, closeFns, errs := config.ExportersFromViperConfig(logger, viperCfg)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			log.Printf("Config: failed to create exporter from YAML: %v", err)
+		}
 	}
 
 	commonSpanSink := multiconsumer.NewTraceProcessor(traceExporters)

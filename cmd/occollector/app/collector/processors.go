@@ -38,9 +38,11 @@ import (
 
 func createExporters(v *viper.Viper, logger *zap.Logger) ([]func(), []consumer.TraceConsumer, []consumer.MetricsConsumer) {
 	// TODO: (@pjanotti) this is slightly modified from agent but in the end duplication, need to consolidate style and visibility.
-	traceExporters, metricsExporters, doneFns, err := config.ExportersFromViperConfig(logger, v)
-	if err != nil {
-		logger.Fatal("Failed to create config for exporters", zap.Error(err))
+	traceExporters, metricsExporters, doneFns, errs := config.ExportersFromViperConfig(logger, v)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			logger.Error("Failed to create config for exporter %v", zap.Error(err))
+		}
 	}
 
 	wrappedDoneFns := make([]func(), 0, len(doneFns))

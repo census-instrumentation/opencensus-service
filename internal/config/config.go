@@ -443,7 +443,7 @@ func eqLocalHost(host string) bool {
 //  + prometheus
 //  + aws-xray
 //  + honeycomb
-func ExportersFromViperConfig(logger *zap.Logger, v *viper.Viper) ([]consumer.TraceConsumer, []consumer.MetricsConsumer, []func() error, error) {
+func ExportersFromViperConfig(logger *zap.Logger, v *viper.Viper) ([]consumer.TraceConsumer, []consumer.MetricsConsumer, []func() error, []error) {
 	parseFns := []struct {
 		name string
 		fn   func(*viper.Viper) ([]consumer.TraceConsumer, []consumer.MetricsConsumer, []func() error, error)
@@ -466,11 +466,12 @@ func ExportersFromViperConfig(logger *zap.Logger, v *viper.Viper) ([]consumer.Tr
 	if exportersViper == nil {
 		return nil, nil, nil, nil
 	}
+	errs := make([]error, 0)
 	for _, cfg := range parseFns {
 		tes, mes, tesDoneFns, err := cfg.fn(exportersViper)
 		if err != nil {
 			err = fmt.Errorf("failed to create config for %q: %v", cfg.name, err)
-			return nil, nil, nil, err
+			errs = append(errs, err)
 		}
 
 		for _, te := range tes {
@@ -493,5 +494,5 @@ func ExportersFromViperConfig(logger *zap.Logger, v *viper.Viper) ([]consumer.Tr
 			}
 		}
 	}
-	return traceExporters, metricsExporters, doneFns, nil
+	return traceExporters, metricsExporters, doneFns, errs
 }
