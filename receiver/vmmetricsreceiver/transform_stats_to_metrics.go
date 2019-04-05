@@ -255,9 +255,9 @@ func labelValuesFromTags(tags []tag.Tag) []*metricspb.LabelValue {
 	}
 
 	labelValues := make([]*metricspb.LabelValue, 0, len(tags))
-	for _, tag_ := range tags {
+	for _, tag := range tags {
 		labelValues = append(labelValues, &metricspb.LabelValue{
-			Value: tag_.Value,
+			Value: tag.Value,
 
 			// It is imperative that we set the "HasValue" attribute,
 			// in order to distinguish missing a label from the empty string.
@@ -267,7 +267,7 @@ func labelValuesFromTags(tags []tag.Tag) []*metricspb.LabelValue {
 			// so the best case that we can use to distinguish missing labels/tags from the
 			// empty string is by checking if the Tag.Key.Name() != "" to indicate that we have
 			// a value.
-			HasValue: tag_.Key.Name() != "",
+			HasValue: tag.Key.Name() != "",
 		})
 	}
 	return labelValues
