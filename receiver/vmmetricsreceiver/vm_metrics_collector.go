@@ -46,79 +46,11 @@ type VMMetricsCollector struct {
 }
 
 const (
-	defaultMountPoint = procfs.DefaultMountPoint // "/proc"
+	defaultMountPoint     = procfs.DefaultMountPoint // "/proc"
 	defaultScrapeInterval = 10 * time.Second
 )
 
-// TODO(songy23): remove all measures and views and use Metrics APIs instead.
-
-var mRuntimeAllocMem = stats.Int64("process/memory_alloc", "Number of bytes currently allocated in use", "By")
-var viewAllocMem = &view.View{
-	Name:        mRuntimeAllocMem.Name(),
-	Description: mRuntimeAllocMem.Description(),
-	Measure:     mRuntimeAllocMem,
-	Aggregation: view.LastValue(),
-	TagKeys:     nil,
-}
-
-var mRuntimeTotalAllocMem = stats.Int64("process/total_memory_alloc", "Number of allocations in total", "By")
-var viewTotalAllocMem = &view.View{
-	Name:        mRuntimeTotalAllocMem.Name(),
-	Description: mRuntimeTotalAllocMem.Description(),
-	Measure:     mRuntimeTotalAllocMem,
-	Aggregation: view.LastValue(),
-	TagKeys:     nil,
-}
-
-var mRuntimeSysMem = stats.Int64("process/sys_memory_alloc", "Number of bytes given to the process to use in total", "By")
-var viewSysMem = &view.View{
-	Name:        mRuntimeSysMem.Name(),
-	Description: mRuntimeSysMem.Description(),
-	Measure:     mRuntimeSysMem,
-	Aggregation: view.LastValue(),
-	TagKeys:     nil,
-}
-
-var mCPUSeconds = stats.Int64("process/cpu_seconds", "CPU seconds for this process", "1")
-var viewCPUSeconds = &view.View{
-	Name:        mCPUSeconds.Name(),
-	Description: mCPUSeconds.Description(),
-	Measure:     mCPUSeconds,
-	Aggregation: view.LastValue(),
-	TagKeys:     nil,
-}
-
-var mUserCPUSeconds = stats.Float64("system/cpu_seconds/user", "Total kernel/system user CPU seconds", "s")
-var viewUserCPUSeconds = &view.View{
-	Name:        mUserCPUSeconds.Name(),
-	Description: mUserCPUSeconds.Description(),
-	Measure:     mUserCPUSeconds,
-	Aggregation: view.Sum(),
-	TagKeys:     nil,
-}
-
-var mSystemCPUSeconds = stats.Float64("system/cpu_seconds/system", "Total kernel/system system CPU seconds", "s")
-var viewSystemCPUSeconds = &view.View{
-	Name:        mSystemCPUSeconds.Name(),
-	Description: mSystemCPUSeconds.Description(),
-	Measure:     mSystemCPUSeconds,
-	Aggregation: view.Sum(),
-	TagKeys:     nil,
-}
-
-var mIdleCPUSeconds = stats.Float64("system/cpu_seconds/idle", "Total kernel/system idle CPU seconds", "s")
-var viewIdleCPUSeconds = &view.View{
-	Name:        mIdleCPUSeconds.Name(),
-	Description: mIdleCPUSeconds.Description(),
-	Measure:     mIdleCPUSeconds,
-	Aggregation: view.Sum(),
-	TagKeys:     nil,
-}
-
-var views = []*view.View{viewAllocMem, viewTotalAllocMem, viewSysMem, viewCPUSeconds, viewUserCPUSeconds, viewSystemCPUSeconds, viewIdleCPUSeconds}
-
-// NewVMMetricsCollector creates a new set of ProcessMetrics (mem, cpu) that can be used to measure
-// basic information about this process.
+// NewVMMetricsCollector creates a new set of VM and Process Metrics (mem, cpu).
 func NewVMMetricsCollector(si time.Duration, mpoint, mprefix string, consumer consumer.MetricsConsumer) (*VMMetricsCollector, error) {
 	if mpoint == "" {
 		mpoint = defaultMountPoint
@@ -133,7 +65,7 @@ func NewVMMetricsCollector(si time.Duration, mpoint, mprefix string, consumer co
 	vmc := &VMMetricsCollector{
 		consumer:       consumer,
 		startTime:      time.Now(),
-		views:          views,
+		views:          vmViews,
 		fs:             fs,
 		scrapeInterval: si,
 		metricPrefix:   mprefix,
@@ -143,7 +75,7 @@ func NewVMMetricsCollector(si time.Duration, mpoint, mprefix string, consumer co
 	return vmc, nil
 }
 
-// StartCollection starts a ticker'd goroutine that will update the PMV measurements every 5 seconds
+// StartCollection starts a ticker'd goroutine that will scrape and export vm metrics periodically.
 func (vmc *VMMetricsCollector) StartCollection() {
 	ticker := time.NewTicker(vmc.scrapeInterval)
 	go func() {
@@ -160,7 +92,7 @@ func (vmc *VMMetricsCollector) StartCollection() {
 	}()
 }
 
-// StopCollection stops the collection of the process metric information
+// StopCollection stops the collection of metric information
 func (vmc *VMMetricsCollector) StopCollection() {
 	close(vmc.done)
 }
@@ -168,23 +100,30 @@ func (vmc *VMMetricsCollector) StopCollection() {
 func (vmc *VMMetricsCollector) scrape() {
 	ms := &runtime.MemStats{}
 	runtime.ReadMemStats(ms)
-	stats.Record(context.Background(), mRuntimeAllocMem.M(int64(ms.Alloc)))
-	stats.Record(context.Background(), mRuntimeTotalAllocMem.M(int64(ms.TotalAlloc)))
-	stats.Record(context.Background(), mRuntimeSysMem.M(int64(ms.Sys)))
+	ctx := context.Background()
+	stats.Record(ctx, mRuntimeAllocMem.M(int64(ms.Alloc)))
+	stats.Record(ctx, mRuntimeTotalAllocMem.M(int64(ms.TotalAlloc)))
+	stats.Record(ctx, mRuntimeSysMem.M(int64(ms.Sys)))
 
 	pid := os.Getpid()
 	proc, err := procfs.NewProc(pid)
 	if err == nil {
 		if procStat, err := proc.NewStat(); err == nil {
-			stats.Record(context.Background(), mCPUSeconds.M(int64(procStat.CPUTime())))
+			stats.Record(ctx, mCPUSeconds.M(int64(procStat.CPUTime())))
 		}
 	}
 
 	if stat, err := vmc.fs.NewStat(); err == nil {
+		stats.Record(ctx, mProcessesCreated.M(int64(stat.ProcessCreated)))
+		stats.Record(ctx, mProcessesRunning.M(int64(stat.ProcessesRunning)))
+		stats.Record(ctx, mProcessesBlocked.M(int64(stat.ProcessesBlocked)))
+
 		cpuStat := stat.CPUTotal
-		stats.Record(context.Background(), mUserCPUSeconds.M(cpuStat.User))
-		stats.Record(context.Background(), mSystemCPUSeconds.M(cpuStat.System))
-		stats.Record(context.Background(), mIdleCPUSeconds.M(cpuStat.Idle))
+		stats.Record(ctx, mUserCPUSeconds.M(cpuStat.User))
+		stats.Record(ctx, mNiceCPUSeconds.M(cpuStat.Nice))
+		stats.Record(ctx, mSystemCPUSeconds.M(cpuStat.System))
+		stats.Record(ctx, mIdleCPUSeconds.M(cpuStat.Idle))
+		stats.Record(ctx, mIowaitCPUSeconds.M(cpuStat.Iowait))
 	}
 }
 
