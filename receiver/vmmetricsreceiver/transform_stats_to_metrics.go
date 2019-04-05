@@ -18,13 +18,14 @@ package vmmetricsreceiver
 
 import (
 	"errors"
-	"time"
 
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+
+	"github.com/census-instrumentation/opencensus-service/internal"
 
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 )
@@ -160,8 +161,8 @@ func viewDataToTimeseries(vd *view.Data) ([]*metricspb.TimeSeries, error) {
 	// the timestamps for all the row data will be the exact same
 	// per aggregation. However, the values will differ.
 	// Each row has its own tags.
-	startTimestamp := timeToProtoTimestamp(vd.Start)
-	endTimestamp := timeToProtoTimestamp(vd.End)
+	startTimestamp := internal.TimeToTimestamp(vd.Start)
+	endTimestamp := internal.TimeToTimestamp(vd.End)
 
 	mType := measureTypeFromMeasure(vd.View.Measure)
 	timeseries := make([]*metricspb.TimeSeries, 0, len(vd.Rows))
@@ -182,14 +183,6 @@ func viewDataToTimeseries(vd *view.Data) ([]*metricspb.TimeSeries, error) {
 	}
 
 	return timeseries, nil
-}
-
-func timeToProtoTimestamp(t time.Time) *timestamp.Timestamp {
-	unixNano := t.UnixNano()
-	return &timestamp.Timestamp{
-		Seconds: int64(unixNano / 1e9),
-		Nanos:   int32(unixNano % 1e9),
-	}
 }
 
 func rowToPoint(v *view.View, row *view.Row, endTimestamp *timestamp.Timestamp, mType measureType) *metricspb.Point {

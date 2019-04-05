@@ -77,8 +77,8 @@ func NewVMMetricsCollector(si time.Duration, mpoint, mprefix string, consumer co
 
 // StartCollection starts a ticker'd goroutine that will scrape and export vm metrics periodically.
 func (vmc *VMMetricsCollector) StartCollection() {
-	ticker := time.NewTicker(vmc.scrapeInterval)
 	go func() {
+		ticker := time.NewTicker(vmc.scrapeInterval)
 		for {
 			select {
 			case <-ticker.C:
@@ -101,9 +101,11 @@ func (vmc *VMMetricsCollector) scrape() {
 	ms := &runtime.MemStats{}
 	runtime.ReadMemStats(ms)
 	ctx := context.Background()
-	stats.Record(ctx, mRuntimeAllocMem.M(int64(ms.Alloc)))
-	stats.Record(ctx, mRuntimeTotalAllocMem.M(int64(ms.TotalAlloc)))
-	stats.Record(ctx, mRuntimeSysMem.M(int64(ms.Sys)))
+	stats.Record(
+		ctx,
+		mRuntimeAllocMem.M(int64(ms.Alloc)),
+		mRuntimeTotalAllocMem.M(int64(ms.TotalAlloc)),
+		mRuntimeSysMem.M(int64(ms.Sys)))
 
 	pid := os.Getpid()
 	proc, err := procfs.NewProc(pid)
@@ -114,21 +116,22 @@ func (vmc *VMMetricsCollector) scrape() {
 	}
 
 	if stat, err := vmc.fs.NewStat(); err == nil {
-		stats.Record(ctx, mProcessesCreated.M(int64(stat.ProcessCreated)))
-		stats.Record(ctx, mProcessesRunning.M(int64(stat.ProcessesRunning)))
-		stats.Record(ctx, mProcessesBlocked.M(int64(stat.ProcessesBlocked)))
-
 		cpuStat := stat.CPUTotal
-		stats.Record(ctx, mUserCPUSeconds.M(cpuStat.User))
-		stats.Record(ctx, mNiceCPUSeconds.M(cpuStat.Nice))
-		stats.Record(ctx, mSystemCPUSeconds.M(cpuStat.System))
-		stats.Record(ctx, mIdleCPUSeconds.M(cpuStat.Idle))
-		stats.Record(ctx, mIowaitCPUSeconds.M(cpuStat.Iowait))
+		stats.Record(
+			ctx,
+			mProcessesCreated.M(int64(stat.ProcessCreated)),
+			mProcessesRunning.M(int64(stat.ProcessesRunning)),
+			mProcessesBlocked.M(int64(stat.ProcessesBlocked)),
+			mUserCPUSeconds.M(cpuStat.User),
+			mNiceCPUSeconds.M(cpuStat.Nice),
+			mSystemCPUSeconds.M(cpuStat.System),
+			mIdleCPUSeconds.M(cpuStat.Idle),
+			mIowaitCPUSeconds.M(cpuStat.Iowait))
 	}
 }
 
 func (vmc *VMMetricsCollector) export() {
-	vds := []*view.Data{}
+	vds := make([]*view.Data, 0, len(vmc.views))
 	for _, v := range vmc.views {
 		if rows, err := view.RetrieveData(v.Name); err == nil {
 			vd := view.Data{
@@ -152,10 +155,18 @@ func (vmc *VMMetricsCollector) uploadViewData(vds []*view.Data) {
 	defer span.End()
 
 	metrics := make([]*metricspb.Metric, 0, len(vds))
+	errs := []error{}
 	for _, vd := range vds {
 		if metric, err := viewDataToMetric(vd); err == nil {
 			metrics = append(metrics, metric)
+		} else {
+			errs = append(errs, err)
 		}
 	}
-	vmc.consumer.ConsumeMetricsData(ctx, data.MetricsData{Metrics: metrics})
+	if len(metrics) > 0 {
+		vmc.consumer.ConsumeMetricsData(ctx, data.MetricsData{Metrics: metrics})
+	}
+	if len(errs) > 0 {
+		span.SetStatus(trace.Status{Code: 15 /*DATA_LOSS*/, Message: fmt.Sprintf("Malformed ViewData(s): %v", errs)})
+	}
 }
