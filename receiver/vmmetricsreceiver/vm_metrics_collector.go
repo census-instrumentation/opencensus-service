@@ -45,6 +45,13 @@ type VMMetricsCollector struct {
 	done           chan struct{}
 }
 
+const (
+	defaultMountPoint = procfs.DefaultMountPoint // "/proc"
+	defaultScrapeInterval = 10 * time.Second
+)
+
+// TODO(songy23): remove all measures and views and use Metrics APIs instead.
+
 var mRuntimeAllocMem = stats.Int64("process/memory_alloc", "Number of bytes currently allocated in use", "By")
 var viewAllocMem = &view.View{
 	Name:        mRuntimeAllocMem.Name(),
@@ -114,10 +121,10 @@ var views = []*view.View{viewAllocMem, viewTotalAllocMem, viewSysMem, viewCPUSec
 // basic information about this process.
 func NewVMMetricsCollector(si time.Duration, mpoint, mprefix string, consumer consumer.MetricsConsumer) (*VMMetricsCollector, error) {
 	if mpoint == "" {
-		mpoint = procfs.DefaultMountPoint
+		mpoint = defaultMountPoint
 	}
 	if si <= 0 {
-		si = 10 * time.Second
+		si = defaultScrapeInterval
 	}
 	fs, err := procfs.NewFS(mpoint)
 	if err != nil {

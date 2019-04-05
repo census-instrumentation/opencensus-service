@@ -14,6 +14,8 @@
 
 package vmmetricsreceiver
 
+// TODO(songy23): remove this file and use Metrics Gauge and Cumulative APIs.
+
 import (
 	"errors"
 	"time"
