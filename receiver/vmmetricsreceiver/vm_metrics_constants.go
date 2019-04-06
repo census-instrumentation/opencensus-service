@@ -54,7 +54,7 @@ var viewCPUSeconds = &view.View{
 	Name:        mCPUSeconds.Name(),
 	Description: mCPUSeconds.Description(),
 	Measure:     mCPUSeconds,
-	Aggregation: view.LastValue(),
+	Aggregation: view.Sum(),
 	TagKeys:     nil,
 }
 
@@ -63,7 +63,7 @@ var viewUserCPUSeconds = &view.View{
 	Name:        mUserCPUSeconds.Name(),
 	Description: mUserCPUSeconds.Description(),
 	Measure:     mUserCPUSeconds,
-	Aggregation: view.Sum(),
+	Aggregation: view.LastValue(),
 	TagKeys:     nil,
 }
 
@@ -72,7 +72,7 @@ var viewNiceCPUSeconds = &view.View{
 	Name:        mNiceCPUSeconds.Name(),
 	Description: mNiceCPUSeconds.Description(),
 	Measure:     mNiceCPUSeconds,
-	Aggregation: view.Sum(),
+	Aggregation: view.LastValue(),
 	TagKeys:     nil,
 }
 
@@ -81,7 +81,7 @@ var viewSystemCPUSeconds = &view.View{
 	Name:        mSystemCPUSeconds.Name(),
 	Description: mSystemCPUSeconds.Description(),
 	Measure:     mSystemCPUSeconds,
-	Aggregation: view.Sum(),
+	Aggregation: view.LastValue(),
 	TagKeys:     nil,
 }
 
@@ -90,7 +90,7 @@ var viewIdleCPUSeconds = &view.View{
 	Name:        mIdleCPUSeconds.Name(),
 	Description: mIdleCPUSeconds.Description(),
 	Measure:     mIdleCPUSeconds,
-	Aggregation: view.Sum(),
+	Aggregation: view.LastValue(),
 	TagKeys:     nil,
 }
 
@@ -99,7 +99,7 @@ var viewIowaitCPUSeconds = &view.View{
 	Name:        mIowaitCPUSeconds.Name(),
 	Description: mIowaitCPUSeconds.Description(),
 	Measure:     mIowaitCPUSeconds,
-	Aggregation: view.Sum(),
+	Aggregation: view.LastValue(),
 	TagKeys:     nil,
 }
 
@@ -117,7 +117,7 @@ var viewProcessesRunning = &view.View{
 	Name:        mProcessesRunning.Name(),
 	Description: mProcessesRunning.Description(),
 	Measure:     mProcessesRunning,
-	Aggregation: view.Sum(),
+	Aggregation: view.LastValue(),
 	TagKeys:     nil,
 }
 
@@ -126,7 +126,7 @@ var viewProcessesBlocked = &view.View{
 	Name:        mProcessesBlocked.Name(),
 	Description: mProcessesBlocked.Description(),
 	Measure:     mProcessesBlocked,
-	Aggregation: view.Sum(),
+	Aggregation: view.LastValue(),
 	TagKeys:     nil,
 }
 
