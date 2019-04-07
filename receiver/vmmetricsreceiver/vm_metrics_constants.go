@@ -63,7 +63,7 @@ var viewUserCPUSeconds = &view.View{
 	Name:        mUserCPUSeconds.Name(),
 	Description: mUserCPUSeconds.Description(),
 	Measure:     mUserCPUSeconds,
-	Aggregation: view.LastValue(),
+	Aggregation: view.Sum(),
 	TagKeys:     nil,
 }
 
@@ -72,7 +72,7 @@ var viewNiceCPUSeconds = &view.View{
 	Name:        mNiceCPUSeconds.Name(),
 	Description: mNiceCPUSeconds.Description(),
 	Measure:     mNiceCPUSeconds,
-	Aggregation: view.LastValue(),
+	Aggregation: view.Sum(),
 	TagKeys:     nil,
 }
 
@@ -81,7 +81,7 @@ var viewSystemCPUSeconds = &view.View{
 	Name:        mSystemCPUSeconds.Name(),
 	Description: mSystemCPUSeconds.Description(),
 	Measure:     mSystemCPUSeconds,
-	Aggregation: view.LastValue(),
+	Aggregation: view.Sum(),
 	TagKeys:     nil,
 }
 
@@ -90,7 +90,7 @@ var viewIdleCPUSeconds = &view.View{
 	Name:        mIdleCPUSeconds.Name(),
 	Description: mIdleCPUSeconds.Description(),
 	Measure:     mIdleCPUSeconds,
-	Aggregation: view.LastValue(),
+	Aggregation: view.Sum(),
 	TagKeys:     nil,
 }
 
@@ -99,7 +99,7 @@ var viewIowaitCPUSeconds = &view.View{
 	Name:        mIowaitCPUSeconds.Name(),
 	Description: mIowaitCPUSeconds.Description(),
 	Measure:     mIowaitCPUSeconds,
-	Aggregation: view.LastValue(),
+	Aggregation: view.Sum(),
 	TagKeys:     nil,
 }
 
