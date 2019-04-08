@@ -49,7 +49,7 @@ var viewSysMem = &view.View{
 	TagKeys:     nil,
 }
 
-var mCPUSeconds = stats.Int64("process/cpu_seconds", "CPU seconds for this process", "1")
+var mCPUSeconds = stats.Float64("process/cpu_seconds", "CPU seconds for this process", "s")
 var viewCPUSeconds = &view.View{
 	Name:        mCPUSeconds.Name(),
 	Description: mCPUSeconds.Description(),
