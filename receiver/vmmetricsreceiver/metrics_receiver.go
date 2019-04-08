@@ -35,9 +35,10 @@ var (
 
 // Configuration defines the behavior and targets of the VM metrics scrapers.
 type Configuration struct {
-	scrapeInterval time.Duration `mapstructure:"scrape_interval"`
-	mountPoint     string        `mapstructure:"mount_point"`
-	metricPrefix   string        `mapstructure:"metric_prefix"`
+	scrapeInterval    time.Duration `mapstructure:"scrape_interval"`
+	mountPoint        string        `mapstructure:"mount_point"`
+	processMountPoint string        `mapstructure:"process_mount_point"`
+	metricPrefix      string        `mapstructure:"metric_prefix"`
 }
 
 // Receiver is the type used to handle metrics from VM metrics.
@@ -64,7 +65,7 @@ func New(v *viper.Viper, consumer consumer.MetricsConsumer) (*Receiver, error) {
 		return nil, fmt.Errorf("vmmetrics receiver failed to parse config: %s", err)
 	}
 
-	vmc, err := NewVMMetricsCollector(cfg.scrapeInterval, cfg.mountPoint, cfg.metricPrefix, consumer)
+	vmc, err := NewVMMetricsCollector(cfg.scrapeInterval, cfg.mountPoint, cfg.processMountPoint, cfg.metricPrefix, consumer)
 	if err != nil {
 		return nil, err
 	}
