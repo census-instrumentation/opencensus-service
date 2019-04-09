@@ -135,7 +135,7 @@ func (vmc *VMMetricsCollector) scrape(prevProcStat *procfs.ProcStat, prevStat *p
 		procStat, err := proc.NewStat()
 		if err == nil {
 			if prevProcStat != nil {
-				stats.Record(ctx, mCPUSeconds.M(procStat.CPUTime() - prevProcStat.CPUTime()))
+				stats.Record(ctx, mCPUSeconds.M(procStat.CPUTime()-prevProcStat.CPUTime()))
 			} else {
 				stats.Record(ctx, mCPUSeconds.M(procStat.CPUTime()))
 			}
@@ -153,12 +153,12 @@ func (vmc *VMMetricsCollector) scrape(prevProcStat *procfs.ProcStat, prevStat *p
 		if prevStat != nil {
 			stats.Record(
 				ctx,
-				mProcessesCreated.M(int64(stat.ProcessCreated - prevStat.ProcessCreated)),
-				mUserCPUSeconds.M(cpuStat.User - prevStat.CPUTotal.User),
-				mNiceCPUSeconds.M(cpuStat.Nice - prevStat.CPUTotal.Nice),
-				mSystemCPUSeconds.M(cpuStat.System - prevStat.CPUTotal.System),
-				mIdleCPUSeconds.M(cpuStat.Idle - prevStat.CPUTotal.Idle),
-				mIowaitCPUSeconds.M(cpuStat.Iowait - prevStat.CPUTotal.Iowait))
+				mProcessesCreated.M(int64(stat.ProcessCreated-prevStat.ProcessCreated)),
+				mUserCPUSeconds.M(cpuStat.User-prevStat.CPUTotal.User),
+				mNiceCPUSeconds.M(cpuStat.Nice-prevStat.CPUTotal.Nice),
+				mSystemCPUSeconds.M(cpuStat.System-prevStat.CPUTotal.System),
+				mIdleCPUSeconds.M(cpuStat.Idle-prevStat.CPUTotal.Idle),
+				mIowaitCPUSeconds.M(cpuStat.Iowait-prevStat.CPUTotal.Iowait))
 		} else {
 			stats.Record(
 				ctx,
