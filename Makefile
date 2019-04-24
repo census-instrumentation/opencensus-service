@@ -112,7 +112,7 @@ docker-agent:
 	COMPONENT=agent $(MAKE) docker-component
 
 .PHONY: docker-collector
-docker-collector: 
+docker-collector:
 	COMPONENT=collector $(MAKE) docker-component
 
 
