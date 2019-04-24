@@ -41,7 +41,7 @@ test:
 travis-ci: fmt vet lint test-with-cover
 
 .PHONY: test-with-cover
-test-with-cover: 
+test-with-cover:
 	@echo Verifying that all packages have test files to count in coverage
 	@scripts/check-test-files.sh $(subst github.com/census-instrumentation/opencensus-service/,./,$(ALL_PKGS))
 	@echo pre-compiling tests
@@ -85,6 +85,7 @@ vet:
 .PHONY: install-tools
 install-tools:
 	go get golang.org/x/lint/golint
+	go get -u github.com/google/go-cmp/cmp
 
 .PHONY: agent
 agent:
