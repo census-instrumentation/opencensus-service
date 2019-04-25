@@ -26,8 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/spf13/viper"
-	"go.opencensus.io/exporter/prometheus"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
