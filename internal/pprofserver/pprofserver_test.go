@@ -15,6 +15,7 @@
 package pprofserver
 
 import (
+	"flag"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -24,6 +25,21 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
+
+func TestPerformanceProfilerFlags(t *testing.T) {
+	fs := flag.NewFlagSet("test", flag.ExitOnError)
+	AddFlags(fs)
+
+	args := []string{
+		"--" + httpPprofPortCfg + "=1777",
+		"--" + pprofBlockProfileFraction + "=5",
+		"--" + pprofMutexProfileFraction + "=-1",
+	}
+
+	if err := fs.Parse(args); err != nil {
+		t.Fatalf("failed to parse arguments: %v", err)
+	}
+}
 
 func TestPerformanceProfilerServer(t *testing.T) {
 	v := viper.New()
@@ -39,6 +55,7 @@ func TestPerformanceProfilerServer(t *testing.T) {
 
 	// Give a chance for the server goroutine to run.
 	runtime.Gosched()
+
 	client := &http.Client{}
 	resp, err := client.Get("http://localhost:" + strconv.Itoa(pprofPort) + "/debug/pprof")
 	if err != nil {
@@ -52,6 +69,6 @@ func TestPerformanceProfilerServer(t *testing.T) {
 	select {
 	case err := <-asyncErrChan:
 		t.Fatalf("async err received from pprof: %v", err)
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(250 * time.Millisecond):
 	}
 }
