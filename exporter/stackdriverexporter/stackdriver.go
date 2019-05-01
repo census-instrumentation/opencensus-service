@@ -30,10 +30,13 @@ import (
 )
 
 type stackdriverConfig struct {
-	ProjectID     string `mapstructure:"project,omitempty"`
-	EnableTracing bool   `mapstructure:"enable_tracing,omitempty"`
-	EnableMetrics bool   `mapstructure:"enable_metrics,omitempty"`
-	MetricPrefix  string `mapstructure:"metric_prefix,omitempty"`
+	ProjectID       string                 `mapstructure:"project,omitempty"`
+	EnableTracing   bool                   `mapstructure:"enable_tracing,omitempty"`
+	EnableMetrics   bool                   `mapstructure:"enable_metrics,omitempty"`
+	MetricPrefix    string                 `mapstructure:"metric_prefix,omitempty"`
+	TraceAttributes map[string]interface{} `mapstructure:"trace_attributes,omitempty"`
+	MetricLabels    map[string]string      `mapstructure:"metric_labels,omitempty"`
+	Location        string                 `mapstructure:"location,omitempty"`
 }
 
 // TODO: Add metrics support to the exporterwrapper.
@@ -63,6 +66,11 @@ func StackdriverTraceExportersFromViper(v *viper.Viper) (tps []consumer.TraceCon
 	// TODO:  For each ProjectID, create a different exporter
 	// or at least a unique Stackdriver client per ProjectID.
 
+	labels := &stackdriver.Labels{}
+	for k, v := range sc.MetricLabels {
+		labels.Set(k, v, k)
+	}
+
 	sde, serr := stackdriver.NewExporter(stackdriver.Options{
 		// If the project ID is an empty string, it will be set by default based on
 		// the project this is running on in GCP.
@@ -79,6 +87,17 @@ func StackdriverTraceExportersFromViper(v *viper.Viper) (tps []consumer.TraceCon
 		//  to the timeSeries.create method for each point. Don't make the calls faster than one time per
 		//  minute. If you are adding data points to different time series, then there is no rate limitation."
 		BundleDelayThreshold: 61 * time.Second,
+
+		// Appended to every span that is exported to Stackdriver Trace.
+		DefaultTraceAttributes: sc.TraceAttributes,
+
+		// Labels added to every metric created by this exporter in Stackdriver Monitoring.
+		DefaultMonitoringLabels: labels,
+
+		// Location is the identifier of the GCP or AWS cloud region/zone in which
+		// the data for a resource is stored.
+		// If not set, it will default to the location provided by the metadata server.
+		Location: sc.Location,
 	})
 	if serr != nil {
 		return nil, nil, nil, fmt.Errorf("Cannot configure Stackdriver Trace exporter: %v", serr)
