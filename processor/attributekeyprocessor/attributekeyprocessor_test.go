@@ -89,8 +89,25 @@ func TestNewTraceProcessor(t *testing.T) {
 						NewKey: "biz",
 					},
 					{
-						Key:    "biz",
-						NewKey: "baz",
+						Key:    "bit",
+						NewKey: "biz",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "key_cycle",
+			args: args{
+				nextConsumer: nopProcessor,
+				replacements: []KeyReplacement{
+					{
+						Key:    "foo",
+						NewKey: "bar",
+					},
+					{
+						Key:    "bar",
+						NewKey: "foo",
 					},
 				},
 			},
@@ -239,6 +256,12 @@ func Test_attributekeyprocessor_ConsumeTraceData(t *testing.T) {
 					NewKey:    "http.message",
 					Overwrite: true,
 				},
+				{
+					Key:          "server.process.instance",
+					NewKey:       "process",
+					Overwrite:    true,
+					KeepOriginal: true,
+				},
 			},
 			td: data.TraceData{
 				Spans: []*tracepb.Span{
@@ -254,6 +277,12 @@ func Test_attributekeyprocessor_ConsumeTraceData(t *testing.T) {
 								},
 								"http.message": {
 									Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "Server Internal Error"}},
+								},
+								"server.process.instance": {
+									Value: &tracepb.AttributeValue_IntValue{IntValue: 3},
+								},
+								"process": {
+									Value: &tracepb.AttributeValue_IntValue{IntValue: 5},
 								},
 								"foo": {
 									Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "foo"}},
@@ -278,6 +307,12 @@ func Test_attributekeyprocessor_ConsumeTraceData(t *testing.T) {
 									},
 									"http.message": {
 										Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "Service Unavailable"}},
+									},
+									"server.process.instance": {
+										Value: &tracepb.AttributeValue_IntValue{IntValue: 3},
+									},
+									"process": {
+										Value: &tracepb.AttributeValue_IntValue{IntValue: 3},
 									},
 									"bar": {
 										Value: &tracepb.AttributeValue_StringValue{StringValue: &tracepb.TruncatableString{Value: "foo"}},

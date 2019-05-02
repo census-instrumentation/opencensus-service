@@ -55,16 +55,15 @@ func NewTraceProcessor(nextConsumer consumer.TraceConsumer, replacements ...KeyR
 	lenReplacements := len(replacements)
 	if lenReplacements > 0 {
 		seenKeys := make(map[string]bool, lenReplacements)
-		seenNewKeys := make(map[string]bool, lenReplacements)
 		for _, replacement := range replacements {
 			if seenKeys[replacement.Key] {
 				return nil, fmt.Errorf("replacement key %q already specified", replacement.Key)
 			}
 			seenKeys[replacement.Key] = true
-			if seenNewKeys[replacement.NewKey] {
+			if seenKeys[replacement.NewKey] {
 				return nil, fmt.Errorf("replacement new key %q already specified", replacement.NewKey)
 			}
-			seenNewKeys[replacement.NewKey] = true
+			seenKeys[replacement.NewKey] = true
 		}
 	}
 

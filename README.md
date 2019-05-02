@@ -279,8 +279,8 @@ agent/client health information/inventory metadata to downstream exporters.
 
 The collector also takes some global configurations that modify its behavior for all receivers / exporters. 
 
-1. Add Attributes to all spans passing through this collector. These additional attributes can be configured to either overwrite existing keys if they already exists on the span, or respect the original values.
-2. The key of each attribute can also be mapped to different stringss using the `key-mapping` configuration. The key matching is case sensitive.
+1. Add Attributes to all spans passing through this collector. These additional attributes can be configured to either overwrite existing keys if they already exist on the span, or respect the original values.
+2. The key of each attribute can also be mapped to different strings using the `key-mapping` configuration. The key matching is case sensitive.
 
 An example using these configurations of this is provided below.
 
