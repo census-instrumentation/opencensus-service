@@ -35,13 +35,6 @@ func TestStackdriverTraceExportersFromViper(t *testing.T) {
 			name: "empty config",
 		},
 		{
-			name: "no project",
-			config: map[string]interface{}{
-				"enable_tracing": true,
-			},
-			wantErr: "no project found",
-		},
-		{
 			name: "tracing enabled",
 			config: map[string]interface{}{
 				"project":        "no-such-project",
