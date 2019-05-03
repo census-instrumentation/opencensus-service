@@ -16,35 +16,75 @@
 package collector
 
 import (
+	"net"
 	"net/http"
 	"testing"
+
+	"github.com/census-instrumentation/opencensus-service/internal/zpagesserver"
 )
 
 func TestApplication_Start(t *testing.T) {
+	portArg := []string{
+		healthCheckHTTPPort, // Keep it as first since its address is used later.
+		zpagesserver.ZPagesHTTPPort,
+		"metrics-port",
+		"receivers.opencensus.port",
+	}
+	addresses := getMultipleAvailableLocalAddresses(t, uint(len(portArg)))
+	for i, addr := range addresses {
+		_, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			t.Fatalf("failed to split host and port from %q: %v", addr, err)
+		}
+		App.v.Set(portArg[i], port)
+	}
+
 	// Without exporters the collector will start and just shutdown, no error is expected.
 	App.v.Set("logging-exporter", true)
+
 	appDone := make(chan struct{})
 	go func() {
+		defer close(appDone)
 		if err := App.Start(); err != nil {
 			t.Fatalf("App.Start() got %v, want nil", err)
 		}
-		close(appDone)
 	}()
 
 	<-App.readyChan
-	if !isAppReady(t) {
+	if !isAppAvailable(t, "http://"+addresses[0]) {
 		t.Fatalf("App didn't reach ready state")
 	}
 	close(App.stopTestChan)
 	<-appDone
 }
 
-func isAppReady(t *testing.T) bool {
+// isAppAvailable checks if the healthcheck server at the given endpoint is
+// returning `available`.
+func isAppAvailable(t *testing.T, healthCheckEndPoint string) bool {
 	client := &http.Client{}
-	resp, err := client.Get("http://localhost:13133")
+	resp, err := client.Get(healthCheckEndPoint)
 	if err != nil {
 		t.Fatalf("failed to get a response from health probe: %v", err)
 	}
 	defer resp.Body.Close()
 	return resp.StatusCode == http.StatusNoContent
+}
+
+func getMultipleAvailableLocalAddresses(t *testing.T, numAddresses uint) []string {
+	addresses := make([]string, numAddresses, numAddresses)
+	for i := uint(0); i < numAddresses; i++ {
+		addresses[i] = getAvailableLocalAddress(t)
+	}
+	return addresses
+}
+
+func getAvailableLocalAddress(t *testing.T) string {
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatalf("failed to get a free local port: %v", err)
+	}
+	// There is a possible race if something else takes this same port before
+	// the test uses it, however, that is unlikely in practice.
+	defer ln.Close()
+	return ln.Addr().String()
 }
