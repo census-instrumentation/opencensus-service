@@ -16,6 +16,7 @@ package zpagesserver
 
 import (
 	"flag"
+	"net"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -33,6 +34,21 @@ func TestZPagesServerFlags(t *testing.T) {
 
 	if err := fs.Parse(args); err != nil {
 		t.Fatalf("failed to parse arguments: %v", err)
+	}
+}
+
+func TestZPagesServerPortInUse(t *testing.T) {
+	const zpagesPort = 17789
+	ln, err := net.Listen("tcp", ":"+strconv.Itoa(zpagesPort))
+	if err != nil {
+		t.Fatalf("error opening port: %v", err)
+	}
+	defer ln.Close()
+	asyncErrChan := make(chan error)
+	closeFn, err := Run(asyncErrChan, zpagesPort)
+	if err == nil {
+		closeFn()
+		t.Fatalf("expected error, got nil")
 	}
 }
 
