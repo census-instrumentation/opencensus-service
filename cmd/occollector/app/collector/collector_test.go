@@ -17,41 +17,26 @@ package collector
 
 import (
 	"net/http"
-	"runtime"
 	"testing"
-	"time"
 )
 
 func TestApplication_Start(t *testing.T) {
 	// Without exporters the collector will start and just shutdown, no error is expected.
 	App.v.Set("logging-exporter", true)
-	appDone := make(chan struct{}, 1)
+	appDone := make(chan struct{})
 	go func() {
 		if err := App.Start(); err != nil {
 			t.Fatalf("App.Start() got %v, want nil", err)
 		}
-		appDone <- struct{}{}
+		close(appDone)
 	}()
 
-	runtime.Gosched()
-	if !waitForAppReady(t, 5*time.Second) {
+	<-App.readyChan
+	if !isAppReady(t) {
 		t.Fatalf("App didn't reach ready state")
 	}
 	close(App.stopTestChan)
 	<-appDone
-}
-
-func waitForAppReady(t *testing.T, timeout time.Duration) bool {
-	start := time.Now()
-	for {
-		if isAppReady(t) {
-			return true
-		}
-		time.Sleep(100 * time.Millisecond)
-		if time.Since(start) > timeout {
-			return false
-		}
-	}
 }
 
 func isAppReady(t *testing.T) bool {

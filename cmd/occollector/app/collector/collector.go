@@ -50,11 +50,14 @@ type Application struct {
 	receivers   []receiver.TraceReceiver
 	// stopTestChan is used to terminate the application in end to end tests.
 	stopTestChan chan struct{}
+	// readyChan is used in tests to indicate that the application is ready.
+	readyChan chan struct{}
 }
 
 func newApp() *Application {
 	return &Application{
-		v: viper.New(),
+		v:         viper.New(),
+		readyChan: make(chan struct{}),
 	}
 }
 
@@ -117,11 +120,13 @@ func (app *Application) execute() {
 	signalsChannel := make(chan os.Signal, 1)
 	signal.Notify(signalsChannel, os.Interrupt, syscall.SIGTERM)
 
-	// set the channel to stop testing.
-	app.stopTestChan = make(chan struct{})
-
 	// mark service as ready to receive traffic.
 	app.healthCheck.Ready()
+
+	// set the channel to stop testing.
+	app.stopTestChan = make(chan struct{})
+	// notify tests that it is ready.
+	close(app.readyChan)
 
 	select {
 	case err = <-asyncErrorChannel:
