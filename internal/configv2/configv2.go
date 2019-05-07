@@ -56,6 +56,9 @@ type configError struct {
 	code configErrorCode // internal error code
 }
 
+// ensure configError implements error interface.
+var _ error = (*configError)(nil)
+
 func (e *configError) Error() string {
 	return e.msg
 }
@@ -111,7 +114,7 @@ func loadReceivers(v *viper.Viper) ([]models.ReceiverCfg, error) {
 		// Find receiver factory based on "type" that we read from config source
 		typeStr := sub.GetString(models.TypeKeyName)
 		if typeStr == "" {
-			return nil, &configError{code: errMissingReceiverType, msg: fmt.Sprintf("missing receiver type")}
+			return nil, &configError{code: errMissingReceiverType, msg: "missing receiver type"}
 		}
 
 		factory := models.GetReceiverFactory(typeStr)
@@ -149,7 +152,7 @@ func loadExporters(v *viper.Viper) ([]models.ExporterCfg, error) {
 		// Find exporter factory based on "type" that we read from config source
 		typeStr := sub.GetString(models.TypeKeyName)
 		if typeStr == "" {
-			return nil, &configError{code: errMissingExporterType, msg: fmt.Sprintf("missing exporter type")}
+			return nil, &configError{code: errMissingExporterType, msg: "missing exporter type"}
 		}
 
 		factory := models.GetExporterFactory(typeStr)
@@ -175,7 +178,8 @@ func loadExporters(v *viper.Viper) ([]models.ExporterCfg, error) {
 }
 
 func loadOptions(v *viper.Viper) ([]models.OptionCfg, error) {
-	// Get the list of all "options" items from config source
+	// Get the list of all "options" items from config source. Note that we may need
+	// to rename "options" to "operations" if we converge on that after an ongoing discussion.
 	subs, err := getViperSubSequenceOfMaps(v, models.OptionsKeyName)
 	if err != nil {
 		return nil, err
@@ -187,7 +191,7 @@ func loadOptions(v *viper.Viper) ([]models.OptionCfg, error) {
 		// Find option factory based on "type" that we read from config source
 		typeStr := sub.GetString(models.TypeKeyName)
 		if typeStr == "" {
-			return nil, &configError{code: errMissingOptionType, msg: fmt.Sprintf("missing option type")}
+			return nil, &configError{code: errMissingOptionType, msg: "missing option type"}
 		}
 
 		factory := models.GetOptionFactory(typeStr)
@@ -213,6 +217,11 @@ func loadOptions(v *viper.Viper) ([]models.OptionCfg, error) {
 }
 
 func validateConfig(cfg *models.ConfigV2) error {
+	// This function performs basic validation of configuration.
+	// There may be more subtle invalid cases that we currently don't check for but which
+	// we may want to add in the future (e.g. disallowing receiving and exporting on the
+	// same endpoint).
+
 	if err := validateReceivers(cfg.Receivers); err != nil {
 		return err
 	}

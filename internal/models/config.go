@@ -56,7 +56,7 @@ type Pipelines struct {
 	Metrics []*Pipeline `mapstructure:"metrics"`
 }
 
-// Pipeline defines a single pipeline
+// Pipeline defines a single pipeline.
 type Pipeline struct {
 	Name       string              `mapstructure:"name"`
 	Receivers  []PipelineReceiver  `mapstructure:"receivers"`
@@ -112,7 +112,7 @@ type OptionCfg interface {
 // These are helper structs which you can use to implement your specific
 // receiver/exporter/option config storage.
 
-// ReceiverCommon defines common settings for a single-protocol receiver configuration
+// ReceiverCommon defines common settings for a single-protocol receiver configuration.
 // Specific receivers can embed this struct and extend it with more fields if needed.
 type ReceiverCommon struct {
 	Type    string `mapstructure:"type"`
@@ -122,12 +122,12 @@ type ReceiverCommon struct {
 	Port    int    `mapstructure:"port"`
 }
 
-// GetName returns receiver name
+// GetName returns receiver name.
 func (cfg *ReceiverCommon) GetName() string {
 	return cfg.Name
 }
 
-// ExporterCommon defines common settings for an exporter configuration
+// ExporterCommon defines common settings for an exporter configuration.
 // Specific exporters can embed this struct and extend it with more fields if needed.
 type ExporterCommon struct {
 	Type    string `mapstructure:"type"`
@@ -135,7 +135,7 @@ type ExporterCommon struct {
 	Name    string `mapstructure:"name"`
 }
 
-// MultiReceiverCommon defines common settings for a multi-protocol receiver configuration
+// MultiReceiverCommon defines common settings for a multi-protocol receiver configuration.
 // Specific receivers can embed this struct and extend it with more fields. Note that
 // Protocols field is not defined, you need to define it with a specific type.
 type MultiReceiverCommon struct {
@@ -143,12 +143,12 @@ type MultiReceiverCommon struct {
 	Name string `mapstructure:"name"`
 }
 
-// GetName returns receiver name
+// GetName returns receiver name.
 func (cfg *MultiReceiverCommon) GetName() string {
 	return cfg.Name
 }
 
-// ProtocolReceiver defines a protocol of multi-protocol receiver
+// ProtocolReceiver defines a protocol of multi-protocol receiver.
 // Specific receivers can embed this struct and extend it with more fields if needed.
 type ProtocolReceiver struct {
 	Protocol string `mapstructure:"protocol"`
@@ -165,7 +165,7 @@ type OptionCommon struct {
 	Name    string `mapstructure:"name"`
 }
 
-// GetName returns option name
+// GetName returns option name.
 func (cfg *OptionCommon) GetName() string {
 	return cfg.Name
 }
