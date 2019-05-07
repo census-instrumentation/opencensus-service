@@ -18,9 +18,9 @@ exporters:
     # One of "proxy" or "direct_ingestion" is required
     proxy:
       Host: "<Proxy_IP_or_FQDN>"
-      MetricsPort: port
-      TracingPort: port
-      DistributionPort: port
+      MetricsPort: <wf_metrics_port>
+      TracingPort: <wf_trace_port>
+      DistributionPort: <wf_distribution_port>
     direct_ingestion:
       Server: "<wavefront_url>"
       Token: "<wavefront_token>"
