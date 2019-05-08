@@ -37,12 +37,12 @@ func NewNumericAttributeFilter(key string, minValue, maxValue int64) PolicyEvalu
 // after the sampling decision was already taken for the trace.
 // This gives the evaluator a chance to log any message/metrics and/or update any
 // related internal state.
-func (ntf *numericAttributeFilter) OnLateArrivingSpans(earlyDecision Decision, spans []*tracepb.Span) error {
+func (naf *numericAttributeFilter) OnLateArrivingSpans(earlyDecision Decision, spans []*tracepb.Span) error {
 	return nil
 }
 
 // Evaluate looks at the trace data and returns a corresponding SamplingDecision.
-func (ntf *numericAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (Decision, error) {
+func (naf *numericAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (Decision, error) {
 	trace.Lock()
 	batches := trace.ReceivedBatches
 	trace.Unlock()
@@ -51,9 +51,9 @@ func (ntf *numericAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (D
 			if span == nil || span.Attributes == nil {
 				continue
 			}
-			if v, ok := span.Attributes.AttributeMap[ntf.key]; ok {
+			if v, ok := span.Attributes.AttributeMap[naf.key]; ok {
 				value := v.GetIntValue()
-				if value >= ntf.minValue && value <= ntf.maxValue {
+				if value >= naf.minValue && value <= naf.maxValue {
 					return Sampled, nil
 				}
 			}
@@ -65,6 +65,6 @@ func (ntf *numericAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (D
 
 // OnDroppedSpans is called when the trace needs to be dropped, due to memory
 // pressure, before the decision_wait time has been reached.
-func (ntf *numericAttributeFilter) OnDroppedSpans(traceID []byte, trace *TraceData) (Decision, error) {
+func (naf *numericAttributeFilter) OnDroppedSpans(traceID []byte, trace *TraceData) (Decision, error) {
 	return NotSampled, nil
 }

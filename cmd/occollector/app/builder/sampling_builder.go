@@ -44,7 +44,7 @@ type PolicyType string
 const (
 	// AlwaysSample samples all traces, typically used for debugging.
 	AlwaysSample PolicyType = "always-sample"
-	// NumericAttributeFilter sample traces that have a given numberic attribute in a specified
+	// NumericAttributeFilter sample traces that have a given numeric attribute in a specified
 	// range, e.g.: attribute "http.status_code" >= 399 and <= 999.
 	NumericAttributeFilter PolicyType = "numeric-attribute-filter"
 	// StringAttributeFilter sample traces that a attribute, of type string, matching
