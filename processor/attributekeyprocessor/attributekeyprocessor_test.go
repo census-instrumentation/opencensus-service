@@ -76,27 +76,6 @@ func TestNewTraceProcessor(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "duplicated_newKey",
-			args: args{
-				nextConsumer: nopProcessor,
-				replacements: []KeyReplacement{
-					{
-						Key:    "foo",
-						NewKey: "baz",
-					},
-					{
-						Key:    "bar",
-						NewKey: "biz",
-					},
-					{
-						Key:    "bit",
-						NewKey: "biz",
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
 			name: "key_cycle",
 			args: args{
 				nextConsumer: nopProcessor,
@@ -120,7 +99,7 @@ func TestNewTraceProcessor(t *testing.T) {
 				replacements: []KeyReplacement{
 					{
 						Key:    "foo",
-						NewKey: "baz",
+						NewKey: "biz",
 					},
 					{
 						Key:    "bar",
@@ -133,7 +112,7 @@ func TestNewTraceProcessor(t *testing.T) {
 				replacements: []KeyReplacement{
 					{
 						Key:    "foo",
-						NewKey: "baz",
+						NewKey: "biz",
 					},
 					{
 						Key:    "bar",

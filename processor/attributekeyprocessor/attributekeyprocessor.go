@@ -61,9 +61,8 @@ func NewTraceProcessor(nextConsumer consumer.TraceConsumer, replacements ...KeyR
 			}
 			seenKeys[replacement.Key] = true
 			if seenKeys[replacement.NewKey] {
-				return nil, fmt.Errorf("replacement new key %q already specified", replacement.NewKey)
+				return nil, fmt.Errorf("replacement new key %q is already a key being mapped", replacement.NewKey)
 			}
-			seenKeys[replacement.NewKey] = true
 		}
 	}
 
@@ -86,7 +85,11 @@ func (akp *attributekeyprocessor) ConsumeTraceData(ctx context.Context, td data.
 		attribMap := span.Attributes.AttributeMap
 		for _, replacement := range akp.replacements {
 			if keyValue, oldKeyPresent := attribMap[replacement.Key]; oldKeyPresent {
-				if _, newKeyPresent := attribMap[replacement.NewKey]; !newKeyPresent || replacement.Overwrite {
+				newKeyMapped := func() bool {
+					_, newKeyPresent := attribMap[replacement.NewKey]
+					return newKeyPresent
+				}
+				if replacement.Overwrite || !newKeyMapped() {
 					attribMap[replacement.NewKey] = keyValue
 					if !replacement.KeepOriginal {
 						delete(attribMap, replacement.Key)

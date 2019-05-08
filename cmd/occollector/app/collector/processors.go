@@ -312,7 +312,11 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (consumer.TraceConsumer,
 	}
 
 	// Wraps processors in a single one to be connected to all enabled receivers.
-	if multiProcessorCfg.Global != nil && multiProcessorCfg.Global.Attributes != nil {
+	hasAttributesProcessing := multiProcessorCfg.Global != nil &&
+		multiProcessorCfg.Global.Attributes != nil &&
+		(len(multiProcessorCfg.Global.Attributes.Values) > 0 ||
+			len(multiProcessorCfg.Global.Attributes.KeyReplacements) > 0)
+	if hasAttributesProcessing {
 		logger.Info(
 			"Found global attributes config",
 			zap.Bool("overwrite", multiProcessorCfg.Global.Attributes.Overwrite),

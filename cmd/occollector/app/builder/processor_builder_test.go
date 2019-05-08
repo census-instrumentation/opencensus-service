@@ -78,7 +78,7 @@ func TestGlobalProcessorCfg_InitFromViper(t *testing.T) {
 
 			got := cfg.Global.Attributes
 			if got == nil {
-				t.Fatalf("got nil, wan non-nil")
+				t.Fatalf("got nil, want non-nil")
 			}
 
 			if diff := cmp.Diff(got, tt.want); diff != "" {
