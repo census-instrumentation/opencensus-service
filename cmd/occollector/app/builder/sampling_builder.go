@@ -71,7 +71,7 @@ type PolicyCfg struct {
 // sampling policy evaluator.
 type NumericAttributeFilterCfg struct {
 	// Tag that the filter is going to be matching against.
-	Attribute string `mapstructure:"attribute"`
+	Key string `mapstructure:"key"`
 	// MinValue is the minimum value of the attribute to be considered a match.
 	MinValue int64 `mapstructure:"min-value"`
 	// MaxValue is the maximum value of the attribute to be considered a match.
@@ -82,7 +82,7 @@ type NumericAttributeFilterCfg struct {
 // sampling policy evaluator.
 type StringAttributeFilterCfg struct {
 	// Tag that the filter is going to be matching against.
-	Attribute string `mapstructure:"attribute"`
+	Key string `mapstructure:"key"`
 	// Values is the set of attribute values that if any is equal to the actual attribute value to be considered a match.
 	Values []string `mapstructure:"values"`
 }

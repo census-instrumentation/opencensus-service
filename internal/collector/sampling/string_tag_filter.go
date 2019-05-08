@@ -42,20 +42,20 @@ func NewStringAttributeFilter(key string, values []string) PolicyEvaluator {
 // after the sampling decision was already taken for the trace.
 // This gives the evaluator a chance to log any message/metrics and/or update any
 // related internal state.
-func (stf *stringAttributeFilter) OnLateArrivingSpans(earlyDecision Decision, spans []*tracepb.Span) error {
+func (saf *stringAttributeFilter) OnLateArrivingSpans(earlyDecision Decision, spans []*tracepb.Span) error {
 	return nil
 }
 
 // Evaluate looks at the trace data and returns a corresponding SamplingDecision.
-func (stf *stringAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (Decision, error) {
+func (saf *stringAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (Decision, error) {
 	trace.Lock()
 	batches := trace.ReceivedBatches
 	trace.Unlock()
 	for _, batch := range batches {
 		node := batch.Node
 		if node != nil && node.Attributes != nil {
-			if v, ok := node.Attributes[stf.key]; ok {
-				if _, ok := stf.values[v]; ok {
+			if v, ok := node.Attributes[saf.key]; ok {
+				if _, ok := saf.values[v]; ok {
 					return Sampled, nil
 				}
 			}
@@ -64,10 +64,10 @@ func (stf *stringAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (De
 			if span == nil || span.Attributes == nil {
 				continue
 			}
-			if v, ok := span.Attributes.AttributeMap[stf.key]; ok {
+			if v, ok := span.Attributes.AttributeMap[saf.key]; ok {
 				truncableStr := v.GetStringValue()
 				if truncableStr != nil {
-					if _, ok := stf.values[truncableStr.Value]; ok {
+					if _, ok := saf.values[truncableStr.Value]; ok {
 						return Sampled, nil
 					}
 				}
@@ -80,6 +80,6 @@ func (stf *stringAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (De
 
 // OnDroppedSpans is called when the trace needs to be dropped, due to memory
 // pressure, before the decision_wait time has been reached.
-func (stf *stringAttributeFilter) OnDroppedSpans(traceID []byte, trace *TraceData) (Decision, error) {
+func (saf *stringAttributeFilter) OnDroppedSpans(traceID []byte, trace *TraceData) (Decision, error) {
 	return NotSampled, nil
 }

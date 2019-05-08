@@ -178,10 +178,10 @@ func buildSamplingProcessor(cfg *builder.SamplingCfg, nameToTraceConsumer map[st
 			policy.Evaluator = sampling.NewAlwaysSample()
 		case builder.NumericAttributeFilter:
 			numAttributeFilterCfg := polCfg.Configuration.(*builder.NumericAttributeFilterCfg)
-			policy.Evaluator = sampling.NewNumericAttributeFilter(numAttributeFilterCfg.Attribute, numAttributeFilterCfg.MinValue, numAttributeFilterCfg.MaxValue)
+			policy.Evaluator = sampling.NewNumericAttributeFilter(numAttributeFilterCfg.Key, numAttributeFilterCfg.MinValue, numAttributeFilterCfg.MaxValue)
 		case builder.StringAttributeFilter:
 			strAttributeFilterCfg := polCfg.Configuration.(*builder.StringAttributeFilterCfg)
-			policy.Evaluator = sampling.NewStringAttributeFilter(strAttributeFilterCfg.Attribute, strAttributeFilterCfg.Values)
+			policy.Evaluator = sampling.NewStringAttributeFilter(strAttributeFilterCfg.Key, strAttributeFilterCfg.Values)
 		case builder.RateLimiting:
 			rateLimitingCfg := polCfg.Configuration.(*builder.RateLimitingCfg)
 			policy.Evaluator = sampling.NewRateLimiting(rateLimitingCfg.SpansPerSecond)

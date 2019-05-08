@@ -147,8 +147,8 @@ func TestTailSamplingPoliciesConfiguration(t *testing.T) {
 			Type:      StringAttributeFilter,
 			Exporters: []string{"jaeger1"},
 			Configuration: &StringAttributeFilterCfg{
-				Attribute: "test",
-				Values:    []string{"value 1", "value 2"},
+				Key:    "test",
+				Values: []string{"value 1", "value 2"},
 			},
 		},
 		{
@@ -156,9 +156,9 @@ func TestTailSamplingPoliciesConfiguration(t *testing.T) {
 			Type:      NumericAttributeFilter,
 			Exporters: []string{"jaeger2"},
 			Configuration: &NumericAttributeFilterCfg{
-				Attribute: "http.status_code",
-				MinValue:  400,
-				MaxValue:  999,
+				Key:      "http.status_code",
+				MinValue: 400,
+				MaxValue: 999,
 			},
 		},
 		{
@@ -166,8 +166,8 @@ func TestTailSamplingPoliciesConfiguration(t *testing.T) {
 			Type:      StringAttributeFilter,
 			Exporters: []string{"jaeger3"},
 			Configuration: &StringAttributeFilterCfg{
-				Attribute: "test.different",
-				Values:    []string{"key 1", "key 2"},
+				Key:    "test.different",
+				Values: []string{"key 1", "key 2"},
 			},
 		},
 		{
@@ -175,9 +175,9 @@ func TestTailSamplingPoliciesConfiguration(t *testing.T) {
 			Type:      NumericAttributeFilter,
 			Exporters: []string{"jaeger4", "jaeger5"},
 			Configuration: &NumericAttributeFilterCfg{
-				Attribute: "http.status_code",
-				MinValue:  400,
-				MaxValue:  999,
+				Key:      "http.status_code",
+				MinValue: 400,
+				MaxValue: 999,
 			},
 		},
 	}
