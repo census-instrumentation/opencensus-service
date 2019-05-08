@@ -34,7 +34,7 @@ sampling:
           - jaeger1
         policy: string-attribute-filter
         configuration:
-          attribute: "test"
+          key: "test"
           values:
             - "value 1"
             - "value 2"
@@ -43,7 +43,7 @@ sampling:
           - jaeger2
         policy: numeric-attribute-filter
         configuration:
-          attribute: "http.status_code"
+          key: "http.status_code"
           min-value: 400
           max-value: 999
     string-attribute-filter3: 
@@ -51,7 +51,7 @@ sampling:
           - jaeger3
         policy: string-attribute-filter
         configuration:
-          attribute: "test.different"
+          key: "test.different"
           values:
             - "key 1"
             - "key 2"
@@ -61,6 +61,6 @@ sampling:
           - jaeger5
         policy: numeric-attribute-filter
         configuration:
-          attribute: "http.status_code"
+          key: "http.status_code"
           min-value: 400
           max-value: 999

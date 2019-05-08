@@ -29,7 +29,7 @@ sampling:
         - omnition
       policy: string-attribute-filter
       configuration:
-        attribute: attribute1
+        key: key1
         values:
           - value1
           - value2
@@ -39,7 +39,7 @@ sampling:
         - omnition
       policy: numeric-attribute-filter
       configuration:
-        attribute: attribute1
+        key: key1
         min-value: 0
         max-value: 100
     my-always-sample:

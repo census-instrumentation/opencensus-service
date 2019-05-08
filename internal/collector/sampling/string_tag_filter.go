@@ -16,25 +16,25 @@ package sampling
 
 import tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 
-type StringAttributeFilter struct {
-	attribute string
-	values    map[string]bool
+type stringAttributeFilter struct {
+	key    string
+	values map[string]bool
 }
 
-var _ PolicyEvaluator = (*StringAttributeFilter)(nil)
+var _ PolicyEvaluator = (*stringAttributeFilter)(nil)
 
 // NewStringAttributeFilter creates a policy evaluator that samples all traces with
 // the given attribute in the given numeric range.
-func NewStringAttributeFilter(attribute string, values []string) PolicyEvaluator {
+func NewStringAttributeFilter(key string, values []string) PolicyEvaluator {
 	valuesMap := make(map[string]bool)
 	for _, value := range values {
 		if value != "" {
 			valuesMap[value] = true
 		}
 	}
-	return &StringAttributeFilter{
-		attribute: attribute,
-		values:    valuesMap,
+	return &stringAttributeFilter{
+		key:    key,
+		values: valuesMap,
 	}
 }
 
@@ -42,19 +42,19 @@ func NewStringAttributeFilter(attribute string, values []string) PolicyEvaluator
 // after the sampling decision was already taken for the trace.
 // This gives the evaluator a chance to log any message/metrics and/or update any
 // related internal state.
-func (stf *StringAttributeFilter) OnLateArrivingSpans(earlyDecision Decision, spans []*tracepb.Span) error {
+func (stf *stringAttributeFilter) OnLateArrivingSpans(earlyDecision Decision, spans []*tracepb.Span) error {
 	return nil
 }
 
 // Evaluate looks at the trace data and returns a corresponding SamplingDecision.
-func (stf *StringAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (Decision, error) {
+func (stf *stringAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (Decision, error) {
 	trace.Lock()
 	batches := trace.ReceivedBatches
 	trace.Unlock()
 	for _, batch := range batches {
 		node := batch.Node
 		if node != nil && node.Attributes != nil {
-			if v, ok := node.Attributes[stf.attribute]; ok {
+			if v, ok := node.Attributes[stf.key]; ok {
 				if _, ok := stf.values[v]; ok {
 					return Sampled, nil
 				}
@@ -64,7 +64,7 @@ func (stf *StringAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (De
 			if span == nil || span.Attributes == nil {
 				continue
 			}
-			if v, ok := span.Attributes.AttributeMap[stf.attribute]; ok {
+			if v, ok := span.Attributes.AttributeMap[stf.key]; ok {
 				truncableStr := v.GetStringValue()
 				if truncableStr != nil {
 					if _, ok := stf.values[truncableStr.Value]; ok {
@@ -80,6 +80,6 @@ func (stf *StringAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (De
 
 // OnDroppedSpans is called when the trace needs to be dropped, due to memory
 // pressure, before the decision_wait time has been reached.
-func (stf *StringAttributeFilter) OnDroppedSpans(traceID []byte, trace *TraceData) (Decision, error) {
+func (stf *stringAttributeFilter) OnDroppedSpans(traceID []byte, trace *TraceData) (Decision, error) {
 	return NotSampled, nil
 }

@@ -16,20 +16,20 @@ package sampling
 
 import tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 
-type NumericAttributeFilter struct {
-	attribute          string
+type numericAttributeFilter struct {
+	key                string
 	minValue, maxValue int64
 }
 
-var _ PolicyEvaluator = (*NumericAttributeFilter)(nil)
+var _ PolicyEvaluator = (*numericAttributeFilter)(nil)
 
 // NewNumericAttributeFilter creates a policy evaluator that samples all traces with
 // the given attribute in the given numeric range.
-func NewNumericAttributeFilter(attribute string, minValue, maxValue int64) PolicyEvaluator {
-	return &NumericAttributeFilter{
-		attribute: attribute,
-		minValue:  minValue,
-		maxValue:  maxValue,
+func NewNumericAttributeFilter(key string, minValue, maxValue int64) PolicyEvaluator {
+	return &numericAttributeFilter{
+		key:      key,
+		minValue: minValue,
+		maxValue: maxValue,
 	}
 }
 
@@ -37,12 +37,12 @@ func NewNumericAttributeFilter(attribute string, minValue, maxValue int64) Polic
 // after the sampling decision was already taken for the trace.
 // This gives the evaluator a chance to log any message/metrics and/or update any
 // related internal state.
-func (ntf *NumericAttributeFilter) OnLateArrivingSpans(earlyDecision Decision, spans []*tracepb.Span) error {
+func (ntf *numericAttributeFilter) OnLateArrivingSpans(earlyDecision Decision, spans []*tracepb.Span) error {
 	return nil
 }
 
 // Evaluate looks at the trace data and returns a corresponding SamplingDecision.
-func (ntf *NumericAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (Decision, error) {
+func (ntf *numericAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (Decision, error) {
 	trace.Lock()
 	batches := trace.ReceivedBatches
 	trace.Unlock()
@@ -51,7 +51,7 @@ func (ntf *NumericAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (D
 			if span == nil || span.Attributes == nil {
 				continue
 			}
-			if v, ok := span.Attributes.AttributeMap[ntf.attribute]; ok {
+			if v, ok := span.Attributes.AttributeMap[ntf.key]; ok {
 				value := v.GetIntValue()
 				if value >= ntf.minValue && value <= ntf.maxValue {
 					return Sampled, nil
@@ -65,6 +65,6 @@ func (ntf *NumericAttributeFilter) Evaluate(traceID []byte, trace *TraceData) (D
 
 // OnDroppedSpans is called when the trace needs to be dropped, due to memory
 // pressure, before the decision_wait time has been reached.
-func (ntf *NumericAttributeFilter) OnDroppedSpans(traceID []byte, trace *TraceData) (Decision, error) {
+func (ntf *numericAttributeFilter) OnDroppedSpans(traceID []byte, trace *TraceData) (Decision, error) {
 	return NotSampled, nil
 }

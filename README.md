@@ -309,7 +309,7 @@ sampling:
         - jaeger
       policy: string-attribute-filter
       configuration:
-        attribute: attribute1
+        key: key1
         values:
           - value1
           - value2
@@ -318,7 +318,7 @@ sampling:
         - zipkin
       policy: numeric-attribute-filter
       configuration:
-        attribute: attribute1
+        key: key1
         min-value: 0
         max-value: 100
 ```
