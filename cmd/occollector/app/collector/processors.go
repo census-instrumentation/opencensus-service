@@ -32,7 +32,6 @@ import (
 	"github.com/census-instrumentation/opencensus-service/internal/collector/processor/tailsampling"
 	"github.com/census-instrumentation/opencensus-service/internal/collector/sampling"
 	"github.com/census-instrumentation/opencensus-service/internal/config"
-	"github.com/census-instrumentation/opencensus-service/processor"
 	"github.com/census-instrumentation/opencensus-service/processor/addattributesprocessor"
 	"github.com/census-instrumentation/opencensus-service/processor/attributekeyprocessor"
 	"github.com/census-instrumentation/opencensus-service/processor/multiconsumer"
@@ -312,11 +311,8 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (consumer.TraceConsumer,
 	}
 
 	// Wraps processors in a single one to be connected to all enabled receivers.
-	hasAttributesProcessing := multiProcessorCfg.Global != nil &&
-		multiProcessorCfg.Global.Attributes != nil &&
-		(len(multiProcessorCfg.Global.Attributes.Values) > 0 ||
-			len(multiProcessorCfg.Global.Attributes.KeyReplacements) > 0)
-	if hasAttributesProcessing {
+	tp := multiconsumer.NewTraceProcessor(traceConsumers)
+	if multiProcessorCfg.Global != nil && multiProcessorCfg.Global.Attributes != nil {
 		logger.Info(
 			"Found global attributes config",
 			zap.Bool("overwrite", multiProcessorCfg.Global.Attributes.Overwrite),
@@ -324,21 +320,16 @@ func startProcessor(v *viper.Viper, logger *zap.Logger) (consumer.TraceConsumer,
 			zap.Any("key-mapping", multiProcessorCfg.Global.Attributes.KeyReplacements),
 		)
 
-		var tp processor.TraceProcessor
 		if len(multiProcessorCfg.Global.Attributes.Values) > 0 {
 			tp, _ = addattributesprocessor.NewTraceProcessor(
-				multiconsumer.NewTraceProcessor(traceConsumers),
+				tp,
 				addattributesprocessor.WithAttributes(multiProcessorCfg.Global.Attributes.Values),
 				addattributesprocessor.WithOverwrite(multiProcessorCfg.Global.Attributes.Overwrite),
 			)
 		}
 		if len(multiProcessorCfg.Global.Attributes.KeyReplacements) > 0 {
-			if tp == nil {
-				tp = multiconsumer.NewTraceProcessor(traceConsumers)
-			}
 			tp, _ = attributekeyprocessor.NewTraceProcessor(tp, multiProcessorCfg.Global.Attributes.KeyReplacements...)
 		}
-		return tp, closeFns
 	}
-	return multiconsumer.NewTraceProcessor(traceConsumers), closeFns
+	return tp, closeFns
 }
