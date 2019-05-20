@@ -31,8 +31,7 @@ import (
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 )
 
-// VMMetricsCollector is a struct that contains views related to VM and process metrics (cpu, mem, etc),
-// collects and reports metrics for those views.
+// VMMetricsCollector is a struct that collects and reports VM and process metrics (cpu, mem, etc).
 type VMMetricsCollector struct {
 	consumer consumer.MetricsConsumer
 
