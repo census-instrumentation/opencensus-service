@@ -54,7 +54,7 @@ var metricProcessCPUSeconds = &metricspb.MetricDescriptor{
 
 var metricCPUSeconds = &metricspb.MetricDescriptor{
 	Name:        "system/cpu_seconds",
-	Description: "Total kernel/system CPU seconds broken down by different stages",
+	Description: "Total kernel/system CPU seconds broken down by different states",
 	Unit:        "s",
 	Type:        metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
 	LabelKeys:   []*metricspb.LabelKey{{Key: "state", Description: "State of CPU time, e.g user/system/idle"}},
