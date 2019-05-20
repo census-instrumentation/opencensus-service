@@ -39,6 +39,7 @@ type VMMetricsCollector struct {
 
 	fs        procfs.FS
 	processFs procfs.FS
+	pid       int
 
 	scrapeInterval time.Duration
 	metricPrefix   string
@@ -74,6 +75,7 @@ func NewVMMetricsCollector(si time.Duration, mountPoint, processMountPoint, pref
 		startTime:      time.Now(),
 		fs:             fs,
 		processFs:      processFs,
+		pid:            os.Getpid(),
 		scrapeInterval: si,
 		metricPrefix:   prefix,
 		done:           make(chan struct{}),
@@ -128,10 +130,9 @@ func (vmc *VMMetricsCollector) scrapeAndExport() {
 		},
 	)
 
-	pid := os.Getpid()
 	var proc procfs.Proc
 	var err error
-	proc, err = vmc.processFs.NewProc(pid)
+	proc, err = vmc.processFs.NewProc(vmc.pid)
 	if err == nil {
 		procStat, err := proc.NewStat()
 		if err == nil {
@@ -181,7 +182,7 @@ func (vmc *VMMetricsCollector) scrapeAndExport() {
 	}
 
 	if len(errs) > 0 {
-		span.SetStatus(trace.Status{Code: 15 /*DATA_LOSS*/, Message: fmt.Sprintf("Error(s) when scraping VM metrics: %v", errs)})
+		span.SetStatus(trace.Status{Code: trace.StatusCodeDataLoss, Message: fmt.Sprintf("Error(s) when scraping VM metrics: %v", internal.CombineErrors(errs))})
 	}
 
 	if len(metrics) > 0 {
@@ -197,7 +198,7 @@ func (vmc *VMMetricsCollector) getInt64TimeSeries(val uint64) *metricspb.TimeSer
 }
 
 func (vmc *VMMetricsCollector) getDoubleTimeSeries(val float64, labelVal *metricspb.LabelValue) *metricspb.TimeSeries {
-	labelVals := []*metricspb.LabelValue{}
+	var labelVals []*metricspb.LabelValue
 	if labelVal != nil {
 		labelVals = append(labelVals, labelVal)
 	}
