@@ -87,12 +87,10 @@ func NewVMMetricsCollector(si time.Duration, mountPoint, processMountPoint, pref
 func (vmc *VMMetricsCollector) StartCollection() {
 	go func() {
 		ticker := time.NewTicker(vmc.scrapeInterval)
-		var prevProcStat *procfs.ProcStat
-		var prevStat *procfs.Stat
 		for {
 			select {
 			case <-ticker.C:
-				prevProcStat, prevStat = vmc.scrapeAndExport(prevProcStat, prevStat)
+				vmc.scrapeAndExport()
 
 			case <-vmc.done:
 				return
@@ -106,7 +104,7 @@ func (vmc *VMMetricsCollector) StopCollection() {
 	close(vmc.done)
 }
 
-func (vmc *VMMetricsCollector) scrapeAndExport(prevProcStat *procfs.ProcStat, prevStat *procfs.Stat) (*procfs.ProcStat, *procfs.Stat) {
+func (vmc *VMMetricsCollector) scrapeAndExport() {
 	ctx, span := trace.StartSpan(context.Background(), "VMMetricsCollector.scrapeAndExport")
 	defer span.End()
 
@@ -138,23 +136,15 @@ func (vmc *VMMetricsCollector) scrapeAndExport(prevProcStat *procfs.ProcStat, pr
 	if err == nil {
 		procStat, err := proc.NewStat()
 		if err == nil {
-			var processCPUTimeDelta float64
-			if prevProcStat != nil {
-				processCPUTimeDelta = procStat.CPUTime() - prevProcStat.CPUTime()
-			} else {
-				processCPUTimeDelta = procStat.CPUTime()
-			}
 			metrics = append(
 				metrics,
 				&metricspb.Metric{
 					MetricDescriptor: metricProcessCPUSeconds,
-					Timeseries:       []*metricspb.TimeSeries{vmc.getDoubleTimeSeries(processCPUTimeDelta, nil)},
+					Timeseries:       []*metricspb.TimeSeries{vmc.getDoubleTimeSeries(procStat.CPUTime(), nil)},
 				},
 			)
 		}
-		prevProcStat = &procStat
 	}
-
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -162,24 +152,6 @@ func (vmc *VMMetricsCollector) scrapeAndExport(prevProcStat *procfs.ProcStat, pr
 	stat, err := vmc.fs.NewStat()
 	if err == nil {
 		cpuStat := stat.CPUTotal
-		var processCreatedDelta uint64
-		var cpuTimeUserDelta, cpuTimeSystemDelta, cpuTimeIdleDelta, cpuTimeNiceDelta, cpuTimeIOWaitDelta float64
-		if prevStat != nil {
-			processCreatedDelta = stat.ProcessCreated - prevStat.ProcessCreated
-			cpuTimeUserDelta = cpuStat.User - prevStat.CPUTotal.User
-			cpuTimeSystemDelta = cpuStat.System - prevStat.CPUTotal.System
-			cpuTimeIdleDelta = cpuStat.Idle - prevStat.CPUTotal.Idle
-			cpuTimeNiceDelta = cpuStat.Nice - prevStat.CPUTotal.Nice
-			cpuTimeIOWaitDelta = cpuStat.Iowait - prevStat.CPUTotal.Iowait
-		} else {
-			processCreatedDelta = stat.ProcessCreated
-			cpuTimeUserDelta = cpuStat.User
-			cpuTimeSystemDelta = cpuStat.System
-			cpuTimeIdleDelta = cpuStat.Idle
-			cpuTimeNiceDelta = cpuStat.Nice
-			cpuTimeIOWaitDelta = cpuStat.Iowait
-		}
-
 		metrics = append(
 			metrics,
 			&metricspb.Metric{
@@ -192,21 +164,19 @@ func (vmc *VMMetricsCollector) scrapeAndExport(prevProcStat *procfs.ProcStat, pr
 			},
 			&metricspb.Metric{
 				MetricDescriptor: metricProcessesCreated,
-				Timeseries:       []*metricspb.TimeSeries{vmc.getInt64TimeSeries(processCreatedDelta)},
+				Timeseries:       []*metricspb.TimeSeries{vmc.getInt64TimeSeries(stat.ProcessCreated)},
 			},
 			&metricspb.Metric{
 				MetricDescriptor: metricCPUSeconds,
 				Timeseries: []*metricspb.TimeSeries{
-					vmc.getDoubleTimeSeries(cpuTimeUserDelta, labelValueCPUUser),
-					vmc.getDoubleTimeSeries(cpuTimeSystemDelta, labelValueCPUSystem),
-					vmc.getDoubleTimeSeries(cpuTimeIdleDelta, labelValueCPUIdle),
-					vmc.getDoubleTimeSeries(cpuTimeNiceDelta, labelValueCPUNice),
-					vmc.getDoubleTimeSeries(cpuTimeIOWaitDelta, labelValueCPUIOWait),
+					vmc.getDoubleTimeSeries(cpuStat.User, labelValueCPUUser),
+					vmc.getDoubleTimeSeries(cpuStat.System, labelValueCPUSystem),
+					vmc.getDoubleTimeSeries(cpuStat.Idle, labelValueCPUIdle),
+					vmc.getDoubleTimeSeries(cpuStat.Nice, labelValueCPUNice),
+					vmc.getDoubleTimeSeries(cpuStat.Iowait, labelValueCPUIOWait),
 				},
 			},
 		)
-
-		prevStat = &stat
 	} else {
 		errs = append(errs, err)
 	}
@@ -218,8 +188,6 @@ func (vmc *VMMetricsCollector) scrapeAndExport(prevProcStat *procfs.ProcStat, pr
 	if len(metrics) > 0 {
 		vmc.consumer.ConsumeMetricsData(ctx, data.MetricsData{Metrics: metrics})
 	}
-
-	return prevProcStat, prevStat
 }
 
 func (vmc *VMMetricsCollector) getInt64TimeSeries(val uint64) *metricspb.TimeSeries {

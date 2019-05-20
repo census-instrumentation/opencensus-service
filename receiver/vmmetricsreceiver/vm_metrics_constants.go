@@ -57,7 +57,7 @@ var metricCPUSeconds = &metricspb.MetricDescriptor{
 	Description: "Total kernel/system CPU seconds broken down by different stages",
 	Unit:        "s",
 	Type:        metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
-	LabelKeys:   []*metricspb.LabelKey{{Key: "stage", Description: "Stage of CPU time, e.g user/system/idle"}},
+	LabelKeys:   []*metricspb.LabelKey{{Key: "state", Description: "State of CPU time, e.g user/system/idle"}},
 }
 
 var metricProcessesCreated = &metricspb.MetricDescriptor{
@@ -84,11 +84,13 @@ var metricProcessesBlocked = &metricspb.MetricDescriptor{
 	LabelKeys:   nil,
 }
 
-var labelValueCPUUser = &metricspb.LabelValue{Value: "user", HasValue: true}
-var labelValueCPUSystem = &metricspb.LabelValue{Value: "system", HasValue: true}
-var labelValueCPUIdle = &metricspb.LabelValue{Value: "idle", HasValue: true}
-var labelValueCPUNice = &metricspb.LabelValue{Value: "nice", HasValue: true}
-var labelValueCPUIOWait = &metricspb.LabelValue{Value: "iowait", HasValue: true}
+var (
+	labelValueCPUUser   = &metricspb.LabelValue{Value: "user", HasValue: true}
+	labelValueCPUSystem = &metricspb.LabelValue{Value: "system", HasValue: true}
+	labelValueCPUIdle   = &metricspb.LabelValue{Value: "idle", HasValue: true}
+	labelValueCPUNice   = &metricspb.LabelValue{Value: "nice", HasValue: true}
+	labelValueCPUIOWait = &metricspb.LabelValue{Value: "iowait", HasValue: true}
+)
 
 var vmMetricDescriptors = []*metricspb.MetricDescriptor{
 	metricAllocMem,
