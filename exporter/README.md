@@ -94,9 +94,9 @@ queued-exporters:
         keepalive:
           # Keepalive settings for gRPC clients, see https://godoc.org/google.golang.org/grpc/keepalive#ClientParameters.
           # Recommended to be set for cases that need to support bursts of data and periods of inactivity.
-          time: 30s
-          timeout: 5s
-          permit-without-stream: true
+          time: 30s # After inactive for this amount to time client will send a ping to the server.
+          timeout: 5s # Amount of time that client waits for a keepalive ping response before closing the connection.
+          permit-without-stream: true # Permits the keepalive ping even if no RPCs are in use, if false no ping is sent.
   my-org-jaeger: # A second processor with its own configuration options
     num-workers: 2
     queue-size: 100
