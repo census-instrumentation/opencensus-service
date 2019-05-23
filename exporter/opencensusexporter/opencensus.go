@@ -83,6 +83,8 @@ const (
 	errUnsupportedCompressionType
 	// errUnableToGetTLSCreds indicates that this exporter could not read the provided TLS credentials.
 	errUnableToGetTLSCreds
+	// errAlreadyStopped indicates that the exporter was already stopped.
+	errAlreadyStopped
 )
 
 // OpenCensusTraceExportersFromViper unmarshals the viper and returns an consumer.TraceConsumer targeting
@@ -211,13 +213,22 @@ func (oce *ocagentExporter) stop() error {
 	}
 
 	wg.Wait()
+	close(oce.exporters)
 
 	return internal.CombineErrors(errors)
 }
 
 func (oce *ocagentExporter) PushTraceData(ctx context.Context, td data.TraceData) (int, error) {
 	// Get first available exporter.
-	exporter := <-oce.exporters
+	exporter, ok := <-oce.exporters
+	if !ok {
+		err := &ocTraceExporterError{
+			code: errAlreadyStopped,
+			msg:  fmt.Sprintf("OpenCensus exporter was already stopped."),
+		}
+		return len(td.Spans), err
+	}
+
 	err := exporter.ExportTraceServiceRequest(
 		&agenttracepb.ExportTraceServiceRequest{
 			Spans:    td.Spans,

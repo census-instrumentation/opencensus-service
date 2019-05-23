@@ -15,9 +15,11 @@
 package opencensusexporter
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/viper"
 )
@@ -79,6 +81,40 @@ func TestOpenCensusTraceExportersFromViper_Compression(t *testing.T) {
 	}
 	if len(exporters) != 1 {
 		t.Fatalf("Should get 1 exporter but got %d", len(exporters))
+	}
+}
+
+func TestOpenCensusTraceExporters_StopError(t *testing.T) {
+	v := viper.New()
+	v.Set("opencensus.endpoint", "127.0.0.1:55678")
+	tps, _, doneFns, err := OpenCensusTraceExportersFromViper(v)
+	doneFnCalled := false
+	defer func() {
+		if doneFnCalled {
+			return
+		}
+		for _, doneFn := range doneFns {
+			doneFn()
+		}
+	}()
+	if err != nil {
+		t.Fatalf("got = %v, want = nil", err)
+	}
+	if len(tps) != 1 {
+		t.Fatalf("got %d trace exporters, want 1", len(tps))
+	}
+	if len(doneFns) != 1 {
+		t.Fatalf("got %d close functions, want 1", len(doneFns))
+	}
+
+	err = doneFns[0]()
+	doneFnCalled = true
+	if err != nil {
+		t.Fatalf("doneFn[0]() got = %v, want = nil", err)
+	}
+	err = tps[0].ConsumeTraceData(context.Background(), data.TraceData{})
+	if errorCode(err) != errAlreadyStopped {
+		t.Fatalf("Expected to get errAlreadyStopped but got %v", err)
 	}
 }
 
