@@ -299,7 +299,7 @@ func TestDecodeConfig_Invalid(t *testing.T) {
 		{name: "invalid-receiver-name"},
 		{name: "invalid-receiver-reference", expected: errPipelineReceiverNotExists},
 		{name: "missing-receiver-type", expected: errInvalidTypeAndNameKey},
-		{name: "missing-exporter-type", expected: errInvalidTypeAndNameKey},
+		{name: "missing-exporter-name-after-slash", expected: errInvalidTypeAndNameKey},
 		{name: "missing-processor-type", expected: errInvalidTypeAndNameKey},
 		{name: "missing-pipelines", expected: errMissingPipelines},
 		{name: "pipeline-must-have-exporter", expected: errPipelineMustHaveExporter},

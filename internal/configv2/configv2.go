@@ -63,21 +63,25 @@ func (e *configError) Error() string {
 	return e.msg
 }
 
-// receiversKeyName is the configuration key name for receivers section.
-const receiversKeyName = "receivers"
+// YAML top-level configuration keys
+const (
+	// receiversKeyName is the configuration key name for receivers section.
+	receiversKeyName = "receivers"
 
-// exportersKeyName is the configuration key name for exporters section.
-const exportersKeyName = "exporters"
+	// exportersKeyName is the configuration key name for exporters section.
+	exportersKeyName = "exporters"
 
-// processorsKeyName is the configuration key name for processors section.
-const processorsKeyName = "processors"
+	// processorsKeyName is the configuration key name for processors section.
+	processorsKeyName = "processors"
 
-// pipelinesKeyName is the configuration key name for pipelines section.
-const pipelinesKeyName = "pipelines"
+	// pipelinesKeyName is the configuration key name for pipelines section.
+	pipelinesKeyName = "pipelines"
+)
 
 // typeAndNameSeparator is the separator that is used between type and name in type/name composite keys.
 const typeAndNameSeparator = "/"
 
+// Data type strings
 const (
 	tracesDataTypeStr  = "traces"
 	metricsDataTypeStr = "metrics"
@@ -128,16 +132,13 @@ func Load(v *viper.Viper) (*configmodels.ConfigV2, error) {
 // The "type" part must be present, the forward slash and "name" are optional.
 func decodeTypeAndName(key string) (typeStr, fullName string, err error) {
 	items := strings.SplitN(key, typeAndNameSeparator, 2)
-	if len(items) < 1 {
-		// We need at least one part (the type).
-		err = errors.New("Invalid key")
-		return
+
+	if len(items) >= 1 {
+		typeStr = strings.TrimSpace(items[0])
 	}
 
-	typeStr = strings.TrimSpace(items[0])
-	if typeStr == "" {
-		// Type must be present.
-		err = errors.New("Invalid key")
+	if len(items) < 1 || typeStr == "" {
+		err = errors.New("type/name key must have the type part")
 		return
 	}
 
@@ -146,7 +147,7 @@ func decodeTypeAndName(key string) (typeStr, fullName string, err error) {
 		// "name" part is present.
 		nameSuffix = strings.TrimSpace(items[1])
 		if nameSuffix == "" {
-			err = errors.New("Invalid key")
+			err = errors.New("name part must be specified after " + typeAndNameSeparator + " in type/name key")
 			return
 		}
 	} else {
@@ -181,7 +182,7 @@ func loadReceivers(v *viper.Viper) (configmodels.Receivers, error) {
 		if err != nil || typeStr == "" {
 			return nil, &configError{
 				code: errInvalidTypeAndNameKey,
-				msg:  fmt.Sprintf("invalid key %q. Key must in the form type[/name]", key),
+				msg:  fmt.Sprintf("invalid key %q: %s", key, err.Error()),
 			}
 		}
 
@@ -236,7 +237,7 @@ func loadExporters(v *viper.Viper) (configmodels.Exporters, error) {
 		if err != nil || typeStr == "" {
 			return nil, &configError{
 				code: errInvalidTypeAndNameKey,
-				msg:  fmt.Sprintf("invalid key %q. Key must in the form type[/name]", key),
+				msg:  fmt.Sprintf("invalid key %q: %s", key, err.Error()),
 			}
 		}
 
@@ -291,7 +292,7 @@ func loadProcessors(v *viper.Viper) (configmodels.Processors, error) {
 		if err != nil || typeStr == "" {
 			return nil, &configError{
 				code: errInvalidTypeAndNameKey,
-				msg:  fmt.Sprintf("invalid key %q. Key must in the form type[/name]", key),
+				msg:  fmt.Sprintf("invalid key %q: %s", key, err.Error()),
 			}
 		}
 
@@ -346,7 +347,7 @@ func loadPipelines(v *viper.Viper) (configmodels.Pipelines, error) {
 		if err != nil || typeStr == "" {
 			return nil, &configError{
 				code: errInvalidTypeAndNameKey,
-				msg:  fmt.Sprintf("invalid key %q. Key must in the form type[/name]", key),
+				msg:  fmt.Sprintf("invalid key %q: %s", key, err.Error()),
 			}
 		}
 
