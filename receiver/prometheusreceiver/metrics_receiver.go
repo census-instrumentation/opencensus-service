@@ -28,7 +28,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/receiver"
-	"github.com/orijtech/promreceiver"
+	"github.com/dinooliva/promreceiver"
 	"github.com/prometheus/prometheus/config"
 )
 
