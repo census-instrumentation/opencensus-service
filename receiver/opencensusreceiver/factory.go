@@ -24,29 +24,29 @@ import (
 	"github.com/census-instrumentation/opencensus-service/receiver"
 )
 
-var _ = factories.RegisterReceiverFactory(&ReceiverFactory{})
+var _ = factories.RegisterReceiverFactory(&receiverFactory{})
 
 const (
 	// The value of "type" key in configuration.
 	typeStr = "opencensus"
 )
 
-// ReceiverFactory is the factory for receiver.
-type ReceiverFactory struct {
+// receiverFactory is the factory for receiver.
+type receiverFactory struct {
 }
 
 // Type gets the type of the Receiver config created by this factory.
-func (f *ReceiverFactory) Type() string {
+func (f *receiverFactory) Type() string {
 	return typeStr
 }
 
 // CustomUnmarshaler returns nil because we don't need custom unmarshaling for this config.
-func (f *ReceiverFactory) CustomUnmarshaler() factories.CustomUnmarshaler {
+func (f *receiverFactory) CustomUnmarshaler() factories.CustomUnmarshaler {
 	return nil
 }
 
 // CreateDefaultConfig creates the default configuration for receiver.
-func (f *ReceiverFactory) CreateDefaultConfig() configmodels.Receiver {
+func (f *receiverFactory) CreateDefaultConfig() configmodels.Receiver {
 	return &ConfigV2{
 		ReceiverSettings: configmodels.ReceiverSettings{
 			Endpoint: "127.0.0.1:55678",
@@ -56,7 +56,7 @@ func (f *ReceiverFactory) CreateDefaultConfig() configmodels.Receiver {
 }
 
 // CreateTraceReceiver creates a  trace receiver based on provided config.
-func (f *ReceiverFactory) CreateTraceReceiver(
+func (f *receiverFactory) CreateTraceReceiver(
 	ctx context.Context,
 	cfg configmodels.Receiver,
 	nextConsumer consumer.TraceConsumer,
@@ -73,7 +73,7 @@ func (f *ReceiverFactory) CreateTraceReceiver(
 }
 
 // CreateMetricsReceiver creates a metrics receiver based on provided config.
-func (f *ReceiverFactory) CreateMetricsReceiver(
+func (f *receiverFactory) CreateMetricsReceiver(
 	cfg configmodels.Receiver,
 	consumer consumer.MetricsConsumer,
 ) (receiver.MetricsReceiver, error) {
@@ -88,7 +88,7 @@ func (f *ReceiverFactory) CreateMetricsReceiver(
 	return r, nil
 }
 
-func (f *ReceiverFactory) createReceiver(cfg configmodels.Receiver) (*Receiver, error) {
+func (f *receiverFactory) createReceiver(cfg configmodels.Receiver) (*Receiver, error) {
 	rCfg := cfg.(*ConfigV2)
 
 	// There must be one receiver for both metrics and traces. We maintain a map of

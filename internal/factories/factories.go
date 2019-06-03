@@ -45,13 +45,13 @@ type ReceiverFactory interface {
 
 	// CreateTraceReceiver creates a trace receiver based on this config.
 	// If the receiver type does not support tracing or if the config is not valid
-	// error will be returned instead (ErrReceiverTypeIsNotSupported).
+	// error will be returned instead.
 	CreateTraceReceiver(ctx context.Context, cfg configmodels.Receiver,
 		nextConsumer consumer.TraceConsumer) (receiver.TraceReceiver, error)
 
 	// CreateMetricsReceiver creates a metrics receiver based on this config.
 	// If the receiver type does not support metrics or if the config is not valid
-	// error will be returned instead (ErrReceiverTypeIsNotSupported).
+	// error will be returned instead.
 	CreateMetricsReceiver(cfg configmodels.Receiver,
 		consumer consumer.MetricsConsumer) (receiver.MetricsReceiver, error)
 }
