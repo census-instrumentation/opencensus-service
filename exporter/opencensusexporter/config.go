@@ -15,6 +15,8 @@
 package opencensusexporter
 
 import (
+	"time"
+
 	"github.com/census-instrumentation/opencensus-service/internal/configmodels"
 )
 
@@ -26,4 +28,7 @@ type ConfigV2 struct {
 	Headers                       map[string]string        `mapstructure:"headers"`
 	NumWorkers                    int                      `mapstructure:"num-workers"`
 	CertPemFile                   string                   `mapstructure:"cert-pem-file"`
+	UseSecure                     bool                     `mapstructure:"secure,omitempty"`
+	ReconnectionDelay             time.Duration            `mapstructure:"reconnection-delay,omitempty"`
+	KeepaliveParameters           *keepaliveConfig         `mapstructure:"keepalive,omitempty"`
 }

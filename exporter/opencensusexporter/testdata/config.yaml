@@ -13,8 +13,15 @@ exporters:
     num-workers: 123
     cert-pem-file: /var/lib/mycert.pem
     headers:
+      "can you have a . here?": "F0000000-0000-0000-0000-000000000000"
       header1: 234
       another: "somevalue"
+    secure: true
+    reconnection-delay: 15
+    keepalive:
+      time: 20
+      timeout: 30
+      permit-without-stream: true
 
 pipelines:
   traces:

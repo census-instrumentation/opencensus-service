@@ -46,12 +46,20 @@ func TestLoadConfig(t *testing.T) {
 				Enabled: true,
 			},
 			Headers: map[string]string{
-				"header1": "234",
-				"another": "somevalue",
+				"can you have a . here?": "F0000000-0000-0000-0000-000000000000",
+				"header1":                "234",
+				"another":                "somevalue",
 			},
-			Endpoint:    "1.2.3.4:1234",
-			Compression: "on",
-			NumWorkers:  123,
-			CertPemFile: "/var/lib/mycert.pem",
+			Endpoint:          "1.2.3.4:1234",
+			Compression:       "on",
+			NumWorkers:        123,
+			CertPemFile:       "/var/lib/mycert.pem",
+			UseSecure:         true,
+			ReconnectionDelay: 15,
+			KeepaliveParameters: &keepaliveConfig{
+				Time:                20,
+				PermitWithoutStream: true,
+				Timeout:             30,
+			},
 		})
 }

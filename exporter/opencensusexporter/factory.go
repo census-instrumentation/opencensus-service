@@ -19,24 +19,24 @@ import (
 	"github.com/census-instrumentation/opencensus-service/internal/factories"
 )
 
-var _ = factories.RegisterExporterFactory(&ExporterFactory{})
+var _ = factories.RegisterExporterFactory(&exporterFactory{})
 
 const (
 	// The value of "type" key in configuration.
 	typeStr = "opencensus"
 )
 
-// ExporterFactory is the factory for OpenCensus exporter.
-type ExporterFactory struct {
+// exporterFactory is the factory for OpenCensus exporter.
+type exporterFactory struct {
 }
 
 // Type gets the type of the Exporter config created by this factory.
-func (f *ExporterFactory) Type() string {
+func (f *exporterFactory) Type() string {
 	return typeStr
 }
 
 // CreateDefaultConfig creates the default configuration for exporter.
-func (f *ExporterFactory) CreateDefaultConfig() configmodels.Exporter {
+func (f *exporterFactory) CreateDefaultConfig() configmodels.Exporter {
 	return &ConfigV2{
 		ExporterSettings: configmodels.ExporterSettings{},
 		Headers:          map[string]string{},
