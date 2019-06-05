@@ -3,9 +3,9 @@ receivers:
   jaeger/customname:
     protocols:
       thrift-http:
-        endpoint: "example.com:3456"
+        endpoint: "127.0.0.1:3456"
       thrift-tchannel:
-        endpoint: "omnition.com:123"
+        endpoint: "0.0.0.0:123"
         enabled: true
 
 processors:

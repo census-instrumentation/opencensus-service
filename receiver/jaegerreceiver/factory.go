@@ -20,8 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
-	"strings"
 
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/internal/configmodels"
@@ -94,7 +94,7 @@ func (f *receiverFactory) CreateTraceReceiver(
 	// Set ports
 	if protoHTTP != nil {
 		var err error
-		config.CollectorHTTPPort, err = exatractPortFromEndpoint(protoHTTP.Endpoint)
+		config.CollectorHTTPPort, err = extractPortFromEndpoint(protoHTTP.Endpoint)
 		if err != nil {
 			return nil, err
 		}
@@ -102,7 +102,7 @@ func (f *receiverFactory) CreateTraceReceiver(
 
 	if protoTChannel != nil {
 		var err error
-		config.CollectorThriftPort, err = exatractPortFromEndpoint(protoTChannel.Endpoint)
+		config.CollectorThriftPort, err = extractPortFromEndpoint(protoTChannel.Endpoint)
 		if err != nil {
 			return nil, err
 		}
@@ -131,12 +131,12 @@ func (f *receiverFactory) CreateMetricsReceiver(
 
 // extract the port number from string in "address:port" format. If the
 // port number cannot be extracted returns an error.
-func exatractPortFromEndpoint(endpoint string) (int, error) {
-	parts := strings.Split(endpoint, ":")
-	if len(parts) < 1 || parts[0] == endpoint {
-		return 0, errors.New("endpoint must be in the form \"address:port\"")
+func extractPortFromEndpoint(endpoint string) (int, error) {
+	_, portStr, err := net.SplitHostPort(endpoint)
+	if err != nil {
+		return 0, fmt.Errorf("endpoint is not formatted correctly: %s", err.Error())
 	}
-	port, err := strconv.ParseInt(parts[len(parts)-1], 10, 0)
+	port, err := strconv.ParseInt(portStr, 10, 0)
 	if err != nil {
 		return 0, fmt.Errorf("endpoint port is not a number: %s", err.Error())
 	}
