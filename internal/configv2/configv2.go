@@ -81,10 +81,10 @@ const (
 // typeAndNameSeparator is the separator that is used between type and name in type/name composite keys.
 const typeAndNameSeparator = "/"
 
-// Data type strings
+// Data type strings.
 const (
-	tracesDataTypeStr  = "traces"
-	metricsDataTypeStr = "metrics"
+	TracesDataTypeStr  = "traces"
+	MetricsDataTypeStr = "metrics"
 )
 
 // Load loads a ConfigV2 from Viper.
@@ -261,6 +261,8 @@ func loadExporters(v *viper.Viper) (configmodels.Exporters, error) {
 
 		// Create the default config for this exporter
 		exporterCfg := factory.CreateDefaultConfig()
+		exporterCfg.SetType(typeStr)
+		exporterCfg.SetName(fullName)
 
 		// Now that the default config struct is created we can Unmarshal into it
 		// and it will apply user-defined config on top of the default.
@@ -365,9 +367,9 @@ func loadPipelines(v *viper.Viper) (configmodels.Pipelines, error) {
 
 		// Set the type.
 		switch typeStr {
-		case tracesDataTypeStr:
+		case TracesDataTypeStr:
 			pipelineCfg.InputType = configmodels.TracesDataType
-		case metricsDataTypeStr:
+		case MetricsDataTypeStr:
 			pipelineCfg.InputType = configmodels.MetricsDataType
 		default:
 			return nil, &configError{
