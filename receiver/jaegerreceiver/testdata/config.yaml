@@ -1,0 +1,22 @@
+receivers:
+  jaeger:
+  jaeger/customname:
+    protocols:
+      thrift-http:
+        endpoint: "example.com:3456"
+      thrift-tchannel:
+        endpoint: "omnition.com:123"
+        enabled: true
+
+processors:
+  exampleprocessor:
+
+exporters:
+  exampleexporter:
+
+pipelines:
+  traces:
+   receivers: [jaeger]
+   processors: [exampleprocessor]
+   exporters: [exampleexporter]
+
