@@ -43,8 +43,9 @@ func TestLoadConfig(t *testing.T) {
 	assert.Equal(t, p1,
 		&ConfigV2{
 			Values: map[string]interface{}{
-				"attribute1":       123,
-				"string attribute": "string value",
+				"attribute1":         123,
+				"string attribute":   "string value",
+				"attribute.with.dot": "another value",
 			},
 		})
 }
