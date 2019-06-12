@@ -1,17 +1,32 @@
+// Copyright 2018, OpenCensus Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package internal
 
 import (
 	"context"
 	"fmt"
-	"github.com/census-instrumentation/opencensus-service/data"
-	"github.com/go-kit/kit/log"
-	"github.com/prometheus/prometheus/discovery"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/census-instrumentation/opencensus-service/data"
+	"github.com/go-kit/kit/log"
+	"github.com/prometheus/prometheus/discovery"
 
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/prometheus/prometheus/config"
@@ -53,67 +68,67 @@ func TestOcaStore(t *testing.T) {
 func TestOcaStoreIntegration(t *testing.T) {
 	// verify at a high level
 	type v struct {
-		mname string
-		mtype metricspb.MetricDescriptor_Type
+		mname     string
+		mtype     metricspb.MetricDescriptor_Type
 		numLbKeys int
-		numTs int
+		numTs     int
 	}
 	tests := []struct {
-		name       string
-		page       string
-		mv         []v
+		name string
+		page string
+		mv   []v
 	}{
-		{ 
-			name:"promethues_text_format_example", 
+		{
+			name: "promethues_text_format_example",
 			page: testData1,
 			mv: []v{
 				{
-					mname: "http_requests_total",
-					mtype: metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
+					mname:     "http_requests_total",
+					mtype:     metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
 					numLbKeys: 2,
-					numTs: 2,
+					numTs:     2,
 				},
 				{
-					mname: "http_request_duration_seconds",
-					mtype: metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
+					mname:     "http_request_duration_seconds",
+					mtype:     metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
 					numLbKeys: 0,
-					numTs: 1,
+					numTs:     1,
 				},
 				{
-					mname: "rpc_duration_seconds",
-					mtype: metricspb.MetricDescriptor_SUMMARY,
+					mname:     "rpc_duration_seconds",
+					mtype:     metricspb.MetricDescriptor_SUMMARY,
 					numLbKeys: 0,
-					numTs: 1,
+					numTs:     1,
 				},
 			},
 		},
 		{
-			name:"test_my_histogram_vec",
+			name: "test_my_histogram_vec",
 			page: testDataHistoVec,
 			mv: []v{
 				{
-					mname: "test_my_histogram_vec",
-					mtype: metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
+					mname:     "test_my_histogram_vec",
+					mtype:     metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
 					numLbKeys: 2,
-					numTs: 2,
+					numTs:     2,
 				},
 			},
 		},
 		{
-			name:"test_my_summary_vec",
+			name: "test_my_summary_vec",
 			page: testDataSummaryVec,
 			mv: []v{
 				{
-					mname: "test_my_summary",
-					mtype: metricspb.MetricDescriptor_SUMMARY,
+					mname:     "test_my_summary",
+					mtype:     metricspb.MetricDescriptor_SUMMARY,
 					numLbKeys: 0,
-					numTs: 1,
+					numTs:     1,
 				},
 				{
-					mname: "test_my_summary_vec",
-					mtype: metricspb.MetricDescriptor_SUMMARY,
+					mname:     "test_my_summary_vec",
+					mtype:     metricspb.MetricDescriptor_SUMMARY,
 					numLbKeys: 2,
-					numTs: 3,
+					numTs:     3,
 				},
 			},
 		},
@@ -122,28 +137,28 @@ func TestOcaStoreIntegration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			srv := startMockServer(tt.page)
-			target, _:=url.Parse(srv.URL)
+			target, _ := url.Parse(srv.URL)
 			defer srv.Close()
 			mc, cancel := startScraper(target.Host)
 			defer cancel()
-			
+
 			var d *data.MetricsData
 			select {
 			case d = <-mc.Metrics:
-			case <- time.After(time.Second * 10):
+			case <-time.After(time.Second * 10):
 				t.Error("no data come back in 10 second")
 			}
-			
+
 			if len(tt.mv) != len(d.Metrics) {
 				t.Errorf("Number of metrics got=%v exepct=%v\n", len(d.Metrics), len(tt.mv))
 			}
-			
+
 			for i, dd := range d.Metrics {
 				got := v{
-					mname: dd.MetricDescriptor.Name,
-					mtype: dd.MetricDescriptor.Type,
+					mname:     dd.MetricDescriptor.Name,
+					mtype:     dd.MetricDescriptor.Type,
 					numLbKeys: len(dd.MetricDescriptor.LabelKeys),
-					numTs: len(dd.Timeseries),
+					numTs:     len(dd.Timeseries),
 				}
 				if !reflect.DeepEqual(got, tt.mv[i]) {
 					t.Errorf("got %v, expect %v", got, tt.mv[i])
@@ -151,7 +166,7 @@ func TestOcaStoreIntegration(t *testing.T) {
 			}
 		})
 	}
-	
+
 }
 
 func startMockServer(page string) *httptest.Server {
@@ -160,9 +175,9 @@ func startMockServer(page string) *httptest.Server {
 	}))
 }
 
-func startScraper(target string) (*mockConsumer, context.CancelFunc){
+func startScraper(target string) (*mockConsumer, context.CancelFunc) {
 	rawCfg := fmt.Sprintf(scrapCfgTpl, target)
-	
+
 	cfg, err := config.Load(rawCfg)
 	if err != nil {
 		fmt.Println(err)

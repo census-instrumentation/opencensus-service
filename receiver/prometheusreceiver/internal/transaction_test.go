@@ -1,3 +1,17 @@
+// Copyright 2018, OpenCensus Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package internal
 
 import (
@@ -9,16 +23,14 @@ import (
 	"time"
 )
 
-
-
 func Test_transaction(t *testing.T) {
 	ms := &mockMetadataSvc{
-		caches:map[string]*mockMetadataCache{
-			"test_localhost:8080":{data: map[string]scrape.MetricMetadata{}},
+		caches: map[string]*mockMetadataCache{
+			"test_localhost:8080": {data: map[string]scrape.MetricMetadata{}},
 		},
 	}
-	
-	t.Run("Commit Without Adding", func(t *testing.T){
+
+	t.Run("Commit Without Adding", func(t *testing.T) {
 		mcon := NewMockConsumer()
 		tr := newTransaction(context.Background(), ms, mcon, testLogger)
 		if got := tr.Commit(); got != nil {
@@ -26,7 +38,7 @@ func Test_transaction(t *testing.T) {
 		}
 	})
 
-	t.Run("Rollback dose nothing", func(t *testing.T){
+	t.Run("Rollback dose nothing", func(t *testing.T) {
 		mcon := NewMockConsumer()
 		tr := newTransaction(context.Background(), ms, mcon, testLogger)
 		if got := tr.Rollback(); got != nil {
@@ -35,7 +47,7 @@ func Test_transaction(t *testing.T) {
 	})
 
 	badLabels := labels.Labels([]labels.Label{{"foo", "bar"}})
-	t.Run("Add One No Target", func(t *testing.T){
+	t.Run("Add One No Target", func(t *testing.T) {
 		mcon := NewMockConsumer()
 		tr := newTransaction(context.Background(), ms, mcon, testLogger)
 		if _, got := tr.Add(badLabels, time.Now().Unix()*1000, 1.0); got == nil {
@@ -44,7 +56,7 @@ func Test_transaction(t *testing.T) {
 	})
 
 	jobNotFoundLb := labels.Labels([]labels.Label{{"instance", "localhost:8080"}, {"job", "test2"}, {"foo", "bar"}})
-	t.Run("Add One Job not found", func(t *testing.T){
+	t.Run("Add One Job not found", func(t *testing.T) {
 		mcon := NewMockConsumer()
 		tr := newTransaction(context.Background(), ms, mcon, testLogger)
 		if _, got := tr.Add(jobNotFoundLb, time.Now().Unix()*1000, 1.0); got == nil {
@@ -53,7 +65,7 @@ func Test_transaction(t *testing.T) {
 	})
 
 	goodLabels := labels.Labels([]labels.Label{{"instance", "localhost:8080"}, {"job", "test"}, {"__name__", "foo"}})
-	t.Run("Add One Good", func(t *testing.T){
+	t.Run("Add One Good", func(t *testing.T) {
 		mcon := NewMockConsumer()
 		tr := newTransaction(context.Background(), ms, mcon, testLogger)
 		if _, got := tr.Add(goodLabels, time.Now().Unix()*1000, 1.0); got != nil {
@@ -62,18 +74,17 @@ func Test_transaction(t *testing.T) {
 		if got := tr.Commit(); got != nil {
 			t.Errorf("expecting nil from Commit() but got err %v", got)
 		}
-		
+
 		expected := createNode("test", "localhost:8080", "http")
-		md := <- mcon.Metrics
+		md := <-mcon.Metrics
 		if !reflect.DeepEqual(md.Node, expected) {
 			t.Errorf("generated node %v and expected node %v is different\n", md.Node, expected)
 		}
-		
+
 		if len(md.Metrics) != 1 {
 			t.Errorf("expecting one metrics, but got %v\n", len(md.Metrics))
 		}
-		
+
 	})
-	
-	
+
 }

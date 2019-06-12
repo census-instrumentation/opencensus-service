@@ -1,12 +1,27 @@
+// Copyright 2018, OpenCensus Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package internal
 
 import (
 	"errors"
 	"fmt"
-	"go.uber.org/zap"
 	"sort"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
@@ -28,8 +43,8 @@ var noDataToBuildError = errors.New("there's no data to build")
 var noBoundaryLabel = errors.New("given metricType has no BucketLabel or QuantileLabel")
 var emptyBoundaryLabel = errors.New("BucketLabel or QuantileLabel is empty")
 var dummyMetric = &data.MetricsData{
-	Node:    &commonpb.Node{
-		Identifier: &commonpb.ProcessIdentifier{HostName: "127.0.0.1"},
+	Node: &commonpb.Node{
+		Identifier:  &commonpb.ProcessIdentifier{HostName: "127.0.0.1"},
 		ServiceInfo: &commonpb.ServiceInfo{Name: "internal"},
 	},
 	Metrics: make([]*metricspb.Metric, 0),
@@ -139,7 +154,7 @@ func (b *metricBuilder) AddDataPoint(ls labels.Labels, t int64, v float64) error
 		}
 		dp := &dataPoint{
 			value: v,
-			ts: t,
+			ts:    t,
 		}
 		b.currentDpGroups[groupKey] = append(pg, dp)
 	}

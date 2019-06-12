@@ -1,22 +1,38 @@
+// Copyright 2018, OpenCensus Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package internal
 
 import (
 	"context"
 	"errors"
+	"strings"
+	"sync/atomic"
+
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/zap"
-	"strings"
-	"sync/atomic"
 )
 
 const (
-	portAttr = "port"
+	portAttr   = "port"
 	schemeAttr = "scheme"
 )
+
 var metricNameNotFoundErr = errors.New("metricName not found from labels")
 var transactionAbortedErr = errors.New("transaction aborted")
 var noJobInstanceErr = errors.New("job or instance cannot be found from labels")
@@ -34,16 +50,16 @@ type transaction struct {
 	sink          consumer.MetricsConsumer
 	ms            MetadataService
 	metricBuilder *metricBuilder
-	logger  *zap.SugaredLogger
+	logger        *zap.SugaredLogger
 }
 
 func newTransaction(ctx context.Context, ms MetadataService, sink consumer.MetricsConsumer, logger *zap.SugaredLogger) *transaction {
 	return &transaction{
-		id:    atomic.AddInt64(&idSeq, 1),
-		ctx:   ctx,
-		isNew: true,
-		sink:  sink,
-		ms:    ms,
+		id:     atomic.AddInt64(&idSeq, 1),
+		ctx:    ctx,
+		isNew:  true,
+		sink:   sink,
+		ms:     ms,
 		logger: logger,
 	}
 }
@@ -111,7 +127,6 @@ func (tr *transaction) Rollback() error {
 	return nil
 }
 
-
 func createNode(job, instance, scheme string) *commonpb.Node {
 	splitted := strings.Split(instance, ":")
 	host, port := splitted[0], "80"
@@ -124,8 +139,8 @@ func createNode(job, instance, scheme string) *commonpb.Node {
 			HostName: host,
 		},
 		Attributes: map[string]string{
-			portAttr:    port,
-			schemeAttr:  scheme,
+			portAttr:   port,
+			schemeAttr: scheme,
 		},
 	}
 }

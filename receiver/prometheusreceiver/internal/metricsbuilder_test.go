@@ -1,9 +1,23 @@
+// Copyright 2018, OpenCensus Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package internal
 
 import (
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"reflect"
 	"testing"
+
+	"github.com/golang/protobuf/ptypes/wrappers"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
@@ -13,7 +27,6 @@ import (
 	"github.com/prometheus/prometheus/pkg/textparse"
 	"github.com/prometheus/prometheus/scrape"
 )
-
 
 func Test_isUsefulLabel(t *testing.T) {
 	type args struct {
@@ -177,7 +190,7 @@ func Test_metricBuilder(t *testing.T) {
 			"summary_test":    {"summary_test", textparse.MetricTypeSummary, "", ""},
 			"unknown_test":    {"unknown_test", textparse.MetricTypeUnknown, "", ""},
 			"poor_name_count": {"poor_name_count", textparse.MetricTypeCounter, "", ""},
-			"up": 			   {"up", textparse.MetricTypeCounter, "", ""},
+			"up":              {"up", textparse.MetricTypeCounter, "", ""},
 			"scrape_foo":      {"scrape_foo", textparse.MetricTypeCounter, "", ""},
 		},
 	}
@@ -744,11 +757,11 @@ func Test_metricBuilder(t *testing.T) {
 				{createLabels("scrape_foo", "t1", "1"), 1.0, false},
 			},
 			buildErr: false,
-			metrics: make([]*metricspb.Metric, 0),
+			metrics:  make([]*metricspb.Metric, 0),
 		},
 		{
-			name: "nodata",
-			pts: []*pt{},
+			name:     "nodata",
+			pts:      []*pt{},
 			buildErr: true,
 		},
 	}
