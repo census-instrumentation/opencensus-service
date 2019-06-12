@@ -16,7 +16,6 @@ package opencensusexporter
 
 import (
 	"crypto/x509"
-	"errors"
 	"fmt"
 
 	"google.golang.org/grpc"
@@ -63,9 +62,6 @@ func (f *exporterFactory) CreateDefaultConfig() configmodels.Exporter {
 // CreateTraceExporter creates a trace exporter based on this config.
 func (f *exporterFactory) CreateTraceExporter(config configmodels.Exporter) (consumer.TraceConsumer, factories.StopFunc, error) {
 	ocac := config.(*ConfigV2)
-	if ocac == nil {
-		return nil, nil, errors.New("Internal error")
-	}
 
 	if ocac.Endpoint == "" {
 		return nil, nil, &ocTraceExporterError{
