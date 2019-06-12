@@ -18,12 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/zap"
-	"sync"
-	"time"
 
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/receiver"
@@ -117,13 +118,13 @@ func (pr *Preceiver) StartMetricsReception(ctx context.Context, asyncErrorChan c
 		scrapeManager := scrape.NewManager(l, app)
 		app.SetScrapeManager(scrapeManager)
 		discoveryManagerScrape := discovery.NewManager(ctx, l)
-		go func(){
-			if err:=discoveryManagerScrape.Run(); err != nil {
-				asyncErrorChan<-err
+		go func() {
+			if err := discoveryManagerScrape.Run(); err != nil {
+				asyncErrorChan <- err
 			}
 		}()
-		if err:=scrapeManager.ApplyConfig(pr.cfg.ScrapeConfig); err!=nil {
-			asyncErrorChan<-err
+		if err := scrapeManager.ApplyConfig(pr.cfg.ScrapeConfig); err != nil {
+			asyncErrorChan <- err
 			return
 		}
 
@@ -165,4 +166,3 @@ func (pr *Preceiver) StopMetricsReception(ctx context.Context) error {
 	pr.stopOnce.Do(pr.cancel)
 	return nil
 }
-

@@ -17,9 +17,6 @@ package prometheusreceiver
 import (
 	"context"
 	"fmt"
-	"go.opencensus.io/metric/metricdata"
-	"go.opencensus.io/metric/metricproducer"
-	"go.uber.org/zap"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -28,6 +25,10 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	"go.opencensus.io/metric/metricdata"
+	"go.opencensus.io/metric/metricproducer"
+	"go.uber.org/zap"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
@@ -265,8 +266,8 @@ buffer_count: 2
 									Timestamp: retrievedTimestamps["e2ereceiver_e2e_call_latency"],
 									Value: &metricspb.Point_DistributionValue{
 										DistributionValue: &metricspb.DistributionValue{
-											Count:                 1,
-											Sum:                 180,
+											Count: 1,
+											Sum:   180,
 											BucketOptions: &metricspb.DistributionValue_BucketOptions{
 												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
 													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
@@ -356,8 +357,8 @@ buffer_count: 2
 									Timestamp: retrievedTimestamps["e2ereceiver_e2e_call_latency"],
 									Value: &metricspb.Point_DistributionValue{
 										DistributionValue: &metricspb.DistributionValue{
-											Count:                 1,
-											Sum:                 180,
+											Count: 1,
+											Sum:   180,
 											BucketOptions: &metricspb.DistributionValue_BucketOptions{
 												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
 													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
