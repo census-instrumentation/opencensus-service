@@ -766,7 +766,7 @@ func Test_metricBuilder(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := NewMetricBuilder(node, mc, testLogger)
+			b := newMetricBuilder(node, mc, testLogger)
 			for _, v := range tt.pts {
 				if err := b.AddDataPoint(v.lb, ts, v.v); (err != nil) != v.hasErr {
 					t.Errorf("metricBuilder.AddDataPoint() error = %v, wantErr %v", err, v.hasErr)

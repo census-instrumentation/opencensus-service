@@ -17,15 +17,14 @@ package internal
 import (
 	"context"
 	"errors"
-	"strings"
-	"sync/atomic"
-
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/zap"
+	"strings"
+	"sync/atomic"
 )
 
 const (
@@ -33,9 +32,9 @@ const (
 	schemeAttr = "scheme"
 )
 
-var metricNameNotFoundErr = errors.New("metricName not found from labels")
-var transactionAbortedErr = errors.New("transaction aborted")
-var noJobInstanceErr = errors.New("job or instance cannot be found from labels")
+var errMetricNameNotFound = errors.New("metricName not found from labels")
+var errTransactionAborted = errors.New("transaction aborted")
+var errNoJobInstance = errors.New("job or instance cannot be found from labels")
 
 // A transaction is corresponding to an individual scrape operation or stale report.
 // That said, whenever prometheus receiver scrapped a target metric endpoint a page of raw metrics is returned,
@@ -78,7 +77,7 @@ func (tr *transaction) Add(l labels.Labels, t int64, v float64) (uint64, error) 
 func (tr *transaction) AddFast(ls labels.Labels, _ uint64, t int64, v float64) error {
 	select {
 	case <-tr.ctx.Done():
-		return transactionAbortedErr
+		return errTransactionAborted
 	default:
 	}
 	if tr.isNew {
@@ -92,7 +91,7 @@ func (tr *transaction) AddFast(ls labels.Labels, _ uint64, t int64, v float64) e
 func (tr *transaction) initTransaction(ls labels.Labels) error {
 	job, instance := ls.Get(model.JobLabel), ls.Get(model.InstanceLabel)
 	if job == "" || instance == "" {
-		return noJobInstanceErr
+		return errNoJobInstance
 	}
 	// discover the binding target when this method is called for the first time during a transaction
 	mc, err := tr.ms.Get(job, instance)
@@ -100,7 +99,7 @@ func (tr *transaction) initTransaction(ls labels.Labels) error {
 		return err
 	}
 	node := createNode(job, instance, mc.SharedLabels().Get(model.SchemeLabel))
-	tr.metricBuilder = NewMetricBuilder(node, mc, tr.logger)
+	tr.metricBuilder = newMetricBuilder(node, mc, tr.logger)
 	tr.isNew = false
 	return nil
 }
@@ -112,15 +111,17 @@ func (tr *transaction) Commit() error {
 		// never added any data points, that the transaction has not been initialized.
 		return nil
 	}
-	if md, err := tr.metricBuilder.Build(); err == nil {
-		if md == dummyMetric {
-			return nil
-		}
-		return tr.sink.ConsumeMetricsData(context.Background(), *md)
-	} else {
+
+	md, err := tr.metricBuilder.Build()
+	if err != nil {
 		return err
 	}
 
+	if md != dummyMetric {
+		return tr.sink.ConsumeMetricsData(context.Background(), *md)
+	}
+
+	return nil
 }
 
 func (tr *transaction) Rollback() error {

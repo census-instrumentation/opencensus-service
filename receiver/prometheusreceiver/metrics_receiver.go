@@ -18,13 +18,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
-	"time"
-
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/zap"
+	"sync"
+	"time"
 
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/receiver"
@@ -156,7 +155,9 @@ func (pr *Preceiver) StartMetricsReception(ctx context.Context, asyncErrorChan c
 	return nil
 }
 
-// do nothing
+// Flush triggers the Flush method on the underlying Prometheus scrapers and instructs
+// them to immediately sned over the metrics they've collected, to the MetricsConsumer.
+// it's not needed on the new prometheus receiver implementation, let it do nothing
 func (pr *Preceiver) Flush() {
 
 }

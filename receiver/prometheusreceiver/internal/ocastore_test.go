@@ -17,16 +17,15 @@ package internal
 import (
 	"context"
 	"fmt"
+	"github.com/census-instrumentation/opencensus-service/data"
+	"github.com/go-kit/kit/log"
+	"github.com/prometheus/prometheus/discovery"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/census-instrumentation/opencensus-service/data"
-	"github.com/go-kit/kit/log"
-	"github.com/prometheus/prometheus/discovery"
 
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/prometheus/prometheus/config"
@@ -183,7 +182,7 @@ func startScraper(target string) (*mockConsumer, context.CancelFunc) {
 		fmt.Println(err)
 		return nil, nil
 	}
-	con := NewMockConsumer()
+	con := newMockConsumer()
 	o := NewOcaStore(context.Background(), con, testLogger)
 	scrapeManager := scrape.NewManager(log.NewNopLogger(), o)
 	o.SetScrapeManager(scrapeManager)

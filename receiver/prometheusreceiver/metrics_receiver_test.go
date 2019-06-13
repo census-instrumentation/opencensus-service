@@ -17,6 +17,9 @@ package prometheusreceiver
 import (
 	"context"
 	"fmt"
+	"go.opencensus.io/metric/metricdata"
+	"go.opencensus.io/metric/metricproducer"
+	"go.uber.org/zap"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -25,10 +28,6 @@ import (
 	"sort"
 	"testing"
 	"time"
-
-	"go.opencensus.io/metric/metricdata"
-	"go.opencensus.io/metric/metricproducer"
-	"go.uber.org/zap"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"

@@ -17,11 +17,10 @@ package internal
 import (
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"sort"
 	"strconv"
 	"strings"
-
-	"go.uber.org/zap"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
@@ -39,9 +38,9 @@ const metricsSuffixBucket = "_bucket"
 const metricsSuffixSum = "_sum"
 
 var trimmableSuffixes = []string{metricsSuffixBucket, metricsSuffixCount, metricsSuffixSum}
-var noDataToBuildError = errors.New("there's no data to build")
-var noBoundaryLabel = errors.New("given metricType has no BucketLabel or QuantileLabel")
-var emptyBoundaryLabel = errors.New("BucketLabel or QuantileLabel is empty")
+var errNoDataToBuild = errors.New("there's no data to build")
+var errNoBoundaryLabel = errors.New("given metricType has no BucketLabel or QuantileLabel")
+var errEmptyBoundaryLabel = errors.New("BucketLabel or QuantileLabel is empty")
 var dummyMetric = &data.MetricsData{
 	Node: &commonpb.Node{
 		Identifier:  &commonpb.ProcessIdentifier{HostName: "127.0.0.1"},
@@ -82,7 +81,10 @@ type dataPointGroupMetadata struct {
 	hasSum   bool
 }
 
-func NewMetricBuilder(node *commonpb.Node, mc MetadataCache, logger *zap.SugaredLogger) *metricBuilder {
+// newMetricBuilder creates a MetricBuilder which is allowed to feed all the datapoints from a single prometheus
+// scraped page by calling its AddDataPoint function, and turn them into an opencensus data.MetricsData object
+// by calling its Build function
+func newMetricBuilder(node *commonpb.Node, mc MetadataCache, logger *zap.SugaredLogger) *metricBuilder {
 
 	return &metricBuilder{
 		node:    node,
@@ -92,10 +94,11 @@ func NewMetricBuilder(node *commonpb.Node, mc MetadataCache, logger *zap.Sugared
 	}
 }
 
+// AddDataPoint is for feeding prometheus data points in its processing order
 func (b *metricBuilder) AddDataPoint(ls labels.Labels, t int64, v float64) error {
 	metricName := ls.Get(model.MetricNameLabel)
 	if metricName == "" {
-		return metricNameNotFoundErr
+		return errMetricNameNotFound
 	} else if shouldSkip(metricName) {
 		b.hasInternalMetric = true
 		lm := ls.Map()
@@ -110,7 +113,7 @@ func (b *metricBuilder) AddDataPoint(ls labels.Labels, t int64, v float64) error
 	}
 
 	// update the labelKeys array, need to do it for every metrics as scrapeLoop can remove labels with empty values
-	// only when we complete the whole MetricFamily, we can get the fullset of label names
+	// only when we complete the whole MetricFamily, we can get the full set of label names
 	b.updateLabelKeys(ls)
 	groupKey := dpgSignature(b.currentMetricLabelKeys, ls)
 	mg, ok := b.currentMetadataGroups[groupKey]
@@ -162,12 +165,13 @@ func (b *metricBuilder) AddDataPoint(ls labels.Labels, t int64, v float64) error
 	return nil
 }
 
+// Build is to build an opencensus data.MetricsData based on all added data points
 func (b *metricBuilder) Build() (*data.MetricsData, error) {
 	if !b.hasData {
 		if b.hasInternalMetric {
 			return dummyMetric, nil
 		}
-		return nil, noDataToBuildError
+		return nil, errNoDataToBuild
 	}
 
 	if err := b.completeCurrentMetric(); err != nil {
@@ -444,12 +448,12 @@ func getBoundary(metricType metricspb.MetricDescriptor_Type, labels labels.Label
 	} else if metricType == metricspb.MetricDescriptor_SUMMARY {
 		labelName = model.QuantileLabel
 	} else {
-		return 0, noBoundaryLabel
+		return 0, errNoBoundaryLabel
 	}
 
 	v := labels.Get(labelName)
 	if v == "" {
-		return 0, emptyBoundaryLabel
+		return 0, errEmptyBoundaryLabel
 	}
 
 	return strconv.ParseFloat(v, 64)

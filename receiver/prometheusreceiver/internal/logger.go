@@ -17,7 +17,8 @@ package internal
 import "go.uber.org/zap"
 import gokitLog "github.com/go-kit/kit/log"
 
-func NewZapToGokitLogAdapter(logger *zap.Logger) *zapToGokitLogAdapter {
+// NewZapToGokitLogAdapter create an adapter for zap.Logger to gokitLog.Logger
+func NewZapToGokitLogAdapter(logger *zap.Logger) gokitLog.Logger {
 	// need to skip two levels in order to get the correct caller
 	// one for this method, the other for gokitLog
 	logger = logger.WithOptions(zap.AddCallerSkip(2))

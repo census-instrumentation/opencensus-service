@@ -17,15 +17,14 @@ package internal
 import (
 	"context"
 	"errors"
-	"io"
-	"sync"
-	"sync/atomic"
-
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/zap"
+	"io"
+	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -35,7 +34,14 @@ const (
 )
 
 var idSeq int64
-var alreadyStopErr = errors.New("ocaStore already stopped")
+var errAlreadyStop = errors.New("ocaStore already stopped")
+
+// OcaStore is an interface combines io.Closer and prometheus' scrape.Appendable
+type OcaStore interface {
+	scrape.Appendable
+	io.Closer
+	SetScrapeManager(*scrape.Manager)
+}
 
 // OpenCensus Store for prometheus
 type ocaStore struct {
@@ -47,11 +53,8 @@ type ocaStore struct {
 	ctx     context.Context
 }
 
-// ensure *ocaStore has implemented both scrap.Appendable and io.Closer
-var _ scrape.Appendable = (*ocaStore)(nil)
-var _ io.Closer = (*ocaStore)(nil)
-
-func NewOcaStore(ctx context.Context, sink consumer.MetricsConsumer, logger *zap.SugaredLogger) *ocaStore {
+// NewOcaStore returns an ocaStore instance, which can be acted as prometheus' scrape.Appendable
+func NewOcaStore(ctx context.Context, sink consumer.MetricsConsumer, logger *zap.SugaredLogger) OcaStore {
 	return &ocaStore{
 		running: runningStateInit,
 		ctx:     ctx,
@@ -61,6 +64,8 @@ func NewOcaStore(ctx context.Context, sink consumer.MetricsConsumer, logger *zap
 	}
 }
 
+// SetScrapeManager is used to config the underlying scrape.Manager as it's needed for OcaStore, otherwise OcaStore
+// cannot accept any Appender() request
 func (o *ocaStore) SetScrapeManager(scrapeManager *scrape.Manager) {
 	if scrapeManager != nil && atomic.CompareAndSwapInt32(&o.running, runningStateInit, runningStateReady) {
 		o.mc = &mService{scrapeManager}
@@ -83,24 +88,23 @@ func (o *ocaStore) Close() error {
 	return nil
 }
 
-// noop Appender, always return error on any operations
-
+// noopAppender, always return error on any operations
 type noopAppender bool
 
 func (noopAppender) Add(l labels.Labels, t int64, v float64) (uint64, error) {
-	return 0, alreadyStopErr
+	return 0, errAlreadyStop
 }
 
 func (noopAppender) AddFast(l labels.Labels, ref uint64, t int64, v float64) error {
-	return alreadyStopErr
+	return errAlreadyStop
 }
 
 func (noopAppender) Commit() error {
-	return alreadyStopErr
+	return errAlreadyStop
 }
 
 func (noopAppender) Rollback() error {
-	return alreadyStopErr
+	return errAlreadyStop
 }
 
 var _ storage.Appender = noopAppender(true)

@@ -44,11 +44,11 @@ func (m *mockMetadataCache) Metadata(metricName string) (scrape.MetricMetadata, 
 	return mm, ok
 }
 
-func (mc *mockMetadataCache) SharedLabels() labels.Labels {
+func (m *mockMetadataCache) SharedLabels() labels.Labels {
 	return labels.FromStrings("__scheme__", "http")
 }
 
-func NewMockConsumer() *mockConsumer {
+func newMockConsumer() *mockConsumer {
 	return &mockConsumer{
 		Metrics: make(chan *data.MetricsData, 1),
 	}

@@ -16,17 +16,17 @@ package internal
 
 import (
 	"errors"
-
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/scrape"
 )
 
-// This interface is aimed to hide scrapeManager
+// MetadataService is an adapter to scrapeManager and provide only the functionality which is needed
 type MetadataService interface {
 	Get(job, instance string) (MetadataCache, error)
 }
 
+// MetadataCache is an adapter to prometheus' scrape.Target  and provide only the functionality which is needed
 type MetadataCache interface {
 	Metadata(metricName string) (scrape.MetricMetadata, bool)
 	SharedLabels() labels.Labels
