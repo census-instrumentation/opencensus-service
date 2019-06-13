@@ -11,13 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package internal
 
 import (
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"reflect"
 	"testing"
-
-	"github.com/golang/protobuf/ptypes/wrappers"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
@@ -65,19 +65,18 @@ func Test_dpgSignature(t *testing.T) {
 
 	tests := []struct {
 		name string
-		ls   []labels.Label
+		ls   labels.Labels
 		want string
 	}{
-		{"1st label", []labels.Label{{"a", "va"}}, `[]string{"va", ""}`},
-		{"2nd label", []labels.Label{{"b", "vb"}}, `[]string{"", "vb"}`},
-		{"two labels", []labels.Label{{"a", "va"}, {"b", "vb"}}, `[]string{"va", "vb"}`},
-		{"extra label", []labels.Label{{"a", "va"}, {"b", "vb"}, {"x", "xa"}}, `[]string{"va", "vb"}`},
-		{"different order", []labels.Label{{"b", "vb"}, {"a", "va"}}, `[]string{"va", "vb"}`},
+		{"1st label", labels.FromStrings("a", "va"), `[]string{"va", ""}`},
+		{"2nd label", labels.FromStrings("b", "vb"), `[]string{"", "vb"}`},
+		{"two labels", labels.FromStrings("a", "va", "b", "vb"), `[]string{"va", "vb"}`},
+		{"extra label", labels.FromStrings("a", "va", "b", "vb", "x", "xa"), `[]string{"va", "vb"}`},
+		{"different order", labels.FromStrings("b", "vb", "a", "va"), `[]string{"va", "vb"}`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := labels.Labels(tt.ls)
-			if got := dpgSignature(knownLabelKeys, l); got != tt.want {
+			if got := dpgSignature(knownLabelKeys, tt.ls); got != tt.want {
 				t.Errorf("dpgSignature() = %v, want %v", got, tt.want)
 			}
 		})
@@ -106,9 +105,9 @@ func Test_normalizeMetricName(t *testing.T) {
 }
 
 func Test_getBoundary(t *testing.T) {
-	ls := labels.Labels([]labels.Label{{"le", "100.0"}, {"foo", "bar"}, {"quantile", "0.5"}})
-	ls2 := labels.Labels([]labels.Label{{"foo", "bar"}})
-	ls3 := labels.Labels([]labels.Label{{"le", "xyz"}, {"foo", "bar"}, {"quantile", "0.5"}})
+	ls := labels.FromStrings("le", "100.0", "foo", "bar", "quantile", "0.5")
+	ls2 := labels.FromStrings("foo", "bar")
+	ls3 := labels.FromStrings("le", "xyz", "foo", "bar", "quantile", "0.5")
 	type args struct {
 		metricType metricspb.MetricDescriptor_Type
 		labels     labels.Labels
@@ -183,15 +182,15 @@ func Test_metricBuilder(t *testing.T) {
 
 	mc := &mockMetadataCache{
 		data: map[string]scrape.MetricMetadata{
-			"counter_test":    {"counter_test", textparse.MetricTypeCounter, "", ""},
-			"gauge_test":      {"gauge_test", textparse.MetricTypeGauge, "", ""},
-			"hist_test":       {"hist_test", textparse.MetricTypeHistogram, "", ""},
-			"ghist_test":      {"ghist_test", textparse.MetricTypeGaugeHistogram, "", ""},
-			"summary_test":    {"summary_test", textparse.MetricTypeSummary, "", ""},
-			"unknown_test":    {"unknown_test", textparse.MetricTypeUnknown, "", ""},
-			"poor_name_count": {"poor_name_count", textparse.MetricTypeCounter, "", ""},
-			"up":              {"up", textparse.MetricTypeCounter, "", ""},
-			"scrape_foo":      {"scrape_foo", textparse.MetricTypeCounter, "", ""},
+			"counter_test":    {Metric: "counter_test", Type: textparse.MetricTypeCounter, Help: "", Unit: ""},
+			"gauge_test":      {Metric: "gauge_test", Type: textparse.MetricTypeGauge, Help: "", Unit: ""},
+			"hist_test":       {Metric: "hist_test", Type: textparse.MetricTypeHistogram, Help: "", Unit: ""},
+			"ghist_test":      {Metric: "ghist_test", Type: textparse.MetricTypeGaugeHistogram, Help: "", Unit: ""},
+			"summary_test":    {Metric: "summary_test", Type: textparse.MetricTypeSummary, Help: "", Unit: ""},
+			"unknown_test":    {Metric: "unknown_test", Type: textparse.MetricTypeUnknown, Help: "", Unit: ""},
+			"poor_name_count": {Metric: "poor_name_count", Type: textparse.MetricTypeCounter, Help: "", Unit: ""},
+			"up":              {Metric: "up", Type: textparse.MetricTypeCounter, Help: "", Unit: ""},
+			"scrape_foo":      {Metric: "scrape_foo", Type: textparse.MetricTypeCounter, Help: "", Unit: ""},
 		},
 	}
 

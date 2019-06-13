@@ -11,23 +11,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package internal
 
 import (
 	"context"
 	"errors"
-	"sync"
-
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/scrape"
 	"go.uber.org/zap"
+	"sync"
 )
 
 // test helpers
 
-var zapLogger *zap.Logger
-var testLogger *zap.SugaredLogger
+var  zapLogger *zap.Logger
+var  testLogger *zap.SugaredLogger
 
 func init() {
 	zl, _ := zap.NewDevelopment()
@@ -44,9 +44,10 @@ func (m *mockMetadataCache) Metadata(metricName string) (scrape.MetricMetadata, 
 	return mm, ok
 }
 
-func (mc *mockMetadataCache) SharedLabels() labels.Labels {
-	return labels.Labels([]labels.Label{{"__scheme__", "http"}})
+func (mc *mockMetadataCache) SharedLabels() labels.Labels  {
+	return labels.FromStrings("__scheme__", "http")
 }
+
 
 func NewMockConsumer() *mockConsumer {
 	return &mockConsumer{
@@ -55,12 +56,12 @@ func NewMockConsumer() *mockConsumer {
 }
 
 type mockConsumer struct {
-	Metrics    chan *data.MetricsData
+	Metrics chan *data.MetricsData
 	consumOnce sync.Once
 }
 
 func (m *mockConsumer) ConsumeMetricsData(ctx context.Context, md data.MetricsData) error {
-	m.consumOnce.Do(func() {
+	m.consumOnce.Do(func(){
 		m.Metrics <- &md
 	})
 	return nil
@@ -71,7 +72,7 @@ type mockMetadataSvc struct {
 }
 
 func (mm *mockMetadataSvc) Get(job, instance string) (MetadataCache, error) {
-	if mc, ok := mm.caches[job+"_"+instance]; ok {
+	if mc, ok:=mm.caches[job+"_"+instance];  ok {
 		return mc, nil
 	}
 

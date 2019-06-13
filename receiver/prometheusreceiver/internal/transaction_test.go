@@ -46,7 +46,7 @@ func Test_transaction(t *testing.T) {
 		}
 	})
 
-	badLabels := labels.Labels([]labels.Label{{"foo", "bar"}})
+	badLabels := labels.Labels([]labels.Label{{Name: "foo", Value: "bar"}})
 	t.Run("Add One No Target", func(t *testing.T) {
 		mcon := NewMockConsumer()
 		tr := newTransaction(context.Background(), ms, mcon, testLogger)
@@ -55,7 +55,10 @@ func Test_transaction(t *testing.T) {
 		}
 	})
 
-	jobNotFoundLb := labels.Labels([]labels.Label{{"instance", "localhost:8080"}, {"job", "test2"}, {"foo", "bar"}})
+	jobNotFoundLb := labels.Labels([]labels.Label{
+		{Name: "instance", Value: "localhost:8080"},
+		{Name: "job", Value: "test2"},
+		{Name: "foo", Value: "bar"}})
 	t.Run("Add One Job not found", func(t *testing.T) {
 		mcon := NewMockConsumer()
 		tr := newTransaction(context.Background(), ms, mcon, testLogger)
@@ -64,7 +67,9 @@ func Test_transaction(t *testing.T) {
 		}
 	})
 
-	goodLabels := labels.Labels([]labels.Label{{"instance", "localhost:8080"}, {"job", "test"}, {"__name__", "foo"}})
+	goodLabels := labels.Labels([]labels.Label{{Name: "instance", Value: "localhost:8080"},
+		{Name: "job", Value: "test"},
+		{Name: "__name__", Value: "foo"}})
 	t.Run("Add One Good", func(t *testing.T) {
 		mcon := NewMockConsumer()
 		tr := newTransaction(context.Background(), ms, mcon, testLogger)
@@ -84,7 +89,6 @@ func Test_transaction(t *testing.T) {
 		if len(md.Metrics) != 1 {
 			t.Errorf("expecting one metrics, but got %v\n", len(md.Metrics))
 		}
-
 	})
 
 }
