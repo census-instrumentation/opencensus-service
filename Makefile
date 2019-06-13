@@ -78,7 +78,7 @@ vet:
 
 .PHONY: install-tools
 install-tools:
-	go get golang.org/x/lint/golint
+	go install golang.org/x/lint/golint
 
 .PHONY: agent
 agent:
