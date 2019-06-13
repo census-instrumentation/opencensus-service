@@ -25,15 +25,8 @@ import (
 	"github.com/census-instrumentation/opencensus-service/exporter"
 	"github.com/census-instrumentation/opencensus-service/internal"
 	"github.com/census-instrumentation/opencensus-service/internal/configmodels"
-	"github.com/census-instrumentation/opencensus-service/internal/configv2"
 	"github.com/census-instrumentation/opencensus-service/internal/factories"
 )
-
-// ExportersBuilder builds exporters from config.
-type ExportersBuilder struct {
-	logger *zap.Logger
-	config *configmodels.ConfigV2
-}
 
 // exporterImpl is a running exporter that is built based on a config. It can have
 // a trace and/or a metrics consumer and have a stop function.
@@ -94,6 +87,12 @@ type dataTypeRequirements map[configmodels.DataType]dataTypeRequirement
 // Data type requirements for all exporters.
 type exportersRequiredDataTypes map[configmodels.Exporter]dataTypeRequirements
 
+// ExportersBuilder builds exporters from config.
+type ExportersBuilder struct {
+	logger *zap.Logger
+	config *configmodels.ConfigV2
+}
+
 // NewExportersBuilder creates a new ExportersBuilder. Call Build() on the returned value.
 func NewExportersBuilder(logger *zap.Logger, config *configmodels.ConfigV2) *ExportersBuilder {
 	return &ExportersBuilder{logger, config}
@@ -152,18 +151,6 @@ func (eb *ExportersBuilder) calcExportersRequiredDataTypes() exportersRequiredDa
 	return result
 }
 
-// Convert data type enum to string.
-func getDataTypeStr(dataType configmodels.DataType) string {
-	switch dataType {
-	case configmodels.TracesDataType:
-		return configv2.TracesDataTypeStr
-	case configmodels.MetricsDataType:
-		return configv2.MetricsDataTypeStr
-	default:
-		panic("unknown data type")
-	}
-}
-
 // combineStopFunc combines 2 functions and returns one function
 // that can be called and which in turn will call both functions
 // and then combine any errors that the 2 functions return.
@@ -202,7 +189,7 @@ func (eb *ExportersBuilder) buildExporter(
 	if inputDataTypes == nil {
 		// No data types where requested for this exporter. This can only happen
 		// if there are no pipelines associated with the exporter.
-		eb.logger.Info("Exporter " + config.Name() +
+		eb.logger.Warn("Exporter " + config.Name() +
 			" is not associated with any pipeline and will not export data.")
 		return exporter, nil
 	}
@@ -245,8 +232,10 @@ func typeMismatchErr(
 	requiredByPipeline *configmodels.Pipeline,
 	dataType configmodels.DataType,
 ) error {
-	return fmt.Errorf("pipeline %q produces %q to exporter "+
-		"%s which does not support %q telemetry data. "+
-		"exporter will be detached from pipeline", requiredByPipeline.Name,
-		getDataTypeStr(dataType), config.Name(), getDataTypeStr(dataType))
+	return fmt.Errorf(
+		"pipeline %q produces %q to exporter %s which does not support %q "+
+			"telemetry data. exporter will be detached from pipeline",
+		requiredByPipeline.Name, dataType.GetDataTypeStr(),
+		config.Name(), dataType.GetDataTypeStr(),
+	)
 }

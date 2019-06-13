@@ -82,6 +82,24 @@ const (
 	MetricsDataType
 )
 
+// Data type strings.
+const (
+	TracesDataTypeStr  = "traces"
+	MetricsDataTypeStr = "metrics"
+)
+
+// GetDataTypeStr converts data type to string.
+func (dataType DataType) GetDataTypeStr() string {
+	switch dataType {
+	case TracesDataType:
+		return TracesDataTypeStr
+	case MetricsDataType:
+		return MetricsDataTypeStr
+	default:
+		panic("unknown data type")
+	}
+}
+
 // Pipeline defines a single pipeline.
 type Pipeline struct {
 	Name       string   `mapstructure:"-"`

@@ -81,12 +81,6 @@ const (
 // typeAndNameSeparator is the separator that is used between type and name in type/name composite keys.
 const typeAndNameSeparator = "/"
 
-// Data type strings.
-const (
-	TracesDataTypeStr  = "traces"
-	MetricsDataTypeStr = "metrics"
-)
-
 // Load loads a ConfigV2 from Viper.
 func Load(v *viper.Viper) (*configmodels.ConfigV2, error) {
 
@@ -367,9 +361,9 @@ func loadPipelines(v *viper.Viper) (configmodels.Pipelines, error) {
 
 		// Set the type.
 		switch typeStr {
-		case TracesDataTypeStr:
+		case configmodels.TracesDataTypeStr:
 			pipelineCfg.InputType = configmodels.TracesDataType
-		case MetricsDataTypeStr:
+		case configmodels.MetricsDataTypeStr:
 			pipelineCfg.InputType = configmodels.MetricsDataType
 		default:
 			return nil, &configError{
