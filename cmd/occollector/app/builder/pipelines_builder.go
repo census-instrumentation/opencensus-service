@@ -132,31 +132,31 @@ func (eb *PipelinesBuilder) getBuiltExportersByNames(exporterNames []string) []*
 func (eb *PipelinesBuilder) buildFanoutExportersTraceConsumer(exporterNames []string) consumer.TraceConsumer {
 	builtExporters := eb.getBuiltExportersByNames(exporterNames)
 
-	var exporterConsumers []consumer.TraceConsumer
-	for _, impl := range builtExporters {
-		exporterConsumers = append(exporterConsumers, impl.tc)
+	// Optimize for the case when there is only one exporter, no need to create junction point.
+	if len(builtExporters) == 1 {
+		return builtExporters[0].tc
 	}
 
-	// Optimize for the case when there is only one exporter, no need to create junction point.
-	if len(exporterConsumers) == 1 {
-		return exporterConsumers[0]
+	var exporters []consumer.TraceConsumer
+	for _, builtExp := range builtExporters {
+		exporters = append(exporters, builtExp.tc)
 	}
 
 	// Create a junction point that fans out to all exporters.
-	return multiconsumer.NewTraceProcessor(exporterConsumers)
+	return multiconsumer.NewTraceProcessor(exporters)
 }
 
 func (eb *PipelinesBuilder) buildFanoutExportersMetricsConsumer(exporterNames []string) consumer.MetricsConsumer {
 	builtExporters := eb.getBuiltExportersByNames(exporterNames)
 
-	var exporters []consumer.MetricsConsumer
-	for _, impl := range builtExporters {
-		exporters = append(exporters, impl.mc)
+	// Optimize for the case when there is only one exporter, no need to create junction point.
+	if len(builtExporters) == 1 {
+		return builtExporters[0].mc
 	}
 
-	// Optimize for the case when there is only one exporter, no need to create junction point.
-	if len(exporters) == 1 {
-		return exporters[0]
+	var exporters []consumer.MetricsConsumer
+	for _, builtExp := range builtExporters {
+		exporters = append(exporters, builtExp.mc)
 	}
 
 	// Create a junction point that fans out to all exporters.
