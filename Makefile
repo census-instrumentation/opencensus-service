@@ -1,6 +1,7 @@
 # More exclusions can be added similar with: -not -path './vendor/*'
 ALL_SRC := $(shell find . -name '*.go' \
                                 -not -path './vendor/*' \
+                                -not -path './tools/*' \
                                 -type f | sort)
 
 # ALL_PKGS is used with 'go cover'
