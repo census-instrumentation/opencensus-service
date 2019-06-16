@@ -13,18 +13,12 @@ require (
 	github.com/apache/thrift v0.0.0-20161221203622-b2a4d4ae21c7
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/census-instrumentation/opencensus-proto v0.2.0
-	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
-	github.com/facebookgo/limitgroup v0.0.0-20150612190941-6abd8d71ec01 // indirect
-	github.com/facebookgo/muster v0.0.0-20150708232844-fd3d7953fd52 // indirect
-	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
-	github.com/facebookgo/subset v0.0.0-20150612182917-8dac2c3c4870 // indirect
 	github.com/gogo/googleapis v1.2.0 // indirect
 	github.com/golang/protobuf v1.3.1
 	github.com/google/go-cmp v0.3.0
 	github.com/gorilla/mux v1.6.2
 	github.com/grpc-ecosystem/grpc-gateway v1.8.5
-	github.com/honeycombio/libhoney-go v1.10.0 // indirect
-	github.com/honeycombio/opencensus-exporter v0.0.0-20181101214123-9be2bb327b5a
+	github.com/honeycombio/opencensus-exporter v1.0.1
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jaegertracing/jaeger v1.9.0
 	github.com/omnition/scribe-go v0.0.0-20190131012523-9e3c68f31124
@@ -61,6 +55,5 @@ require (
 	google.golang.org/api v0.5.0
 	google.golang.org/grpc v1.21.0
 	gopkg.in/DataDog/dd-trace-go.v1 v1.12.1 // indirect
-	gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 )
