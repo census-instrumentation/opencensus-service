@@ -20,10 +20,14 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/census-instrumentation/opencensus-service/internal/testutils"
+
 	"github.com/census-instrumentation/opencensus-service/internal/zpagesserver"
 )
 
 func TestApplication_Start(t *testing.T) {
+	App = newApp()
+
 	portArg := []string{
 		healthCheckHTTPPort, // Keep it as first since its address is used later.
 		zpagesserver.ZPagesHTTPPort,
@@ -58,6 +62,43 @@ func TestApplication_Start(t *testing.T) {
 	<-appDone
 }
 
+func TestApplication_StartUnified(t *testing.T) {
+
+	App = newApp()
+
+	portArg := []string{
+		healthCheckHTTPPort, // Keep it as first since its address is used later.
+		zpagesserver.ZPagesHTTPPort,
+		"metrics-port",
+	}
+	addresses := getMultipleAvailableLocalAddresses(t, uint(len(portArg)))
+	for i, addr := range addresses {
+		_, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			t.Fatalf("failed to split host and port from %q: %v", addr, err)
+		}
+		App.v.Set(portArg[i], port)
+	}
+
+	App.v.Set("config", "testdata/unisvc-config.yaml")
+
+	appDone := make(chan struct{})
+	go func() {
+		defer close(appDone)
+		if err := App.StartUnified(); err != nil {
+			t.Fatalf("App.StartUnified() got %v, want nil", err)
+		}
+	}()
+
+	<-App.readyChan
+
+	if !isAppAvailable(t, "http://"+addresses[0]) {
+		t.Fatalf("App didn't reach ready state")
+	}
+	close(App.stopTestChan)
+	<-appDone
+}
+
 // isAppAvailable checks if the healthcheck server at the given endpoint is
 // returning `available`.
 func isAppAvailable(t *testing.T, healthCheckEndPoint string) bool {
@@ -73,18 +114,7 @@ func isAppAvailable(t *testing.T, healthCheckEndPoint string) bool {
 func getMultipleAvailableLocalAddresses(t *testing.T, numAddresses uint) []string {
 	addresses := make([]string, numAddresses, numAddresses)
 	for i := uint(0); i < numAddresses; i++ {
-		addresses[i] = getAvailableLocalAddress(t)
+		addresses[i] = testutils.GetAvailableLocalAddress(t)
 	}
 	return addresses
-}
-
-func getAvailableLocalAddress(t *testing.T) string {
-	ln, err := net.Listen("tcp", ":0")
-	if err != nil {
-		t.Fatalf("failed to get a free local port: %v", err)
-	}
-	// There is a possible race if something else takes this same port before
-	// the test uses it, however, that is unlikely in practice.
-	defer ln.Close()
-	return ln.Addr().String()
 }

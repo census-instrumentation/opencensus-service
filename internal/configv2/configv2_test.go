@@ -60,6 +60,8 @@ func TestDecodeConfig(t *testing.T) {
 	assert.Equal(t, config.Exporters["exampleexporter"],
 		&ExampleExporter{
 			ExporterSettings: configmodels.ExporterSettings{
+				NameVal: "exampleexporter",
+				TypeVal: "exampleexporter",
 				Enabled: false,
 			},
 			ExtraSetting: "some export string",
@@ -68,6 +70,8 @@ func TestDecodeConfig(t *testing.T) {
 	assert.Equal(t, config.Exporters["exampleexporter/myexporter"],
 		&ExampleExporter{
 			ExporterSettings: configmodels.ExporterSettings{
+				NameVal: "exampleexporter/myexporter",
+				TypeVal: "exampleexporter",
 				Enabled: true,
 			},
 			ExtraSetting: "some export string 2",
@@ -79,6 +83,7 @@ func TestDecodeConfig(t *testing.T) {
 	assert.Equal(t, config.Processors["exampleprocessor"],
 		&ExampleProcessor{
 			ProcessorSettings: configmodels.ProcessorSettings{
+				TypeVal: "exampleprocessor",
 				Enabled: false,
 			},
 			ExtraSetting: "some export string",

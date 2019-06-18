@@ -12,27 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package processor
+// Package unisvc implements Open Telemetry Service that collects stats
+// and traces and exports to a configured backend.
+package unisvc
 
 import (
-	"github.com/census-instrumentation/opencensus-service/consumer"
+	"log"
+
+	"github.com/census-instrumentation/opencensus-service/cmd/occollector/app/collector"
 )
 
-// TraceProcessor composes TraceConsumer with some additional processor-specific functions.
-type TraceProcessor interface {
-	consumer.TraceConsumer
-
-	// TODO: Add processor specific functions.
-}
-
-// MetricsProcessor composes MetricsConsumer with some additional processor-specific functions.
-type MetricsProcessor interface {
-	consumer.MetricsConsumer
-
-	// TODO: Add processor specific functions.
-}
-
-// Processor is a data consumer.
-type Processor interface {
-	consumer.DataConsumer
+// Run the unified telemetry service.
+func Run() {
+	if err := collector.App.StartUnified(); err != nil {
+		log.Fatalf("Failed to run the service: %v", err)
+	}
 }

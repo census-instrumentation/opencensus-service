@@ -11,28 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
 
-package processor
+// +build tools
+
+// Package tools follows the recommendation at
+// https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
+// on how to add tooling dependencies.
+package tools
 
 import (
-	"github.com/census-instrumentation/opencensus-service/consumer"
+	_ "golang.org/x/lint/golint"
 )
-
-// TraceProcessor composes TraceConsumer with some additional processor-specific functions.
-type TraceProcessor interface {
-	consumer.TraceConsumer
-
-	// TODO: Add processor specific functions.
-}
-
-// MetricsProcessor composes MetricsConsumer with some additional processor-specific functions.
-type MetricsProcessor interface {
-	consumer.MetricsConsumer
-
-	// TODO: Add processor specific functions.
-}
-
-// Processor is a data consumer.
-type Processor interface {
-	consumer.DataConsumer
-}
