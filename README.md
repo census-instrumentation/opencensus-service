@@ -327,8 +327,8 @@ sampling:
         # on sampling-percentage.
         sampling-percentage: 5
         # hash-seed allows choosing the seed for the hash function used in the trace sampling. This is important when
-        # multiple layers of collectors are being used with different sampling rates, in such scenarios make sure to
-        # choose different seeds in each layer.
+        # multiple layers of collectors are being used with head sampling, in such scenarios make sure to
+        # choose different seeds for each layer.
         hash-seed: 1
 ```
 
