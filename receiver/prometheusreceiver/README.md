@@ -219,7 +219,7 @@ can be stored with the `Metrics` array. We will explain the mappings of individu
 
 
 ### Metric Value Mapping
- In OpenCensus, metrics value types can be either `int64` or `float64`, while in in Prometheus the value can be safety assume it's always `float64` based on the 
+ In OpenCensus, metrics value types can be either `int64` or `float64`, while in Prometheus the value can be safely assumed it's always `float64` based on the 
 [Prometheus Text Format Document](https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-details) as quoted below:
 
 > value is a float represented as required by Go's ParseFloat() function. In addition to standard numerical values, Nan, +Inf, and -Inf are valid values representing not a number, positive infinity, and negative infinity, respectively.
