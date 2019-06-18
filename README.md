@@ -326,9 +326,9 @@ sampling:
         # sampling-percentage is the percentage of sampling to be applied to all spans, unless their service is specified
         # on sampling-percentage.
         sampling-percentage: 5
-        # hash-seed allows choosing the seed for the hash function used in the trace sampling. This is important where
-        # multiple layers of collectors are being used with different sampling rates, otherwise sampling after first
-        # layer may not work as intended since the hashes will be the ones already selected on first layer.
+        # hash-seed allows choosing the seed for the hash function used in the trace sampling. This is important when
+        # multiple layers of collectors are being used with different sampling rates, in such scenarios make sure to
+        # choose different seeds in each layer.
         hash-seed: 1
 ```
 
