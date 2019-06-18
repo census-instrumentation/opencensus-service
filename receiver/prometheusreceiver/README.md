@@ -2,22 +2,22 @@
 
 ## Design Goal
 
-### Provide a seamless onboarding experience for users who are already familiar with prometheus scrape config
+### Provide a seamless onboarding experience for users who are already familiar with Prometheus scrape config
 
-Prometheus has a very powerful config system for user to config how prometheus can scrape the metrics data from any 
-application which expose a prometheus format metrics endpoint. It provides very useful features like filtering unwanted 
-metrics, relabeling tags..etc. The original prometheus receiver of Opencensus took the approach of using prometheus' own 
+Prometheus has a very powerful config system for user to config how Prometheus can scrape the metrics data from any 
+application which expose a Prometheus format metrics endpoint. It provides very useful features like filtering unwanted 
+metrics, relabeling tags..etc. The original Prometheus receiver of OpenCensus took the approach of using Prometheus' own 
 scraper's source code as a library to achieve this goal. Overall the idea was great, however, the original 
-implementation has a lot of glitches, it cannot be fixed by small patches. This new prometheus receiver is going to 
-follow the same idea of leveraging prometheus souce code, with a proper implement. 
+implementation has a lot of glitches, it cannot be fixed by small patches. This new Prometheus receiver is going to 
+follow the same idea of leveraging Prometheus sourcecode, with a proper implementation. 
 
-### Map prometheus metrics to the corresponding opencensus metrics properly
+### Map Prometheus metrics to the corresponding OpenCensus metrics properly
 
-Prometheus receiver shall be able to map prometheus metrics to ocagent's proto based metrics, it shall respect the 
+Prometheus receiver shall be able to map Prometheus metrics to ocagent's proto based metrics, it shall respect the 
 original metric name, value, timestamp, as well as tags. It doesn't need to provide one-to-one mapping, since supported 
 metric types are different from the two systems.  However, it shall not drop data.
 
-### Parity between prometheus and ocagent prometheus exporter
+### Parity between Prometheus and ocagent Prometheus exporter
 
 Prometheus itself can also used as an exporter, that it can expose the metrics it scrape from other system with its own 
 metrics endpoint, so is ocagent. We shall be able to retain parity from the following two setups: 
@@ -32,18 +32,18 @@ Prometheus text format is a line orient format.  For each non-empty line, which 
 point with includes a metric name and its value, which is of float64 type, as well as some optional data such as tags 
 and timestamp, which is in milliseconds. For lines begin with #, they are either comments, which need to be filtered, 
 or metadata, which including type hints and units that are usually indicating the beginning of a new individual metric 
-or a group of new metrics. More details of prometheus text format can be found from its 
+or a group of new metrics. More details of Prometheus text format can be found from its 
 [official document](https://prometheus.io/docs/instrumenting/exposition_formats/#text-based-format). 
 
 ### Metric types
-Based on this document, prometheus supports the following 5 types of metrics: 
+Based on this document, Prometheus supports the following 5 types of metrics: 
 * Counter 
 * Gauge 
 * Histogram 
 * Summary 
 * Untyped   
 
-However, this is not the whole story, from the implementation details of prometheus scraper, which the receiver based on,
+However, this is not the whole story, from the implementation details of Prometheus scraper, which the receiver based on,
 it supports a couple more undocumented metrics types, including: 
 
 * Gaugehistogram 
@@ -56,8 +56,8 @@ More details can be found from the
 
 ### Metric Grouping
 
-Other than metric types, the type hint comment and metric grouping are also important to know in order to parse prometheus
-text metrics properly. From any prometheus metrics endpoints, metrics are usually grouped together by starting with a 
+Other than metric types, the type hint comment and metric grouping are also important to know in order to parse Prometheus
+text metrics properly. From any Prometheus metrics endpoints, metrics are usually grouped together by starting with a 
 comment section which includes some very important information like type hints about the metrics, and metrics points of the same
 group will have the same metric name but a different set of tag values, for example:
 
@@ -76,8 +76,8 @@ same metric name. For each individual metric within this group, they share the s
 
 ## Prometheus Metric Scraper Anatomy 
 
-The metrics scraper is a component which is used to scrape remote prometheus metric endpoints, it is also the component 
-which ocagent prometheus receiver is based on. It's important to understand how it works in order to implement the receiver
+The metrics scraper is a component which is used to scrape remote Prometheus metric endpoints, it is also the component 
+which ocagent Prometheus receiver is based on. It's important to understand how it works in order to implement the receiver
 properly. 
 
 ### Major components of Prometheus Scape package
@@ -101,7 +101,7 @@ a DFA style streaming decoder/parser for prometheus text format
 it is used to acquire a storage appender instance at the beginning of each scrapeLoop run
 
 - **[storage.Appender](https://github.com/prometheus/prometheus/blob/d3245f15022551c6fc8281766ea62db4d71e2747/storage/interface.go#L86-L95):** 
-an abstraction of the metric storage which can be a filesystem, a database or an remote endpoint...etc. As for opencensus prometheus receiver, this is 
+an abstraction of the metric storage which can be a filesystem, a database or an remote endpoint...etc. As for OpenCensus prometheus receiver, this is 
 also the interface we need to implement to provide a customized storage appender which is backed by an ocagent metrics sink.  
 
 - **[ScrapeLoop](https://github.com/prometheus/prometheus/blob/d3245f15022551c6fc8281766ea62db4d71e2747/scrape/scrape.go#L586-L1024):** 
@@ -123,7 +123,7 @@ It basically does the following things in turn:
   6. report task status
   
   
-## Implement prometheus storage.Appender with ocagent metrics sink
+## Implementing Prometheus storage.Appender with ocagent metrics sink
 
 ### The storage.Appender interface
 As discussed in the previous section, the storage.Appender is the most important piece of components for us to implement so as to bring the two worlds together. 
@@ -144,14 +144,14 @@ type Appender interface {
 }
 ```
 
-*Note: the above code belongs to the prometheus project, its license can be found [here](https://github.com/prometheus/prometheus/blob/v2.9.2/LICENSE)*
+*Note: the above code belongs to the Prometheus project, its license can be found [here](https://github.com/prometheus/prometheus/blob/v2.9.2/LICENSE)*
 
 
 One can see that the interface is very simple, it only has 4 methods: `Add`, `AddFast`, `Commit` and `Rollback`. 
 The last two methods are easy to understand: `Commit` is called when the processing of the scraped page is completed and 
 success, whereas `Rollback` is called if error occurs in between the process.
 
-However for the two methods starting with 'Add', there's no document on the prometheus project for how they should be used. 
+However for the two methods starting with 'Add', there's no document on the Prometheus project for how they should be used. 
 By examining the scrapeLoop source code, as well as some storage.Appender implementations. It indicates that the first 
 method `Add` is always used for the first time when a unique metrics, which means the combination of metric name and its 
 tags are unique, is seen for the first time. The `Add` method can return a non zero reference number, then the scrapeLoop 
@@ -172,13 +172,13 @@ there are a couple other issues we need to address, including:
 The labels provided to the Add/AddFast methods dose not include some target specified information such as `job name` 
 which is important construct the 
 [Node proto](https://github.com/census-instrumentation/opencensus-proto/blob/e2601ef16f8a085a69d94ace5133f97438f8945f/src/opencensus/proto/agent/common/v1/common.proto#L36-L51) 
-object of Opencensus. The target object is not accessible from the Appender interface, however, we can get it from the ScrapeManager, when designing the
+object of OpenCensus. The target object is not accessible from the Appender interface, however, we can get it from the ScrapeManager, when designing the
 ocagent appender, we need to have a way to inject the binding target into the appender instance.
 
 
 3. Group metrics from the same family together
                                                                                                                                                                                                                                                                                                                                                                            
-In Opencensus, metric points of the same name are usually grouped together as one timeseries but different data points. 
+In OpenCensus, metric points of the same name are usually grouped together as one timeseries but different data points. 
 It's important for the appender to keep track of the metric family changes, and group metrics of the same family together.
 Keep in mind that the Add/AddFast method is operated in a streaming manner, ScrapeLoop does not provide any direct hints on metric name change, 
 the appender itself need to keep track of it. It's also important to know that for some special types such as `histogram` 
@@ -194,17 +194,17 @@ appender need to have a way to bundle them together to transform them into a sin
 
 5. Tags need to handle carefully
 
-ScrapeLoop strips out any tag with empty value, however, in Opencenus, the tag keys is stored separately, we need to able to get all the possible tag keys
+ScrapeLoop strips out any tag with empty value, however, in OpenCensus, the tag keys is stored separately, we need to able to get all the possible tag keys
 of the same metric family before committing the metric family to the sink.
 
 
-## Prometheus Metric to Opencensus Metric Proto Mapping
+## Prometheus Metric to OpenCensus Metric Proto Mapping
 
 
 ### Target as Node
-The Target of prometheus is defined by the scrape_config, it has the information like `hostname` of the remote service,
+The Target of Prometheus is defined by the scrape_config, it has the information like `hostname` of the remote service,
 and a user defined `job name` which can be used as the service name. These two piece of information makes it a great fit
-to map it into the `Node` proto of the Opencensus MetricsData type, as shown below: 
+to map it into the `Node` proto of the OpenCensus MetricsData type, as shown below: 
 
 ```go
 type MetricsData struct {
@@ -228,9 +228,12 @@ It will make sense for us to stick with this data type as much as possible acros
 
 
 ### Counter
-Counter is one of the simplest data types we have in both Prometheus and Ocagent, it's mapping is as shown below
+Counter as described in the [Prometheus Metric Types Document](https://prometheus.io/docs/concepts/metric_types/#counter), 
+> is a cumulative metric that represents a single monotonically increasing counter whose value can only increase or be 
+> reset to zero on restart
 
-For the following Prometheus Counters:
+It is one of the most simple metric types we can be found in both systems. Examples of Prometheus Counters is as shown 
+below:
 ```
 # HELP http_requests_total The total number of HTTP requests.
 # TYPE http_requests_total counter
@@ -266,11 +269,14 @@ metrics := []*metricspb.Metric{
 }
 ```
 
-*Note: `tsOc` is a timestamp object representing the current ts*
+*Note: `tsOc` is a timestamp object, which is based on the timestamp provided by a scrapLoop. In most cases, it is 
+the timestamp when a target is scrapped, however, it can also be the timestamp recorded with a metric*
 
 
 ### Gauge
-For the following Prometheus Gauges:
+Gauge, as described in the [Prometheus Metric Types Document](https://prometheus.io/docs/concepts/metric_types/#guage),
+> is a metric that represents a single numerical value that can arbitrarily go up and down
+
 ```
 # HELP gauge_test some test gauges.
 # TYPE gauge_test gague
@@ -279,7 +285,11 @@ gauge_test{id="2",foo=""}    2.0
 
 ```
 
-The corresponding Ocagent Metric will be: 
+A major different between Gauges of Prometheus and OpenCensus are the value types. In Prometheus, as mentioned earlier, 
+all values can be considered as float type, however, in OpenCensus, Gauges can either be `Int64` or `Double`. To make 
+the transformation easier, we always assume the data type is `Double`.  
+
+The corresponding Ocagent Metric of the above examples will be:
 ```go
 metrics := []*metricspb.Metric{
   {
@@ -309,8 +319,10 @@ metrics := []*metricspb.Metric{
 
 
 ### Histogram
-Histogram is a complex data type, in Prometheus, it uses multiple data points to represent a single histogram, example
-as shown below:
+Histogram is a complex data type, in Prometheus, it uses multiple data points to represent a single histogram. Its 
+description can be found from: [Prometheus Histogram](https://prometheus.io/docs/concepts/metric_types/#histogram).
+
+An example of histogram is as shown below:
 ```
 # HELP hist_test This is my histogram vec
 # TYPE hist_test histogram
@@ -327,7 +339,7 @@ hist_test_count{t1="2"} 100.0
 
 ```
 
-Its corresponding Ocagent metrics is as shown below:
+Its corresponding Ocagent metrics will be:
 ```go
 metrics := []*metricspb.Metric{
   {
@@ -382,12 +394,12 @@ metrics := []*metricspb.Metric{
 
 There's an important difference between Prometheus bucket and OpenCensus bucket that, bucket counts from Prometheus are 
 cumulative, to transform this into OpenCensus format, one need to apply the following formula: 
-```CurrentOCBucketVlaue = NextPrometheusBucketValue - CurrentPrometheusBucketValue```
+```CurrentOCBucketVlaue = CurrentPrometheusBucketValue - PrevPrometheusBucketValue```
 
-OpenCensus does not use `+inf` as bound, one need to remove it to generate the Bounds of the OpenCensus Bounds.
+OpenCensus does not use `+inf` as bound, one needs to remove it to generate the Bounds of the OpenCensus Bounds.
 
-There's also one thing that is required by OpenCensus format for histogram the `SumOfSquaredDeviation`, however, it is 
-not provided from Prometheus, we have to set this value to `0`
+Other than that, the `SumOfSquaredDeviation`, which is required by OpenCensus format for histogram, is not provided by 
+Prometheus. We have to set this value to `0` instead.
 
 ### Gaugehistogram
 
@@ -395,7 +407,8 @@ This is an undocumented data type, it shall be same as regular [Histogram](#hist
 
 ### Summary
 
-Same as histogram, summary is also a complex metric type which is represent by multiple data points:
+Same as histogram, summary is also a complex metric type which is represent by multiple data points. A detailed 
+description can be found from [Prometheus Summary](https://prometheus.io/docs/concepts/metric_types/#summary)
 ```
 # HELP go_gc_duration_seconds A summary of the GC invocation durations.
 # TYPE go_gc_duration_seconds summary
@@ -424,6 +437,8 @@ metrics := []*metricspb.Metric{
         Points: []*metricspb.Point{
           {Timestamp: tsOc, Value: &metricspb.Point_SummaryValue{
             SummaryValue: &metricspb.SummaryValue{
+			  Sum:   &wrappers.DoubleValue{Value: 17.391350544},
+			  Count: &wrappers.Int64Value{Value: 52489},
               Snapshot: &metricspb.SummaryValue_Snapshot{
                 PercentileValues: []*metricspb.SummaryValue_Snapshot_ValueAtPercentile{
                   {Percentile: 0.0,   Value: 0.0001271},
@@ -432,8 +447,6 @@ metrics := []*metricspb.Metric{
                   {Percentile: 75.0,  Value: 0.0003426},
                   {Percentile: 100.0, Value: 0.0023638},
                 },
-                Sum:   &wrappers.DoubleValue{Value: 17.391350544},
-                Count: &wrappers.Int64Value{Value: 52489},
               }}}},
         },
       },
@@ -443,10 +456,10 @@ metrics := []*metricspb.Metric{
 
 ```
 
-The major difference between the two formats is that in Prometheus it uses quantile, while in OpenCenus Percentile is used.
-
-There's one thing that is required by Summary proto that is missing from Prometheus 
+The major difference between the two systems is that in Prometheus it uses `quantile`, while in OpenCensus `percentile` 
+is used. Other than that, OpenCensus has optional values for `Sum` and `Count` of a snapshot, however, they are not 
+provided in Prometheus, and `nil` will be used for these values.
 
 ### Others
 
-For any other prometheus metrics type, they will make to the [Guage](#gague) type of Ocagent
+For any other Prometheus metrics types, they will make to the [Guage](#gague) type of Ocagent

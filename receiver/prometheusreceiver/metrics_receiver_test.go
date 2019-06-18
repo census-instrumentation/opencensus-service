@@ -50,7 +50,7 @@ type scrapeCounter struct {
 func (sc *scrapeCounter) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	select {
 	case <-sc.shutdownCh:
-		http.Error(rw, "shuting down", http.StatusGone)
+		http.Error(rw, "shutting down", http.StatusGone)
 
 	default:
 		sc.scrapeTrackCh <- true

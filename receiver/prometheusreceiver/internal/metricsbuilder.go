@@ -1,4 +1,4 @@
-// Copyright 2018, OpenCensus Authors
+// Copyright 2019, OpenCensus Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package internal
 import (
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 	"sort"
 	"strconv"
@@ -26,7 +27,6 @@ import (
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/pkg/textparse"
@@ -136,7 +136,7 @@ func (b *metricBuilder) AddDataPoint(ls labels.Labels, t int64, v float64) error
 		} else {
 			pg, ok := b.currentDpGroups[groupKey]
 			if !ok {
-				pg = make([]*dataPoint, 0, 4)
+				pg = make([]*dataPoint, 0)
 				b.currentDpGOrder[groupKey] = len(b.currentDpGOrder)
 			}
 			boundary, err := getBoundary(mtype, ls)
@@ -219,9 +219,9 @@ func (b *metricBuilder) initNewMetricIfNeeded(metricName string, _ labels.Labels
 				Description: metadata.Help,
 				Unit:        heuristicalMetricAndKnownUnits(metricFamily, metadata.Unit),
 				Type:        convToOCAMetricType(metadata.Type),
-				// Due to the fact that scrapeLoop strips any tags with emtpy value, we can do get the
-				// full set of labels by just looking at the first metrics, comment out the following code
-				//LabelKeys:   extractLabelKeys(string(metadata.Type), ls),
+				// Due to the fact that scrapeLoop strips any tags with emtpy value, we cannot get the
+				// full set of labels by just looking at the first metrics, thus setting the LabelKeys of
+				// this proto need to be done after finished the whole group
 			},
 			Timeseries: make([]*metricspb.TimeSeries, 0),
 		}
@@ -261,7 +261,7 @@ func (b *metricBuilder) getLabelValues(ls *labels.Labels) []*metricspb.LabelValu
 }
 
 func (b *metricBuilder) completeCurrentMetric() error {
-	switch b.currentMetric.MetricDescriptor.Type {
+	switch mtype := b.currentMetric.MetricDescriptor.Type; mtype {
 	case metricspb.MetricDescriptor_GAUGE_DISTRIBUTION, metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION:
 		groups := b.currentDpGroupOrdered()
 		if len(groups) == 0 {
@@ -350,11 +350,16 @@ func (b *metricBuilder) completeCurrentMetric() error {
 					&metricspb.SummaryValue_Snapshot_ValueAtPercentile{Percentile: p.boundary * 100, Value: p.value}
 			}
 
+			// Based on the summary description from https://prometheus.io/docs/concepts/metric_types/#summary
+			// the quantiles are calculated over a sliding time window, however, the count is the total count of
+			// observations and the corresponding sum is a sum of all observed values, thus the sum and count used
+			// at the global level of the metricspb.SummaryValue
+
 			summaryValue := &metricspb.SummaryValue{
+				Sum:   &wrappers.DoubleValue{Value: mg.sum},
+				Count: &wrappers.Int64Value{Value: int64(mg.count)},
 				Snapshot: &metricspb.SummaryValue_Snapshot{
 					PercentileValues: percentiles,
-					Sum:              &wrappers.DoubleValue{Value: mg.sum},
-					Count:            &wrappers.Int64Value{Value: int64(mg.count)},
 				},
 			}
 
@@ -373,12 +378,16 @@ func (b *metricBuilder) completeCurrentMetric() error {
 		for _, gk := range b.currentDpGroupOrdered() {
 			pts := b.currentDpGroups[gk]
 			mg := b.currentMetadataGroups[gk]
-			// always use the first timestamp for the whole metric group
-			ts := timestampFromMs(mg.ts)
+
+			var startTs *timestamp.Timestamp
+			// do not set startTs if metric type is Gauge as per comment
+			if mtype != metricspb.MetricDescriptor_GAUGE_DOUBLE {
+				startTs = timestampFromMs(mg.ts)
+			}
 
 			for _, p := range pts {
 				timeseries := &metricspb.TimeSeries{
-					StartTimestamp: ts,
+					StartTimestamp: startTs,
 					Points:         []*metricspb.Point{{Timestamp: timestampFromMs(p.ts), Value: &metricspb.Point_DoubleValue{DoubleValue: p.value}}},
 					LabelValues:    b.getLabelValues(mg.ls),
 				}

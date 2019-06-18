@@ -1,4 +1,4 @@
-// Copyright 2018, OpenCensus Authors
+// Copyright 2019, OpenCensus Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -266,29 +266,25 @@ func Test_metricBuilder(t *testing.T) {
 						LabelKeys: []*metricspb.LabelKey{{Key: "t1"}, {Key: "t2"}}},
 					Timeseries: []*metricspb.TimeSeries{
 						{
-							StartTimestamp: tsOc,
-							LabelValues:    []*metricspb.LabelValue{{Value: "1", HasValue: true}, {Value: "", HasValue: false}},
+							LabelValues: []*metricspb.LabelValue{{Value: "1", HasValue: true}, {Value: "", HasValue: false}},
 							Points: []*metricspb.Point{
 								{Timestamp: tsOc, Value: &metricspb.Point_DoubleValue{DoubleValue: 1.0}},
 							},
 						},
 						{
-							StartTimestamp: tsOc,
-							LabelValues:    []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "2", HasValue: true}},
+							LabelValues: []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "2", HasValue: true}},
 							Points: []*metricspb.Point{
 								{Timestamp: tsOc, Value: &metricspb.Point_DoubleValue{DoubleValue: 2.0}},
 							},
 						},
 						{
-							StartTimestamp: tsOc,
-							LabelValues:    []*metricspb.LabelValue{{Value: "3", HasValue: true}, {Value: "4", HasValue: true}},
+							LabelValues: []*metricspb.LabelValue{{Value: "3", HasValue: true}, {Value: "4", HasValue: true}},
 							Points: []*metricspb.Point{
 								{Timestamp: tsOc, Value: &metricspb.Point_DoubleValue{DoubleValue: 3.0}},
 							},
 						},
 						{
-							StartTimestamp: tsOc,
-							LabelValues:    []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "", HasValue: false}},
+							LabelValues: []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "", HasValue: false}},
 							Points: []*metricspb.Point{
 								{Timestamp: tsOc, Value: &metricspb.Point_DoubleValue{DoubleValue: 4.0}},
 							},
@@ -336,15 +332,13 @@ func Test_metricBuilder(t *testing.T) {
 						LabelKeys: []*metricspb.LabelKey{{Key: "t1"}, {Key: "t2"}}},
 					Timeseries: []*metricspb.TimeSeries{
 						{
-							StartTimestamp: tsOc,
-							LabelValues:    []*metricspb.LabelValue{{Value: "1", HasValue: true}, {Value: "", HasValue: false}},
+							LabelValues: []*metricspb.LabelValue{{Value: "1", HasValue: true}, {Value: "", HasValue: false}},
 							Points: []*metricspb.Point{
 								{Timestamp: tsOc, Value: &metricspb.Point_DoubleValue{DoubleValue: 1.0}},
 							},
 						},
 						{
-							StartTimestamp: tsOc,
-							LabelValues:    []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "2", HasValue: true}},
+							LabelValues: []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "2", HasValue: true}},
 							Points: []*metricspb.Point{
 								{Timestamp: tsOc, Value: &metricspb.Point_DoubleValue{DoubleValue: 2.0}},
 							},
@@ -519,13 +513,13 @@ func Test_metricBuilder(t *testing.T) {
 							Points: []*metricspb.Point{
 								{Timestamp: tsOc, Value: &metricspb.Point_SummaryValue{
 									SummaryValue: &metricspb.SummaryValue{
+										Sum:   &wrappers.DoubleValue{Value: 100.0},
+										Count: &wrappers.Int64Value{Value: 1000},
 										Snapshot: &metricspb.SummaryValue_Snapshot{
 											PercentileValues: []*metricspb.SummaryValue_Snapshot_ValueAtPercentile{
 												{Percentile: 50.0, Value: 1},
 												{Percentile: 90.0, Value: 3},
 											},
-											Sum:   &wrappers.DoubleValue{Value: 100.0},
-											Count: &wrappers.Int64Value{Value: 1000},
 										}}}},
 							},
 						},
