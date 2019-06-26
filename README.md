@@ -218,7 +218,7 @@ zpages:
 The ocagent can be run directly from sources, binary, or a Docker image. If you are planning to run from sources or build
 on your machine start by cloning the repo using `go get -d github.com/census-instrumentation/opencensus-service`.
 
-The minimum Go version required for this project is Go 1.11.4. In addition, you must manually install [Bazaar](https://github.com/census-instrumentation/opencensus-service/blob/master/CONTRIBUTING.md#required-tools)
+The minimum Go version required for this project is Go 1.12.5. In addition, you must manually install [Bazaar](https://github.com/census-instrumentation/opencensus-service/blob/master/CONTRIBUTING.md#required-tools)
 
 1. Run from sources:
 
@@ -276,6 +276,10 @@ The collector also serves as a control plane for agents/clients by supplying
 them updated configuration (e.g. trace sampling policies), and reporting
 agent/client health information/inventory metadata to downstream exporters.
 
+### <a name="receivers-configuration"></a> Receivers Configuration
+
+For detailed information about configuring receivers for the collector refer to the [receivers README.md](receiver/README.md).
+
 ### <a name="global-attributes"></a> Global Attributes
 
 The collector also takes some global configurations that modify its behavior for all receivers / exporters. 
@@ -303,6 +307,29 @@ global:
         replacement: http.message
         overwrite: true # replace attribute key even if the replacement string is already a key on the span attributes
         keep: true # keep the attribute with the original key
+```
+
+### <a name="probabilistic-trace-sampling"></a>Probabilistic Head-based Trace Sampling
+
+In some scenarios it may be desirable to perform probabilistic head-based trace sampling on the collector.
+This can be done using by specifying `probabilistic` policy secion under the `sampling` section of the collector configuration file.
+
+```yaml
+sampling:
+  # mode indicates if the sampling is head or tail based. For probabilistic the mode is head-based.
+  mode: head
+  policies:
+    # section below defines a probabilistic trace sampler based on hashing the trace ID associated to
+    # each span and sampling the span according to the given spans.
+    probabilistic:
+      configuration:
+        # sampling-percentage is the percentage of sampling to be applied to all spans, unless their service is specified
+        # on sampling-percentage.
+        sampling-percentage: 5
+        # hash-seed allows choosing the seed for the hash function used in the trace sampling. This is important when
+        # multiple layers of collectors are being used with head sampling, in such scenarios make sure to
+        # choose different seeds for each layer.
+        hash-seed: 1
 ```
 
 ### <a name="tail-sampling"></a>Intelligent Sampling
@@ -345,7 +372,7 @@ sampling:
 The collector can be run directly from sources, binary, or a Docker image. If you are planning to run from sources or build
 on your machine start by cloning the repo using `go get -d github.com/census-instrumentation/opencensus-service`.
 
-The minimum Go version required for this project is Go 1.11.4.
+The minimum Go version required for this project is Go 1.12.5.
 
 1. Run from sources:
 ```shell
@@ -398,7 +425,7 @@ Sample configuration file:
 log-level: DEBUG
 
 receivers:
-  opencensus: {} # Runs OpenCensus receiver with default configuration (default behavior)
+  opencensus: {} # Runs OpenCensus receiver with default configuration (default behavior).
 
 queued-exporters:
   jaeger-sender-test: # A friendly name for the exporter

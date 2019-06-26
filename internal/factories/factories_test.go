@@ -15,7 +15,13 @@
 package factories
 
 import (
+	"context"
 	"testing"
+
+	"github.com/census-instrumentation/opencensus-service/processor"
+
+	"github.com/census-instrumentation/opencensus-service/consumer"
+	"github.com/census-instrumentation/opencensus-service/receiver"
 
 	"github.com/census-instrumentation/opencensus-service/internal/configmodels"
 )
@@ -28,9 +34,33 @@ func (f *ExampleReceiverFactory) Type() string {
 	return "examplereceiver"
 }
 
+// CustomUnmarshaler returns nil because we don't need custom unmarshaling for this factory.
+func (f *ExampleReceiverFactory) CustomUnmarshaler() CustomUnmarshaler {
+	return nil
+}
+
 // CreateDefaultConfig creates the default configuration for the Receiver.
 func (f *ExampleReceiverFactory) CreateDefaultConfig() configmodels.Receiver {
 	return nil
+}
+
+// CreateTraceReceiver creates a trace receiver based on this config.
+func (f *ExampleReceiverFactory) CreateTraceReceiver(
+	ctx context.Context,
+	cfg configmodels.Receiver,
+	nextConsumer consumer.TraceConsumer,
+) (receiver.TraceReceiver, error) {
+	// Not used for this test, just return nil
+	return nil, nil
+}
+
+// CreateMetricsReceiver creates a metrics receiver based on this config.
+func (f *ExampleReceiverFactory) CreateMetricsReceiver(
+	cfg configmodels.Receiver,
+	consumer consumer.MetricsConsumer,
+) (receiver.MetricsReceiver, error) {
+	// Not used for this test, just return nil
+	return nil, nil
 }
 
 func TestRegisterReceiverFactory(t *testing.T) {
@@ -74,6 +104,16 @@ func (f *ExampleExporterFactory) CreateDefaultConfig() configmodels.Exporter {
 	return nil
 }
 
+// CreateTraceExporter creates a trace exporter based on this config.
+func (f *ExampleExporterFactory) CreateTraceExporter(cfg configmodels.Exporter) (consumer.TraceConsumer, StopFunc, error) {
+	return nil, nil, nil
+}
+
+// CreateMetricsExporter creates a metrics exporter based on this config.
+func (f *ExampleExporterFactory) CreateMetricsExporter(cfg configmodels.Exporter) (consumer.MetricsConsumer, StopFunc, error) {
+	return nil, nil, nil
+}
+
 func TestRegisterExporterFactory(t *testing.T) {
 	f := ExampleExporterFactory{}
 	err := RegisterExporterFactory(&f)
@@ -102,21 +142,37 @@ func TestRegisterExporterFactory(t *testing.T) {
 	}
 }
 
-type ExampleOptionFactory struct {
+type ExampleProcessorFactory struct {
 }
 
-// Type gets the type of the Option config created by this factory.
-func (f *ExampleOptionFactory) Type() string {
+// Type gets the type of the Processor config created by this factory.
+func (f *ExampleProcessorFactory) Type() string {
 	return "exampleoption"
 }
 
 // CreateDefaultConfig creates the default configuration for the Processor.
-func (f *ExampleOptionFactory) CreateDefaultConfig() configmodels.Processor {
+func (f *ExampleProcessorFactory) CreateDefaultConfig() configmodels.Processor {
 	return nil
 }
 
-func TestRegisterOptionFactory(t *testing.T) {
-	f := ExampleOptionFactory{}
+// CreateTraceProcessor creates a trace processor based on this config.
+func (f *ExampleProcessorFactory) CreateTraceProcessor(
+	nextConsumer consumer.TraceConsumer,
+	cfg configmodels.Processor,
+) (processor.TraceProcessor, error) {
+	return nil, ErrDataTypeIsNotSupported
+}
+
+// CreateMetricsProcessor creates a metrics processor based on this config.
+func (f *ExampleProcessorFactory) CreateMetricsProcessor(
+	nextConsumer consumer.MetricsConsumer,
+	cfg configmodels.Processor,
+) (processor.MetricsProcessor, error) {
+	return nil, ErrDataTypeIsNotSupported
+}
+
+func TestRegisterProcessorFactory(t *testing.T) {
+	f := ExampleProcessorFactory{}
 	err := RegisterProcessorFactory(&f)
 	if err != nil {
 		t.Fatalf("cannot register factory")

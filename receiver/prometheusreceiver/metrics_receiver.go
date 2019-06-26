@@ -18,18 +18,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/prometheus/prometheus/discovery"
+	"github.com/prometheus/prometheus/scrape"
+	"github.com/prometheus/prometheus/storage"
+	"go.uber.org/zap"
 	"sync"
 	"time"
 
+	"github.com/census-instrumentation/opencensus-service/consumer"
+	"github.com/census-instrumentation/opencensus-service/receiver"
+	"github.com/census-instrumentation/opencensus-service/receiver/prometheusreceiver/internal"
+	"github.com/prometheus/prometheus/config"
+	sd_config "github.com/prometheus/prometheus/discovery/config"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
-
-	agentmetricspb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
-	"github.com/census-instrumentation/opencensus-service/consumer"
-	"github.com/census-instrumentation/opencensus-service/data"
-	"github.com/census-instrumentation/opencensus-service/receiver"
-	"github.com/dinooliva/promreceiver"
-	"github.com/prometheus/prometheus/config"
 )
 
 // Configuration defines the behavior and targets of the Prometheus scrapers.
@@ -42,9 +44,12 @@ type Configuration struct {
 // Preceiver is the type that provides Prometheus scraper/receiver functionality.
 type Preceiver struct {
 	startOnce sync.Once
-	recv      *promreceiver.Receiver
+	stopOnce  sync.Once
+	ocaStore  storage.Appender
 	cfg       *Configuration
 	consumer  consumer.MetricsConsumer
+	cancel    context.CancelFunc
+	logger    *zap.Logger
 }
 
 var _ receiver.MetricsReceiver = (*Preceiver)(nil)
@@ -60,7 +65,7 @@ const (
 )
 
 // New creates a new prometheus.Receiver reference.
-func New(v *viper.Viper, next consumer.MetricsConsumer) (*Preceiver, error) {
+func New(logger *zap.Logger, v *viper.Viper, next consumer.MetricsConsumer) (*Preceiver, error) {
 	var cfg Configuration
 
 	// Unmarshal our config values (using viper's mapstructure)
@@ -88,6 +93,7 @@ func New(v *viper.Viper, next consumer.MetricsConsumer) (*Preceiver, error) {
 	pr := &Preceiver{
 		cfg:      &cfg,
 		consumer: next,
+		logger:   logger,
 	}
 	return pr, nil
 }
@@ -102,55 +108,62 @@ func (pr *Preceiver) MetricsSource() string {
 // StartMetricsReception is the method that starts Prometheus scraping and it
 // is controlled by having previously defined a Configuration using perhaps New.
 func (pr *Preceiver) StartMetricsReception(ctx context.Context, asyncErrorChan chan<- error) error {
-	var err = errAlreadyStarted
 	pr.startOnce.Do(func() {
-		if pr.consumer == nil {
-			err = errNilMetricsReceiverSink
+		c, cancel := context.WithCancel(ctx)
+		pr.cancel = cancel
+		app := internal.NewOcaStore(c, pr.consumer, pr.logger.Sugar())
+		// need to use a logger with the gokitLog interface
+		l := internal.NewZapToGokitLogAdapter(pr.logger)
+		scrapeManager := scrape.NewManager(l, app)
+		app.SetScrapeManager(scrapeManager)
+		discoveryManagerScrape := discovery.NewManager(ctx, l)
+		go func() {
+			if err := discoveryManagerScrape.Run(); err != nil {
+				asyncErrorChan <- err
+			}
+		}()
+		if err := scrapeManager.ApplyConfig(pr.cfg.ScrapeConfig); err != nil {
+			asyncErrorChan <- err
 			return
 		}
 
-		tms := &promMetricsReceiverToOpenCensusMetricsReceiver{nextConsumer: pr.consumer}
-		cfg := pr.cfg
-		pr.recv, err = promreceiver.ReceiverFromConfig(
-			context.Background(),
-			tms,
-			cfg.ScrapeConfig,
-			promreceiver.WithBufferPeriod(cfg.BufferPeriod),
-			promreceiver.WithBufferCount(cfg.BufferCount))
+		// Run the scrape manager.
+		syncConfig := make(chan bool)
+		errsChan := make(chan error, 1)
+		go func() {
+			defer close(errsChan)
+			<-time.After(100 * time.Millisecond)
+			close(syncConfig)
+			if err := scrapeManager.Run(discoveryManagerScrape.SyncCh()); err != nil {
+				errsChan <- err
+			}
+		}()
+		<-syncConfig
+		// By this point we've given time to the scrape manager
+		// to start applying its original configuration.
+
+		discoveryCfg := make(map[string]sd_config.ServiceDiscoveryConfig)
+		for _, scrapeConfig := range pr.cfg.ScrapeConfig.ScrapeConfigs {
+			discoveryCfg[scrapeConfig.JobName] = scrapeConfig.ServiceDiscoveryConfig
+		}
+
+		// Now trigger the discovery notification to the scrape manager.
+		if err := discoveryManagerScrape.ApplyConfig(discoveryCfg); err != nil {
+			errsChan <- err
+		}
 	})
-	return err
+	return nil
 }
 
 // Flush triggers the Flush method on the underlying Prometheus scrapers and instructs
 // them to immediately sned over the metrics they've collected, to the MetricsConsumer.
+// it's not needed on the new prometheus receiver implementation, let it do nothing
 func (pr *Preceiver) Flush() {
-	pr.recv.Flush()
+
 }
 
 // StopMetricsReception stops and cancels the underlying Prometheus scrapers.
 func (pr *Preceiver) StopMetricsReception(ctx context.Context) error {
-	pr.Flush()
-	return pr.recv.Cancel()
-}
-
-type promMetricsReceiverToOpenCensusMetricsReceiver struct {
-	nextConsumer consumer.MetricsConsumer
-}
-
-var _ promreceiver.MetricsSink = (*promMetricsReceiverToOpenCensusMetricsReceiver)(nil)
-
-var errNilRequest = errors.New("expecting a non-nil request")
-
-// ReceiveMetrics is a converter that enables MetricsReceivers to act as MetricsSink.
-func (pmrtomr *promMetricsReceiverToOpenCensusMetricsReceiver) ReceiveMetrics(ctx context.Context, ereq *agentmetricspb.ExportMetricsServiceRequest) error {
-	if ereq == nil {
-		return errNilRequest
-	}
-
-	err := pmrtomr.nextConsumer.ConsumeMetricsData(ctx, data.MetricsData{
-		Node:     ereq.Node,
-		Resource: ereq.Resource,
-		Metrics:  ereq.Metrics,
-	})
-	return err
+	pr.stopOnce.Do(pr.cancel)
+	return nil
 }
