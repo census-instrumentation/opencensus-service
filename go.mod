@@ -7,6 +7,7 @@ require (
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.12.2
 	contrib.go.opencensus.io/exporter/zipkin v0.1.1
+	contrib.go.opencensus.io/resource v0.1.1
 	github.com/DataDog/datadog-go v2.2.0+incompatible // indirect
 	github.com/DataDog/opencensus-go-exporter-datadog v0.0.0-20181026070331-e7c4bd17b329
 	github.com/VividCortex/gohistogram v1.0.0 // indirect

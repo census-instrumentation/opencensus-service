@@ -25,6 +25,7 @@ import (
 	"github.com/census-instrumentation/opencensus-service/processor/attributekeyprocessor"
 	"github.com/census-instrumentation/opencensus-service/processor/multiconsumer"
 	"github.com/census-instrumentation/opencensus-service/processor/processortest"
+	"github.com/census-instrumentation/opencensus-service/processor/tracesamplerprocessor"
 )
 
 func Test_startProcessor(t *testing.T) {
@@ -83,6 +84,24 @@ func Test_startProcessor(t *testing.T) {
 					t.Fatalf("attributekeyprocessor.NewTraceProcessor() = %v", err)
 				}
 				return attributeKeyProcessor
+			},
+		},
+		{
+			name: "sampling_config_trace_sampler",
+			setupViperCfg: func() *viper.Viper {
+				v := viper.New()
+				v.Set("logging-exporter", true)
+				v.Set("sampling.mode", "head")
+				v.Set("sampling.policies.probabilistic.configuration.sampling-percentage", 5)
+				return v
+			},
+			wantExamplar: func(t *testing.T) interface{} {
+				nopProcessor := processortest.NewNopTraceProcessor(nil)
+				tracesamplerprocessor, err := tracesamplerprocessor.NewTraceProcessor(nopProcessor, tracesamplerprocessor.TraceSamplerCfg{})
+				if err != nil {
+					t.Fatalf("tracesamplerprocessor.NewTraceProcessor() = %v", err)
+				}
+				return tracesamplerprocessor
 			},
 		},
 	}
