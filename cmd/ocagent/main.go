@@ -168,7 +168,7 @@ func runOCAgent() {
 
 	// If the Prometheus receiver is enabled, then run it.
 	if agentConfig.PrometheusReceiverEnabled() {
-		promDoneFn, err := runPrometheusReceiver(viperCfg, commonMetricsSink, asyncErrorChan)
+		promDoneFn, err := runPrometheusReceiver(logger, viperCfg, commonMetricsSink, asyncErrorChan)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -318,8 +318,8 @@ func runZipkinScribeReceiver(config *config.ScribeReceiverConfig, next consumer.
 	return doneFn, nil
 }
 
-func runPrometheusReceiver(v *viper.Viper, next consumer.MetricsConsumer, asyncErrorChan chan<- error) (doneFn func() error, err error) {
-	pmr, err := prometheusreceiver.New(v.Sub("receivers.prometheus"), next)
+func runPrometheusReceiver(logger *zap.Logger, v *viper.Viper, next consumer.MetricsConsumer, asyncErrorChan chan<- error) (doneFn func() error, err error) {
+	pmr, err := prometheusreceiver.New(logger, v.Sub("receivers.prometheus"), next)
 	if err != nil {
 		return nil, err
 	}
