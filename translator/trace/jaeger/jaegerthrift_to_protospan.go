@@ -161,6 +161,12 @@ func jReferencesToOCProtoLinks(jrefs []*jaeger.SpanRef) *tracepb.Span_Links {
 	links := make([]*tracepb.Span_Link, 0, len(jrefs))
 
 	for _, jref := range jrefs {
+		if jref.TraceIdHigh == 0 &&
+			jref.TraceIdLow == 0 &&
+			jref.SpanId == 0 {
+			continue
+		}
+
 		var linkType tracepb.Span_Link_Type
 		if jref.RefType == jaeger.SpanRefType_CHILD_OF {
 			// Wording on OC for Span_Link_PARENT_LINKED_SPAN: The linked span is a parent of the current span.
