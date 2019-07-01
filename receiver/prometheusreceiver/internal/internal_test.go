@@ -21,7 +21,6 @@ import (
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/scrape"
 	"go.uber.org/zap"
-	"sync"
 )
 
 // test helpers
@@ -35,8 +34,33 @@ func init() {
 	testLogger = zapLogger.Sugar()
 }
 
+func newMockMetadataCache(data map[string]scrape.MetricMetadata) *mockMetadataCache {
+	return &mockMetadataCache{
+		mCache: mCache{startValues: make(map[string]*ObservedValue)},
+		data:   data,
+	}
+}
+
 type mockMetadataCache struct {
-	data map[string]scrape.MetricMetadata
+	mCache
+	data         map[string]scrape.MetricMetadata
+	lastScrapeTs int64
+}
+
+func (m *mockMetadataCache) LoadObservedValue(key string) (*ObservedValue, bool) {
+	return m.mCache.LoadObservedValue(key)
+}
+
+func (m *mockMetadataCache) StoreStartValue(key string, ts int64, value float64) {
+	m.mCache.StoreObservedValue(key, ts, value)
+}
+
+func (m *mockMetadataCache) LastScrapeTime() int64 {
+	return m.lastScrapeTs
+}
+
+func (m *mockMetadataCache) UpdateLastScrapeTime(ts int64) {
+	m.lastScrapeTs = ts
 }
 
 func (m *mockMetadataCache) Metadata(metricName string) (scrape.MetricMetadata, bool) {
@@ -49,20 +73,15 @@ func (m *mockMetadataCache) SharedLabels() labels.Labels {
 }
 
 func newMockConsumer() *mockConsumer {
-	return &mockConsumer{
-		Metrics: make(chan *data.MetricsData, 1),
-	}
+	return &mockConsumer{}
 }
 
 type mockConsumer struct {
-	Metrics    chan *data.MetricsData
-	consumOnce sync.Once
+	md *data.MetricsData
 }
 
 func (m *mockConsumer) ConsumeMetricsData(ctx context.Context, md data.MetricsData) error {
-	m.consumOnce.Do(func() {
-		m.Metrics <- &md
-	})
+	m.md = &md
 	return nil
 }
 

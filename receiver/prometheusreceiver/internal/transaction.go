@@ -23,6 +23,7 @@ import (
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/zap"
+	"math"
 	"strings"
 	"sync/atomic"
 )
@@ -39,15 +40,16 @@ var errNoJobInstance = errors.New("job or instance cannot be found from labels")
 // A transaction is corresponding to an individual scrape operation or stale report.
 // That said, whenever prometheus receiver scrapped a target metric endpoint a page of raw metrics is returned,
 // a transaction, which acts as appender, is created to process this page of data, the scrapeLoop will call the Add or
-// AddFast method to insert metrics data points, when finished either Commit, which means success, is called and data
+// AddFast method to insert metrics data complexValue, when finished either Commit, which means success, is called and data
 // will be flush to the downstream consumer, or Rollback, which means discard all the data, is called and all data
-// points are discarded.
+// complexValue are discarded.
 type transaction struct {
 	id            int64
 	ctx           context.Context
 	isNew         bool
 	sink          consumer.MetricsConsumer
 	ms            MetadataService
+	mc            MetadataCache
 	metricBuilder *metricBuilder
 	logger        *zap.SugaredLogger
 }
@@ -75,6 +77,13 @@ func (tr *transaction) Add(l labels.Labels, t int64, v float64) (uint64, error) 
 
 // returning an error from this method can cause the whole appending transaction to be aborted and fail
 func (tr *transaction) AddFast(ls labels.Labels, _ uint64, t int64, v float64) error {
+	// Important, must handle. prometheus will still try to feed the appender some data even if it failed to
+	// scrape the remote target,  if the previous scrape was success and some data were cached internally
+	// in our case, we don't need these data, simply drop them shall be good enough. more details:
+	// https://github.com/prometheus/prometheus/blob/851131b0740be7291b98f295567a97f32fffc655/scrape/scrape.go#L933-L935
+	if math.IsNaN(v) {
+		return nil
+	}
 	select {
 	case <-tr.ctx.Done():
 		return errTransactionAborted
@@ -98,6 +107,7 @@ func (tr *transaction) initTransaction(ls labels.Labels) error {
 	if err != nil {
 		return err
 	}
+	tr.mc = mc
 	node := createNode(job, instance, mc.SharedLabels().Get(model.SchemeLabel))
 	tr.metricBuilder = newMetricBuilder(node, mc, tr.logger)
 	tr.isNew = false
@@ -107,17 +117,24 @@ func (tr *transaction) initTransaction(ls labels.Labels) error {
 // submit metrics data to consumers
 func (tr *transaction) Commit() error {
 	if tr.isNew {
-		// In a situation like not able to connect to the remote server, scrapeloop will still commit even if it had
-		// never added any data points, that the transaction has not been initialized.
+		// In a situation like not able to connect to the remote server, scrapeloop will still commit even if it has
+		// never added any data complexValue, that the transaction has not been initialized.
 		return nil
 	}
+
+	// evict unused cache values
+	defer func() {
+		if tr.mc != nil {
+			tr.mc.EvictUnused()
+		}
+	}()
 
 	md, err := tr.metricBuilder.Build()
 	if err != nil {
 		return err
 	}
 
-	if md != dummyMetric {
+	if len(md.Metrics) != 0 {
 		return tr.sink.ConsumeMetricsData(context.Background(), *md)
 	}
 
@@ -125,6 +142,9 @@ func (tr *transaction) Commit() error {
 }
 
 func (tr *transaction) Rollback() error {
+	if tr.mc != nil {
+		tr.mc.EvictUnused()
+	}
 	return nil
 }
 

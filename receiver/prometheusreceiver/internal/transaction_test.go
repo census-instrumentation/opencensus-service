@@ -18,6 +18,7 @@ import (
 	"context"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/scrape"
+	"math"
 	"reflect"
 	"testing"
 	"time"
@@ -81,13 +82,28 @@ func Test_transaction(t *testing.T) {
 		}
 
 		expected := createNode("test", "localhost:8080", "http")
-		md := <-mcon.Metrics
+		md := mcon.md
 		if !reflect.DeepEqual(md.Node, expected) {
 			t.Errorf("generated node %v and expected node %v is different\n", md.Node, expected)
 		}
 
 		if len(md.Metrics) != 1 {
 			t.Errorf("expecting one metrics, but got %v\n", len(md.Metrics))
+		}
+	})
+
+	t.Run("Drop NaN value", func(t *testing.T) {
+		mcon := newMockConsumer()
+		tr := newTransaction(context.Background(), ms, mcon, testLogger)
+		if _, got := tr.Add(goodLabels, time.Now().Unix()*1000, math.NaN()); got != nil {
+			t.Errorf("expecting error == nil from Add() but got: %v\n", got)
+		}
+		if got := tr.Commit(); got != nil {
+			t.Errorf("expecting nil from Commit() but got err %v", got)
+		}
+
+		if mcon.md != nil {
+			t.Errorf("wanted nil, got %v\n", mcon.md)
 		}
 	})
 

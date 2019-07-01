@@ -35,6 +35,7 @@ const (
 
 var idSeq int64
 var errAlreadyStop = errors.New("ocaStore already stopped")
+var noop = &noopAppender{}
 
 // OcaStore is an interface combines io.Closer and prometheus' scrape.Appendable
 type OcaStore interface {
@@ -68,7 +69,7 @@ func NewOcaStore(ctx context.Context, sink consumer.MetricsConsumer, logger *zap
 // cannot accept any Appender() request
 func (o *ocaStore) SetScrapeManager(scrapeManager *scrape.Manager) {
 	if scrapeManager != nil && atomic.CompareAndSwapInt32(&o.running, runningStateInit, runningStateReady) {
-		o.mc = &mService{scrapeManager}
+		o.mc = &mService{sm: scrapeManager}
 	}
 }
 
@@ -80,7 +81,7 @@ func (o *ocaStore) Appender() (storage.Appender, error) {
 		return nil, errors.New("ScrapeManager is not set")
 	}
 	// instead of returning an error, return a dummy appender instead, otherwise it can trigger panic
-	return noopAppender(true), nil
+	return noop, nil
 }
 
 func (o *ocaStore) Close() error {
@@ -89,22 +90,20 @@ func (o *ocaStore) Close() error {
 }
 
 // noopAppender, always return error on any operations
-type noopAppender bool
+type noopAppender struct{}
 
-func (noopAppender) Add(l labels.Labels, t int64, v float64) (uint64, error) {
+func (*noopAppender) Add(l labels.Labels, t int64, v float64) (uint64, error) {
 	return 0, errAlreadyStop
 }
 
-func (noopAppender) AddFast(l labels.Labels, ref uint64, t int64, v float64) error {
+func (*noopAppender) AddFast(l labels.Labels, ref uint64, t int64, v float64) error {
 	return errAlreadyStop
 }
 
-func (noopAppender) Commit() error {
+func (*noopAppender) Commit() error {
 	return errAlreadyStop
 }
 
-func (noopAppender) Rollback() error {
-	return errAlreadyStop
+func (*noopAppender) Rollback() error {
+	return nil
 }
-
-var _ storage.Appender = noopAppender(true)
