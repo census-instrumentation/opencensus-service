@@ -2,17 +2,21 @@ package internal
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 	"strings"
 )
 
+// MetricsAdjuster takes a map from a metric instance to the initial point in the metrics instance
+// and provides AdjustMetrics, which takes a sequence of metrics and adjust their values based on
+// the initial points.
 type MetricsAdjuster struct {
-	metricMap     *map[string]*metricspb.TimeSeries
-	logger        *zap.SugaredLogger
+	metricMap *map[string]*metricspb.TimeSeries
+	logger    *zap.SugaredLogger
 }
 
+// NewMetricsAdjuster is a constructor for MetricsAdjuster.
 func NewMetricsAdjuster(metricMap *map[string]*metricspb.TimeSeries, logger *zap.SugaredLogger) *MetricsAdjuster {
 	return &MetricsAdjuster{
 		metricMap: metricMap,
@@ -20,6 +24,9 @@ func NewMetricsAdjuster(metricMap *map[string]*metricspb.TimeSeries, logger *zap
 	}
 }
 
+// AdjustMetrics takes a sequence of metrics and adjust their values based on the initial points in the
+// metricMap. If the metric is the first point in the timeseries, or the timeseries has been reset, it is
+// removed from the sequence and added to the the metricMap.
 func (ma *MetricsAdjuster) AdjustMetrics(metrics []*metricspb.Metric) []*metricspb.Metric {
 	var adjusted = make([]*metricspb.Metric, 0, len(metrics))
 	for _, metric := range metrics {
@@ -95,7 +102,7 @@ func (ma *MetricsAdjuster) adjustPoint(metricType metricspb.MetricDescriptor_Typ
 		// note: sum of squared deviation not currently supported
 		initialDist := initial.GetDistributionValue()
 		currentDist := current.GetDistributionValue()
-		if (currentDist.Count < initialDist.Count) {
+		if currentDist.Count < initialDist.Count {
 			return false
 		}
 		currentDist.Count -= initialDist.Count
@@ -106,7 +113,7 @@ func (ma *MetricsAdjuster) adjustPoint(metricType metricspb.MetricDescriptor_Typ
 		// note: we don't adjust bucket counts for gauge distributions
 		initialDist := initial.GetDistributionValue()
 		currentDist := current.GetDistributionValue()
-		if (currentDist.Count < initialDist.Count) {
+		if currentDist.Count < initialDist.Count {
 			return false
 		}
 		currentDist.Count -= initialDist.Count
@@ -118,7 +125,7 @@ func (ma *MetricsAdjuster) adjustPoint(metricType metricspb.MetricDescriptor_Typ
 		currentSummary := current.GetSummaryValue()
 		initialCount := initialSummary.Count.GetValue()
 		currentCount := currentSummary.Count.GetValue()
-		if (currentCount < initialCount) {
+		if currentCount < initialCount {
 			return false
 		}
 		initialSum := initialSummary.Sum.GetValue()
@@ -141,7 +148,7 @@ func (ma *MetricsAdjuster) adjustPoint(metricType metricspb.MetricDescriptor_Typ
 }
 
 func (ma *MetricsAdjuster) adjustBuckets(current, initial []*metricspb.DistributionValue_Bucket) bool {
-	if (len(current) != len(initial)) {
+	if len(current) != len(initial) {
 		// this shouldn't happen
 		ma.logger.Info("len(current buckets) != len(initial buckets)", len(current), len(initial))
 		return false
@@ -151,7 +158,6 @@ func (ma *MetricsAdjuster) adjustBuckets(current, initial []*metricspb.Distribut
 	}
 	return true
 }
-	
 
 // creates a unique signature consisting of a metric's name and label values
 func getSignature(name string, values []*metricspb.LabelValue) string {

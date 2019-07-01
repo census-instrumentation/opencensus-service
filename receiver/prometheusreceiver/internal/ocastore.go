@@ -17,8 +17,8 @@ package internal
 import (
 	"context"
 	"errors"
-	"github.com/census-instrumentation/opencensus-service/consumer"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
+	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
