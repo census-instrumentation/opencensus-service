@@ -35,7 +35,7 @@ import (
 
 func TestOcaStore(t *testing.T) {
 
-	o := NewOcaStore(context.Background(), nil, nil)
+	o := NewOcaStore(context.Background(), nil, nil, nil)
 
 	_, err := o.Appender()
 	if err == nil {
@@ -183,7 +183,7 @@ func startScraper(target string) (*mockConsumer, context.CancelFunc) {
 		return nil, nil
 	}
 	con := newMockConsumer()
-	o := NewOcaStore(context.Background(), con, testLogger)
+	o := NewOcaStore(context.Background(), con, testLogger, nil)
 	scrapeManager := scrape.NewManager(log.NewNopLogger(), o)
 	o.SetScrapeManager(scrapeManager)
 

@@ -19,7 +19,6 @@ import (
 	"reflect"
 	"testing"
 
-	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/census-instrumentation/opencensus-service/exporter/exportertest"
 	"github.com/prometheus/common/model"
@@ -168,13 +167,6 @@ func Test_metricBuilder(t *testing.T) {
 		lb     labels.Labels
 		v      float64
 		hasErr bool
-	}
-
-	node := &commonpb.Node{
-		ServiceInfo: &commonpb.ServiceInfo{Name: "myjob"},
-		Identifier: &commonpb.ProcessIdentifier{
-			HostName: "example.com",
-		},
 	}
 
 	ts := int64(1555366610000)
@@ -760,7 +752,7 @@ func Test_metricBuilder(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := newMetricBuilder(node, mc, testLogger)
+			b := newMetricBuilder(mc, testLogger)
 			for _, v := range tt.pts {
 				if err := b.AddDataPoint(v.lb, ts, v.v); (err != nil) != v.hasErr {
 					t.Errorf("metricBuilder.AddDataPoint() error = %v, wantErr %v", err, v.hasErr)
@@ -784,9 +776,13 @@ func Test_metricBuilder(t *testing.T) {
 				return
 			}
 
-			if !reflect.DeepEqual(mt.Metrics, tt.metrics) {
+			if mt == nil {
+				mt = make([]*metricspb.Metric, 0)
+			}
+
+			if !reflect.DeepEqual(mt, tt.metrics) {
 				t.Errorf("metricBuilder.Build() metric = %v, want %v",
-					string(exportertest.ToJSON(mt.Metrics)), string(exportertest.ToJSON(tt.metrics)))
+					string(exportertest.ToJSON(mt)), string(exportertest.ToJSON(tt.metrics)))
 			}
 		})
 	}

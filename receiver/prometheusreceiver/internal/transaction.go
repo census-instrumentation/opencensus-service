@@ -18,7 +18,9 @@ import (
 	"context"
 	"errors"
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
+	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/census-instrumentation/opencensus-service/consumer"
+	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/storage"
@@ -47,19 +49,24 @@ type transaction struct {
 	ctx           context.Context
 	isNew         bool
 	sink          consumer.MetricsConsumer
+	jobsMap       *map[string]*map[string]*metricspb.TimeSeries
+	metricMap     *map[string]*metricspb.TimeSeries
 	ms            MetadataService
+	node          *commonpb.Node
 	metricBuilder *metricBuilder
 	logger        *zap.SugaredLogger
 }
 
-func newTransaction(ctx context.Context, ms MetadataService, sink consumer.MetricsConsumer, logger *zap.SugaredLogger) *transaction {
+func newTransaction(ctx context.Context, jobsMap *map[string]*map[string]*metricspb.TimeSeries, ms MetadataService, sink consumer.MetricsConsumer, logger *zap.SugaredLogger) *transaction {
 	return &transaction{
-		id:     atomic.AddInt64(&idSeq, 1),
-		ctx:    ctx,
-		isNew:  true,
-		sink:   sink,
-		ms:     ms,
-		logger: logger,
+		id:        atomic.AddInt64(&idSeq, 1),
+		ctx:       ctx,
+		isNew:     true,
+		sink:      sink,
+		jobsMap:   jobsMap,
+		metricMap: nil,
+		ms:        ms,
+		logger:    logger,
 	}
 }
 
@@ -98,8 +105,18 @@ func (tr *transaction) initTransaction(ls labels.Labels) error {
 	if err != nil {
 		return err
 	}
-	node := createNode(job, instance, mc.SharedLabels().Get(model.SchemeLabel))
-	tr.metricBuilder = newMetricBuilder(node, mc, tr.logger)
+	if tr.jobsMap != nil {
+		sig := getJobSignature(job, instance)
+		metricMap, ok := (*tr.jobsMap)[sig]
+		if !ok {
+			metricMap = &map[string]*metricspb.TimeSeries{}
+			//metricMap = &make(map[string]*metricspb.TimeSeries, 0);
+			(*tr.jobsMap)[sig] = metricMap
+		}
+		tr.metricMap = metricMap
+	}
+	tr.node = createNode(job, instance, mc.SharedLabels().Get(model.SchemeLabel))
+	tr.metricBuilder = newMetricBuilder(mc, tr.logger)
 	tr.isNew = false
 	return nil
 }
@@ -112,20 +129,30 @@ func (tr *transaction) Commit() error {
 		return nil
 	}
 
-	md, err := tr.metricBuilder.Build()
+	metrics, err := tr.metricBuilder.Build()
 	if err != nil {
 		return err
 	}
 
-	if md != dummyMetric {
-		return tr.sink.ConsumeMetricsData(context.Background(), *md)
+	if metrics != nil {
+		if tr.metricMap != nil {
+			metrics = NewMetricsAdjuster(tr.metricMap, tr.logger).AdjustMetrics(metrics)
+		}
+		md := data.MetricsData{
+			Node:    tr.node,
+			Metrics: metrics,
+		}
+		return tr.sink.ConsumeMetricsData(context.Background(), md)
 	}
-
 	return nil
 }
 
 func (tr *transaction) Rollback() error {
 	return nil
+}
+
+func getJobSignature(job, instance string) string {
+	return job + "," + instance
 }
 
 func createNode(job, instance, scheme string) *commonpb.Node {
