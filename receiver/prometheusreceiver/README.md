@@ -239,7 +239,7 @@ Counter as described in the [Prometheus Metric Types Document](https://prometheu
 > is a cumulative metric that represents a single monotonically increasing counter whose value can only increase or be 
 > reset to zero on restart
 
-It is one of the most simple metric types we can be found in both systems. However, it is a cumulative type of metric, 
+It is one of the most simple metric types we can find in both systems. However, it is a cumulative type of metric, 
 considering with have two continuous scrapes from a target, with the first one as shown below:
 ```
 # HELP http_requests_total The total number of HTTP requests.
@@ -514,8 +514,8 @@ metrics := []*metricspb.Metric{
 
 ```
 
-There's also some difference between the two systems is that in Prometheus it uses `quantile`, while in OpenCensus `percentile` 
-is used. Other than that, OpenCensus has optional values for `Sum` and `Count` of a snapshot, however, they are not 
+There's also some differences between the two systems. One of them is that in Prometheus it uses `quantile`, while in OpenCensus it uses `percentile`.
+Other than that, OpenCensus has optional values for `Sum` and `Count` of a snapshot, however, they are not 
 provided in Prometheus, and `nil` will be used for these values.
 
 Other than that, in some prometheus implementations, such as the Python version, Summary is allowed to have no quantiles, in a case
