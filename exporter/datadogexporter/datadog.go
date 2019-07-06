@@ -23,7 +23,7 @@ import (
 )
 
 type datadogConfig struct {
-	// Service specifies the service name used for tracing.
+	// ServiceName specifies the service name used for tracing.
 	ServiceName string `mapstructure:"service_name,omitempty"`
 
 	// Namespace specifies the namespaces to which metric keys are appended.
