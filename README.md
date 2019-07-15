@@ -1,5 +1,9 @@
 # OpenCensus Service
 
+*IMPORTANT:* This project is now in __maintenance mode__: only bug/security/dependency PRs will be accepted and published.
+
+Development of new features and improvements will be done on its successor project: [__OpenTelemetry Service__](https://github.com/open-telemetry/opentelemetry-service/). 
+
 [![Build Status][travis-image]][travis-url]
 [![GoDoc][godoc-image]][godoc-url]
 [![Gitter chat][gitter-image]][gitter-url]
