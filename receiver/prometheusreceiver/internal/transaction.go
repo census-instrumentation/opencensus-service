@@ -59,13 +59,13 @@ type transaction struct {
 
 func newTransaction(ctx context.Context, jobsMap *jobsMap, ms MetadataService, sink consumer.MetricsConsumer, logger *zap.SugaredLogger) *transaction {
 	return &transaction{
-		id:         atomic.AddInt64(&idSeq, 1),
-		ctx:        ctx,
-		isNew:      true,
-		sink:       sink,
-		jobsMap:    jobsMap,
-		ms:         ms,
-		logger:     logger,
+		id:      atomic.AddInt64(&idSeq, 1),
+		ctx:     ctx,
+		isNew:   true,
+		sink:    sink,
+		jobsMap: jobsMap,
+		ms:      ms,
+		logger:  logger,
 	}
 }
 

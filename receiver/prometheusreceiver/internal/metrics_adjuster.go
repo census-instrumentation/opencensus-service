@@ -2,10 +2,10 @@ package internal
 
 import (
 	"fmt"
-	"strings"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
+	"strings"
 )
 
 type timeseriesinfo struct {
@@ -41,7 +41,7 @@ func getSignature(name string, values []*metricspb.LabelValue) string {
 	}
 	return fmt.Sprintf("%s,%s", name, strings.Join(labelValues, ","))
 }
-	
+
 type jobsMap map[string]*metricsInstanceMap
 
 // Create a new (empty) jobsMap.
@@ -51,7 +51,7 @@ func NewJobsMap() *jobsMap {
 }
 
 func (jm *jobsMap) get(job, instance string) *metricsInstanceMap {
-	sig := 	 job + ":" + instance
+	sig := job + ":" + instance
 	metricsMap, ok := (*jm)[sig]
 	if !ok {
 		metricsMap = newMetricsInstanceMap()
@@ -158,7 +158,7 @@ func (ma *MetricsAdjuster) adjustPoint(metricType metricspb.MetricDescriptor_Typ
 		currentValue := current.GetDoubleValue()
 		initialValue := initial.GetDoubleValue()
 		latestValue := initialValue
-		if (initial != latest) {
+		if initial != latest {
 			latestValue += latest.GetDoubleValue()
 		}
 		if currentValue < latestValue {
@@ -172,7 +172,7 @@ func (ma *MetricsAdjuster) adjustPoint(metricType metricspb.MetricDescriptor_Typ
 		initialDist := initial.GetDistributionValue()
 		latestCount := initialDist.Count
 		latestSum := initialDist.Sum
-		if (initial != latest) {
+		if initial != latest {
 			latestCount += latest.GetDistributionValue().Count
 			latestSum += latest.GetDistributionValue().Sum
 		}
@@ -191,7 +191,7 @@ func (ma *MetricsAdjuster) adjustPoint(metricType metricspb.MetricDescriptor_Typ
 		initialSum := initial.GetSummaryValue().Sum.GetValue()
 		latestCount := initialCount
 		latestSum := initialSum
-		if (initial != latest) {
+		if initial != latest {
 			latestCount += latest.GetSummaryValue().Count.GetValue()
 			latestSum += latest.GetSummaryValue().Sum.GetValue()
 		}

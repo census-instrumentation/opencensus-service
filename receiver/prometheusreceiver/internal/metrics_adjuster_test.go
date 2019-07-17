@@ -39,7 +39,7 @@ func Test_gaugeDouble(t *testing.T) {
 		"Gauge: third timeseries - value less than previous value - gauge is never adjusted",
 		[]*metricspb.Metric{gauge(keys0, timeseries(200, vals0, double(200, 55.0)))},
 		[]*metricspb.Metric{gauge(keys0, timeseries(200, vals0, double(200, 55.0)))},
-	},}
+	}}
 	runScript(t, script)
 }
 
@@ -56,7 +56,7 @@ func Test_gaugeDistribution(t *testing.T) {
 		"GaugeDist: third timeseries - count/sum less than previous - gauge distribution is never adjusted",
 		[]*metricspb.Metric{gaugeDist(keys0, timeseries(200, vals0, dist(200, bounds0, []int64{2, 0, 1, 5})))},
 		[]*metricspb.Metric{gaugeDist(keys0, timeseries(200, vals0, dist(200, bounds0, []int64{2, 0, 1, 5})))},
-	},}
+	}}
 	runScript(t, script)
 }
 
@@ -77,7 +77,7 @@ func Test_cumulativeDouble(t *testing.T) {
 		"CumulativeDouble: fourth timeseries - adjusted based on reset timeseries",
 		[]*metricspb.Metric{cumulative(keys0, timeseries(250, vals0, double(250, 72)))},
 		[]*metricspb.Metric{cumulative(keys0, timeseries(200, vals0, double(250, 17)))},
-	}, }
+	}}
 	runScript(t, script)
 }
 
@@ -98,7 +98,7 @@ func Test_cumulativeDistribution(t *testing.T) {
 		"CumulativeDist: fourth timeseries - adjusted based on reset timeseries",
 		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(250, vals0, dist(250, bounds0, []int64{7, 4, 2, 12})))},
 		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(200, vals0, dist(250, bounds0, []int64{2, 1, 0, 5})))},
-	}, }
+	}}
 	runScript(t, script)
 }
 
@@ -119,14 +119,14 @@ func Test_summary(t *testing.T) {
 		"Summary: fourth timeseries - adjusted based on reset timeseries",
 		[]*metricspb.Metric{summary(keys0, timeseries(250, vals0, summ(250, 14, 96, percent0, []float64{9.0, 47.0, 8.0})))},
 		[]*metricspb.Metric{summary(keys0, timeseries(200, vals0, summ(250, 2, 30, percent0, []float64{9.0, 47.0, 8.0})))},
-	}, }
+	}}
 	runScript(t, script)
 }
 
 var (
-	keys0 = []string{"k1", "k2"}
-	vals0 = []string{"v1", "v2"}
-	bounds0 = []float64{1.0, 2.0, 4.0}
+	keys0    = []string{"k1", "k2"}
+	vals0    = []string{"v1", "v2"}
+	bounds0  = []float64{1.0, 2.0, 4.0}
 	percent0 = []float64{10.0, 50.0, 90.0}
 )
 
@@ -202,14 +202,14 @@ func dist(ts int64, bounds []float64, counts []int64) *metricspb.Point {
 	var count int64 = 0
 	var sum float64 = 0.0
 	buckets := make([]*metricspb.DistributionValue_Bucket, len(counts))
-	
+
 	for i, bcount := range counts {
 		count += bcount
 		buckets[i] = &metricspb.DistributionValue_Bucket{Count: bcount}
 		// create a sum based on lower bucket bounds
 		// e.g. for bounds = {0.1, 0.2, 0.4} and counts = {2, 3, 7, 9)
 		// sum = 0*2 + 0.1*3 + 0.2*7 + 0.4*9
-		if (i > 0) {
+		if i > 0 {
 			sum += float64(bcount) * bounds[i-1]
 		}
 	}
