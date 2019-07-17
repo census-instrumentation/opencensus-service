@@ -42,15 +42,16 @@ func getSignature(name string, values []*metricspb.LabelValue) string {
 	return fmt.Sprintf("%s,%s", name, strings.Join(labelValues, ","))
 }
 
-type jobsMap map[string]*metricsInstanceMap
+// JobsMap maps from a job instance to a map of metric instances for the job.
+type JobsMap map[string]*metricsInstanceMap
 
-// Create a new (empty) jobsMap.
-func NewJobsMap() *jobsMap {
-	jm := jobsMap(make(map[string]*metricsInstanceMap))
+// NewJobsMap creates a new (empty) JobsMap.
+func NewJobsMap() *JobsMap {
+	jm := JobsMap(make(map[string]*metricsInstanceMap))
 	return &jm
 }
 
-func (jm *jobsMap) get(job, instance string) *metricsInstanceMap {
+func (jm *JobsMap) get(job, instance string) *metricsInstanceMap {
 	sig := job + ":" + instance
 	metricsMap, ok := (*jm)[sig]
 	if !ok {

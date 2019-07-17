@@ -51,11 +51,11 @@ type ocaStore struct {
 	mc      *mService
 	once    *sync.Once
 	ctx     context.Context
-	jobsMap *jobsMap
+	jobsMap *JobsMap
 }
 
 // NewOcaStore returns an ocaStore instance, which can be acted as prometheus' scrape.Appendable
-func NewOcaStore(ctx context.Context, sink consumer.MetricsConsumer, logger *zap.SugaredLogger, jobsMap *jobsMap) OcaStore {
+func NewOcaStore(ctx context.Context, sink consumer.MetricsConsumer, logger *zap.SugaredLogger, jobsMap *JobsMap) OcaStore {
 	return &ocaStore{
 		running: runningStateInit,
 		ctx:     ctx,

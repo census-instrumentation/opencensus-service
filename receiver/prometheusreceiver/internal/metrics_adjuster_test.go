@@ -199,8 +199,8 @@ func double(ts int64, value float64) *metricspb.Point {
 }
 
 func dist(ts int64, bounds []float64, counts []int64) *metricspb.Point {
-	var count int64 = 0
-	var sum float64 = 0.0
+	var count int64
+	var sum float64
 	buckets := make([]*metricspb.DistributionValue_Bucket, len(counts))
 
 	for i, bcount := range counts {

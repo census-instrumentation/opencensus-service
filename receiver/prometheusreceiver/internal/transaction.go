@@ -50,14 +50,14 @@ type transaction struct {
 	sink          consumer.MetricsConsumer
 	job           string
 	instance      string
-	jobsMap       *jobsMap
+	jobsMap       *JobsMap
 	ms            MetadataService
 	node          *commonpb.Node
 	metricBuilder *metricBuilder
 	logger        *zap.SugaredLogger
 }
 
-func newTransaction(ctx context.Context, jobsMap *jobsMap, ms MetadataService, sink consumer.MetricsConsumer, logger *zap.SugaredLogger) *transaction {
+func newTransaction(ctx context.Context, jobsMap *JobsMap, ms MetadataService, sink consumer.MetricsConsumer, logger *zap.SugaredLogger) *transaction {
 	return &transaction{
 		id:      atomic.AddInt64(&idSeq, 1),
 		ctx:     ctx,
