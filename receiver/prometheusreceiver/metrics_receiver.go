@@ -115,7 +115,7 @@ func (pr *Preceiver) StartMetricsReception(ctx context.Context, asyncErrorChan c
 		c, cancel := context.WithCancel(ctx)
 		pr.cancel = cancel
 		jobsMap := internal.NewJobsMap()
-		if (!pr.cfg.AdjustMetrics) {
+		if !pr.cfg.AdjustMetrics {
 			jobsMap = nil
 		}
 		app := internal.NewOcaStore(c, pr.consumer, pr.logger.Sugar(), jobsMap)
