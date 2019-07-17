@@ -17,7 +17,6 @@ package internal
 import (
 	"context"
 	"errors"
-	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/scrape"
@@ -52,11 +51,11 @@ type ocaStore struct {
 	mc      *mService
 	once    *sync.Once
 	ctx     context.Context
-	jobsMap *map[string]*map[string]*metricspb.TimeSeries
+	jobsMap *jobsMap
 }
 
 // NewOcaStore returns an ocaStore instance, which can be acted as prometheus' scrape.Appendable
-func NewOcaStore(ctx context.Context, sink consumer.MetricsConsumer, logger *zap.SugaredLogger, jobsMap *map[string]*map[string]*metricspb.TimeSeries) OcaStore {
+func NewOcaStore(ctx context.Context, sink consumer.MetricsConsumer, logger *zap.SugaredLogger, jobsMap *jobsMap) OcaStore {
 	return &ocaStore{
 		running: runningStateInit,
 		ctx:     ctx,
