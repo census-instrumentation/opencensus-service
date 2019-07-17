@@ -110,6 +110,7 @@ config:
         - targets: ['%s']
 buffer_period: 500ms
 buffer_count: 2
+adjust_metrics: false
 `, scrapePeriod, cstURL.Host)
 
 	host, port, _ := net.SplitHostPort(cstURL.Host)

@@ -36,9 +36,10 @@ import (
 
 // Configuration defines the behavior and targets of the Prometheus scrapers.
 type Configuration struct {
-	ScrapeConfig *config.Config `mapstructure:"config"`
-	BufferPeriod time.Duration  `mapstructure:"buffer_period"`
-	BufferCount  int            `mapstructure:"buffer_count"`
+	ScrapeConfig  *config.Config `mapstructure:"config"`
+	BufferPeriod  time.Duration  `mapstructure:"buffer_period"`
+	BufferCount   int            `mapstructure:"buffer_count"`
+	AdjustMetrics bool           `mapstructure:"adjust_metrics"`
 }
 
 // Preceiver is the type that provides Prometheus scraper/receiver functionality.
@@ -67,6 +68,8 @@ const (
 // New creates a new prometheus.Receiver reference.
 func New(logger *zap.Logger, v *viper.Viper, next consumer.MetricsConsumer) (*Preceiver, error) {
 	var cfg Configuration
+
+	cfg.AdjustMetrics = true
 
 	// Unmarshal our config values (using viper's mapstructure)
 	err := v.Unmarshal(&cfg)
@@ -111,7 +114,11 @@ func (pr *Preceiver) StartMetricsReception(ctx context.Context, asyncErrorChan c
 	pr.startOnce.Do(func() {
 		c, cancel := context.WithCancel(ctx)
 		pr.cancel = cancel
-		app := internal.NewOcaStore(c, pr.consumer, pr.logger.Sugar(), internal.NewJobsMap())
+		jobsMap := internal.NewJobsMap()
+		if (!pr.cfg.AdjustMetrics) {
+			jobsMap = nil
+		}
+		app := internal.NewOcaStore(c, pr.consumer, pr.logger.Sugar(), jobsMap)
 		// need to use a logger with the gokitLog interface
 		l := internal.NewZapToGokitLogAdapter(pr.logger)
 		scrapeManager := scrape.NewManager(l, app)
