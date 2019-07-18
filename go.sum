@@ -8,12 +8,12 @@ contrib.go.opencensus.io/exporter/aws v0.0.0-20181029163544-2befc13012d0 h1:YsbW
 contrib.go.opencensus.io/exporter/aws v0.0.0-20181029163544-2befc13012d0/go.mod h1:uu1P0UCM/6RbsMrgPa98ll8ZcHM858i/AD06a9aLRCA=
 contrib.go.opencensus.io/exporter/jaeger v0.1.1-0.20190430175949-e8b55949d948 h1:xdP25yLqNGSnpfDmEChwA9ZuKLdiyL0jqJKPm/Ypfag=
 contrib.go.opencensus.io/exporter/jaeger v0.1.1-0.20190430175949-e8b55949d948/go.mod h1:ukdzwIYYHgZ7QYtwVFQUjiT28BJHiMhTERo32s6qVgM=
-contrib.go.opencensus.io/exporter/ocagent v0.5.1-0.20190621222907-f9129169651c h1:GPYD4ul5/ZP+adzF01v70RzvhNPy1Ws9jjj0cT2Q5gI=
-contrib.go.opencensus.io/exporter/ocagent v0.5.1-0.20190621222907-f9129169651c/go.mod h1:oGSyf701BHqn69lMacwJJuyGzrk5eiCj86DxXhG2gfk=
+contrib.go.opencensus.io/exporter/ocagent v0.5.1 h1:TWb6QHJU0L63/AscynXhu5nS8fyw2uObyyYJ+YfEqPc=
+contrib.go.opencensus.io/exporter/ocagent v0.5.1/go.mod h1:oGSyf701BHqn69lMacwJJuyGzrk5eiCj86DxXhG2gfk=
 contrib.go.opencensus.io/exporter/prometheus v0.1.0 h1:SByaIoWwNgMdPSgl5sMqM2KDE5H/ukPWBRo314xiDvg=
 contrib.go.opencensus.io/exporter/prometheus v0.1.0/go.mod h1:cGFniUXGZlKRjzOyuZJ6mgB+PgBcCIa79kEKR8YCW+A=
-contrib.go.opencensus.io/exporter/stackdriver v0.12.3-0.20190716002434-655917ad76e3 h1:innjgMScLC6JrBk5K0Bo08kmGH1q/F64n6pkz8DulSg=
-contrib.go.opencensus.io/exporter/stackdriver v0.12.3-0.20190716002434-655917ad76e3/go.mod h1:iwB6wGarfphGGe/e5CWqyUk/cLzKnWsOKPVW3no6OTw=
+contrib.go.opencensus.io/exporter/stackdriver v0.12.3-0.20190626200219-09504ed717c7 h1:JLx6F8VdILk5M+2+xVZohpwN0TsC28F8WnJoPNNKogs=
+contrib.go.opencensus.io/exporter/stackdriver v0.12.3-0.20190626200219-09504ed717c7/go.mod h1:iwB6wGarfphGGe/e5CWqyUk/cLzKnWsOKPVW3no6OTw=
 contrib.go.opencensus.io/exporter/zipkin v0.1.1 h1:PR+1zWqY8ceXs1qDQQIlgXe+sdiwCf0n32bH4+Epk8g=
 contrib.go.opencensus.io/exporter/zipkin v0.1.1/go.mod h1:GMvdSl3eJ2gapOaLKzTKE3qDgUkJ86k9k3yY2eqwkzc=
 contrib.go.opencensus.io/resource v0.1.1 h1:4r2CANuYhKGmYWP02+5E94rLRcS/YeD+KlxSrOsMxk0=

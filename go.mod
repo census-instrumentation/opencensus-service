@@ -3,9 +3,9 @@ module github.com/census-instrumentation/opencensus-service
 require (
 	contrib.go.opencensus.io/exporter/aws v0.0.0-20181029163544-2befc13012d0
 	contrib.go.opencensus.io/exporter/jaeger v0.1.1-0.20190430175949-e8b55949d948
-	contrib.go.opencensus.io/exporter/ocagent v0.5.1-0.20190621222907-f9129169651c // TODO: pin a released version
+	contrib.go.opencensus.io/exporter/ocagent v0.5.1
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
-	contrib.go.opencensus.io/exporter/stackdriver v0.12.3-0.20190716002434-655917ad76e3 // TODO: pin a released version
+	contrib.go.opencensus.io/exporter/stackdriver v0.12.3-0.20190626200219-09504ed717c7 // TODO: pin a released version
 	contrib.go.opencensus.io/exporter/zipkin v0.1.1
 	contrib.go.opencensus.io/resource v0.1.1
 	github.com/DataDog/datadog-go v2.2.0+incompatible // indirect
