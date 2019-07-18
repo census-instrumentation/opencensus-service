@@ -6,6 +6,8 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 	"strings"
+	"sync"
+	"time"
 )
 
 type timeseriesinfo struct {
@@ -13,20 +15,23 @@ type timeseriesinfo struct {
 	previous *metricspb.TimeSeries
 }
 
-type metricsInstanceMap map[string]*timeseriesinfo
+type metricsInstanceMap struct {
+	lastAccess time.Time
+	internal   map[string]*timeseriesinfo
+}
 
 func newMetricsInstanceMap() *metricsInstanceMap {
-	mim := metricsInstanceMap(make(map[string]*timeseriesinfo))
-	return &mim
+	return &metricsInstanceMap{internal: make(map[string]*timeseriesinfo)}
 }
 
 func (mim *metricsInstanceMap) get(metric *metricspb.Metric, values []*metricspb.LabelValue) *timeseriesinfo {
+	mim.lastAccess = time.Now()
 	name := metric.GetMetricDescriptor().GetName()
 	sig := getSignature(name, values)
-	tsi, ok := (*mim)[sig]
+	tsi, ok := mim.internal[sig]
 	if !ok {
 		tsi = &timeseriesinfo{}
-		(*mim)[sig] = tsi
+		mim.internal[sig] = tsi
 	}
 	return tsi
 }
@@ -43,43 +48,78 @@ func getSignature(name string, values []*metricspb.LabelValue) string {
 }
 
 // JobsMap maps from a job instance to a map of metric instances for the job.
-type JobsMap map[string]*metricsInstanceMap
+type JobsMap struct {
+	sync.RWMutex
+	lastGC   time.Time
+	internal map[string]*metricsInstanceMap
+}
+
+const jobsMapGCIntervalInSeconds = 600
+const jobMaxLifetimeInSeconds = 600
 
 // NewJobsMap creates a new (empty) JobsMap.
 func NewJobsMap() *JobsMap {
-	jm := JobsMap(make(map[string]*metricsInstanceMap))
-	return &jm
+	return &JobsMap{lastGC: time.Now(), internal: make(map[string]*metricsInstanceMap)}
+}
+
+func (jm *JobsMap) maybeGC(lastGC time.Time) {
+	current := time.Now()
+	if current.Sub(lastGC).Seconds() > jobsMapGCIntervalInSeconds {
+		go func() {
+			jm.Lock()
+			if current.Sub(jm.lastGC).Seconds() > jobsMapGCIntervalInSeconds {
+				for sig, mim := range jm.internal {
+					if current.Sub(mim.lastAccess).Seconds() > jobMaxLifetimeInSeconds {
+						delete(jm.internal, sig)
+					}
+				}
+				jm.lastGC = time.Now()
+			}
+			jm.Unlock()
+		}()
+	}
 }
 
 func (jm *JobsMap) get(job, instance string) *metricsInstanceMap {
 	sig := job + ":" + instance
-	metricsMap, ok := (*jm)[sig]
-	if !ok {
-		metricsMap = newMetricsInstanceMap()
-		(*jm)[sig] = metricsMap
+	jm.RLock()
+	lastGC := jm.lastGC
+	mim, ok := jm.internal[sig]
+	jm.RUnlock()
+	defer jm.maybeGC(lastGC)
+	if ok {
+		return mim
 	}
-	return metricsMap
+	jm.Lock()
+	defer jm.Unlock()
+	mim2, ok2 := jm.internal[sig]
+	if ok2 {
+		return mim2
+	}
+	mim2 = newMetricsInstanceMap()
+	jm.internal[sig] = mim2
+	return mim2
 }
 
 // MetricsAdjuster takes a map from a metric instance to the initial point in the metrics instance
 // and provides AdjustMetrics, which takes a sequence of metrics and adjust their values based on
 // the initial points.
 type MetricsAdjuster struct {
-	metricsMap *metricsInstanceMap
-	logger     *zap.SugaredLogger
+	mim    *metricsInstanceMap
+	logger *zap.SugaredLogger
 }
 
 // NewMetricsAdjuster is a constructor for MetricsAdjuster.
-func NewMetricsAdjuster(metricsMap *metricsInstanceMap, logger *zap.SugaredLogger) *MetricsAdjuster {
+func NewMetricsAdjuster(mim *metricsInstanceMap, logger *zap.SugaredLogger) *MetricsAdjuster {
 	return &MetricsAdjuster{
-		metricsMap: metricsMap,
-		logger:     logger,
+		mim:    mim,
+		logger: logger,
 	}
 }
 
-// AdjustMetrics takes a sequence of metrics and adjust their values based on the initial points in the
-// metricsMap. If the metric is the first point in the timeseries, or the timeseries has been reset, it is
-// removed from the sequence and added to the the metricsMap.
+// AdjustMetrics takes a sequence of metrics and adjust their values based on the initial and previous points in the
+// metricsInstanceMap. If the metric is the first point in the timeseries, or the timeseries has been reset, it is
+// removed from the sequence and added to the the metricsInstanceMap.
 func (ma *MetricsAdjuster) AdjustMetrics(metrics []*metricspb.Metric) []*metricspb.Metric {
 	var adjusted = make([]*metricspb.Metric, 0, len(metrics))
 	for _, metric := range metrics {
@@ -111,7 +151,7 @@ func (ma *MetricsAdjuster) adjustMetric(metric *metricspb.Metric) bool {
 func (ma *MetricsAdjuster) adjustMetricTimeseries(metric *metricspb.Metric) bool {
 	filtered := make([]*metricspb.TimeSeries, 0, len(metric.GetTimeseries()))
 	for _, current := range metric.GetTimeseries() {
-		tsi := ma.metricsMap.get(metric, current.GetLabelValues())
+		tsi := ma.mim.get(metric, current.GetLabelValues())
 		if tsi.initial == nil {
 			// initial timeseries
 			tsi.initial = current
