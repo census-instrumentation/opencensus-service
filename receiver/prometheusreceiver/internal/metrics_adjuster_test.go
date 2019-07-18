@@ -28,97 +28,185 @@ import (
 
 func Test_gaugeDouble(t *testing.T) {
 	script := []*metricsAdjusterTest{{
-		"Gauge: first timeseries - gauge is never adjusted",
-		[]*metricspb.Metric{gauge(keys0, timeseries(100, vals0, double(100, 44.0)))},
-		[]*metricspb.Metric{gauge(keys0, timeseries(100, vals0, double(100, 44.0)))},
+		"Gauge: round 1 - gauge is never adjusted",
+		[]*metricspb.Metric{gauge(keys0, timeseries(1, vals0, double(1, 44)))},
+		[]*metricspb.Metric{gauge(keys0, timeseries(1, vals0, double(1, 44)))},
 	}, {
-		"Gauge: second timeseries - gauge is never adjusted",
-		[]*metricspb.Metric{gauge(keys0, timeseries(150, vals0, double(150, 66.0)))},
-		[]*metricspb.Metric{gauge(keys0, timeseries(150, vals0, double(150, 66.0)))},
+		"Gauge: round 2 - gauge is never adjusted",
+		[]*metricspb.Metric{gauge(keys0, timeseries(2, vals0, double(2, 66)))},
+		[]*metricspb.Metric{gauge(keys0, timeseries(2, vals0, double(2, 66)))},
 	}, {
-		"Gauge: third timeseries - value less than previous value - gauge is never adjusted",
-		[]*metricspb.Metric{gauge(keys0, timeseries(200, vals0, double(200, 55.0)))},
-		[]*metricspb.Metric{gauge(keys0, timeseries(200, vals0, double(200, 55.0)))},
+		"Gauge: round 3 - value less than previous value - gauge is never adjusted",
+		[]*metricspb.Metric{gauge(keys0, timeseries(3, vals0, double(3, 55)))},
+		[]*metricspb.Metric{gauge(keys0, timeseries(3, vals0, double(3, 55)))},
 	}}
 	runScript(t, script)
 }
 
 func Test_gaugeDistribution(t *testing.T) {
 	script := []*metricsAdjusterTest{{
-		"GaugeDist: first timeseries - gauge distribution is never adjusted",
-		[]*metricspb.Metric{gaugeDist(keys0, timeseries(100, vals0, dist(100, bounds0, []int64{4, 2, 3, 7})))},
-		[]*metricspb.Metric{gaugeDist(keys0, timeseries(100, vals0, dist(100, bounds0, []int64{4, 2, 3, 7})))},
+		"GaugeDist: round 1 - gauge distribution is never adjusted",
+		[]*metricspb.Metric{gaugeDist(keys0, timeseries(1, vals0, dist(1, bounds0, []int64{4, 2, 3, 7})))},
+		[]*metricspb.Metric{gaugeDist(keys0, timeseries(1, vals0, dist(1, bounds0, []int64{4, 2, 3, 7})))},
 	}, {
-		"GaugeDist: second timeseries - gauge distribution is never adjusted",
-		[]*metricspb.Metric{gaugeDist(keys0, timeseries(150, vals0, dist(150, bounds0, []int64{6, 5, 8, 11})))},
-		[]*metricspb.Metric{gaugeDist(keys0, timeseries(150, vals0, dist(150, bounds0, []int64{6, 5, 8, 11})))},
+		"GaugeDist: round 2 - gauge distribution is never adjusted",
+		[]*metricspb.Metric{gaugeDist(keys0, timeseries(2, vals0, dist(2, bounds0, []int64{6, 5, 8, 11})))},
+		[]*metricspb.Metric{gaugeDist(keys0, timeseries(2, vals0, dist(2, bounds0, []int64{6, 5, 8, 11})))},
 	}, {
-		"GaugeDist: third timeseries - count/sum less than previous - gauge distribution is never adjusted",
-		[]*metricspb.Metric{gaugeDist(keys0, timeseries(200, vals0, dist(200, bounds0, []int64{2, 0, 1, 5})))},
-		[]*metricspb.Metric{gaugeDist(keys0, timeseries(200, vals0, dist(200, bounds0, []int64{2, 0, 1, 5})))},
+		"GaugeDist: round 3 - count/sum less than previous - gauge distribution is never adjusted",
+		[]*metricspb.Metric{gaugeDist(keys0, timeseries(3, vals0, dist(3, bounds0, []int64{2, 0, 1, 5})))},
+		[]*metricspb.Metric{gaugeDist(keys0, timeseries(3, vals0, dist(3, bounds0, []int64{2, 0, 1, 5})))},
 	}}
 	runScript(t, script)
 }
 
 func Test_cumulativeDouble(t *testing.T) {
 	script := []*metricsAdjusterTest{{
-		"CumulativeDouble: first timeseries - initial, adjusted should be empty",
-		[]*metricspb.Metric{cumulative(keys0, timeseries(100, vals0, double(100, 44)))},
+		"CumulativeDouble: round 1 - initial instance, adjusted should be empty",
+		[]*metricspb.Metric{cumulative(keys0, timeseries(1, vals0, double(1, 44)))},
 		[]*metricspb.Metric{},
 	}, {
-		"CumulativeDouble: second timeseries - adjusted based on first timeseries",
-		[]*metricspb.Metric{cumulative(keys0, timeseries(150, vals0, double(150, 66)))},
-		[]*metricspb.Metric{cumulative(keys0, timeseries(100, vals0, double(150, 22)))},
+		"CumulativeDouble: round 2 - instance adjusted based on round 1",
+		[]*metricspb.Metric{cumulative(keys0, timeseries(2, vals0, double(2, 66)))},
+		[]*metricspb.Metric{cumulative(keys0, timeseries(1, vals0, double(2, 22)))},
 	}, {
-		"CumulativeDouble: third timeseries - reset (value less than previous value), adjusted should be empty",
-		[]*metricspb.Metric{cumulative(keys0, timeseries(200, vals0, double(200, 55)))},
+		"CumulativeDouble: round 3 - instance reset (value less than previous value), adjusted should be empty",
+		[]*metricspb.Metric{cumulative(keys0, timeseries(3, vals0, double(3, 55)))},
 		[]*metricspb.Metric{},
 	}, {
-		"CumulativeDouble: fourth timeseries - adjusted based on reset timeseries",
-		[]*metricspb.Metric{cumulative(keys0, timeseries(250, vals0, double(250, 72)))},
-		[]*metricspb.Metric{cumulative(keys0, timeseries(200, vals0, double(250, 17)))},
+		"CumulativeDouble: round 4 - instance adjusted based on round 3",
+		[]*metricspb.Metric{cumulative(keys0, timeseries(4, vals0, double(4, 72)))},
+		[]*metricspb.Metric{cumulative(keys0, timeseries(3, vals0, double(4, 17)))},
 	}}
 	runScript(t, script)
 }
 
 func Test_cumulativeDistribution(t *testing.T) {
 	script := []*metricsAdjusterTest{{
-		"CumulativeDist: first timeseries - initial, adjusted should be empty",
-		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(100, vals0, dist(100, bounds0, []int64{4, 2, 3, 7})))},
+		"CumulativeDist: round 1 - initial instance, adjusted should be empty",
+		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(1, vals0, dist(1, bounds0, []int64{4, 2, 3, 7})))},
 		[]*metricspb.Metric{},
 	}, {
-		"CumulativeDist: second timeseries - adjusted based on first timeseries",
-		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(150, vals0, dist(150, bounds0, []int64{6, 3, 4, 8})))},
-		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(100, vals0, dist(150, bounds0, []int64{2, 1, 1, 1})))},
+		"CumulativeDist: round 2 - instance adjusted based on round 1",
+		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(2, vals0, dist(2, bounds0, []int64{6, 3, 4, 8})))},
+		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(1, vals0, dist(2, bounds0, []int64{2, 1, 1, 1})))},
 	}, {
-		"CumulativeDist: third timeseries - reset (value less than previous value), adjusted should be empty",
-		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(200, vals0, dist(200, bounds0, []int64{5, 3, 2, 7})))},
+		"CumulativeDist: round 3 - instance reset (value less than previous value), adjusted should be empty",
+		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(3, vals0, dist(3, bounds0, []int64{5, 3, 2, 7})))},
 		[]*metricspb.Metric{},
 	}, {
-		"CumulativeDist: fourth timeseries - adjusted based on reset timeseries",
-		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(250, vals0, dist(250, bounds0, []int64{7, 4, 2, 12})))},
-		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(200, vals0, dist(250, bounds0, []int64{2, 1, 0, 5})))},
+		"CumulativeDist: round 4 - instance adjusted based on round 3",
+		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(4, vals0, dist(4, bounds0, []int64{7, 4, 2, 12})))},
+		[]*metricspb.Metric{cumulativeDist(keys0, timeseries(3, vals0, dist(4, bounds0, []int64{2, 1, 0, 5})))},
 	}}
 	runScript(t, script)
 }
 
 func Test_summary(t *testing.T) {
 	script := []*metricsAdjusterTest{{
-		"Summary: first timeseries - initial, adjusted should be empty",
-		[]*metricspb.Metric{summary(keys0, timeseries(100, vals0, summ(100, 10, 40, percent0, []float64{1.0, 5.0, 8.0})))},
+		"Summary: round 1 - initial instance, adjusted should be empty",
+		[]*metricspb.Metric{summary(keys0, timeseries(1, vals0, summ(1, 10, 40, percent0, []float64{1, 5, 8})))},
 		[]*metricspb.Metric{},
 	}, {
-		"Summary: second timeseries - adjusted based on first timeseries",
-		[]*metricspb.Metric{summary(keys0, timeseries(150, vals0, summ(150, 15, 70, percent0, []float64{7.0, 44.0, 9.0})))},
-		[]*metricspb.Metric{summary(keys0, timeseries(100, vals0, summ(150, 5, 30, percent0, []float64{7.0, 44.0, 9.0})))},
+		"Summary: round 2 - instance adjusted based on round 1",
+		[]*metricspb.Metric{summary(keys0, timeseries(2, vals0, summ(2, 15, 70, percent0, []float64{7, 44, 9})))},
+		[]*metricspb.Metric{summary(keys0, timeseries(1, vals0, summ(2, 5, 30, percent0, []float64{7, 44, 9})))},
 	}, {
-		"Summary: third timeseries - reset (count less than previous), adjusted should be empty",
-		[]*metricspb.Metric{summary(keys0, timeseries(200, vals0, summ(200, 12, 66, percent0, []float64{3.0, 22.0, 5.0})))},
+		"Summary: round 3 - instance reset (count less than previous), adjusted should be empty",
+		[]*metricspb.Metric{summary(keys0, timeseries(3, vals0, summ(3, 12, 66, percent0, []float64{3, 22, 5})))},
 		[]*metricspb.Metric{},
 	}, {
-		"Summary: fourth timeseries - adjusted based on reset timeseries",
-		[]*metricspb.Metric{summary(keys0, timeseries(250, vals0, summ(250, 14, 96, percent0, []float64{9.0, 47.0, 8.0})))},
-		[]*metricspb.Metric{summary(keys0, timeseries(200, vals0, summ(250, 2, 30, percent0, []float64{9.0, 47.0, 8.0})))},
+		"Summary: round 4 - instance adjusted based on round 3",
+		[]*metricspb.Metric{summary(keys0, timeseries(4, vals0, summ(4, 14, 96, percent0, []float64{9, 47, 8})))},
+		[]*metricspb.Metric{summary(keys0, timeseries(3, vals0, summ(4, 2, 30, percent0, []float64{9, 47, 8})))},
+	}}
+	runScript(t, script)
+}
+
+func Test_multiMetrics(t *testing.T) {
+	script := []*metricsAdjusterTest{{
+		"MultiMetrics: round 1 - combined rounds of individual metrics",
+		[]*metricspb.Metric{
+			gauge(keys0, timeseries(1, vals0, double(1, 44))),
+			gaugeDist(keys0, timeseries(1, vals0, dist(1, bounds0, []int64{4, 2, 3, 7}))),
+			cumulative(keys0, timeseries(1, vals0, double(1, 44))),
+			cumulativeDist(keys0, timeseries(1, vals0, dist(1, bounds0, []int64{4, 2, 3, 7}))),
+			summary(keys0, timeseries(1, vals0, summ(1, 10, 40, percent0, []float64{1, 5, 8}))),
+		},
+		[]*metricspb.Metric{
+			gauge(keys0, timeseries(1, vals0, double(1, 44))),
+			gaugeDist(keys0, timeseries(1, vals0, dist(1, bounds0, []int64{4, 2, 3, 7}))),
+		},
+	}, {
+		"MultiMetrics: round 2 - combined rounds of individual metrics",
+		[]*metricspb.Metric{
+			gauge(keys0, timeseries(2, vals0, double(2, 66))),
+			gaugeDist(keys0, timeseries(2, vals0, dist(2, bounds0, []int64{6, 5, 8, 11}))),
+			cumulative(keys0, timeseries(2, vals0, double(2, 66))),
+			cumulativeDist(keys0, timeseries(2, vals0, dist(2, bounds0, []int64{6, 3, 4, 8}))),
+			summary(keys0, timeseries(2, vals0, summ(2, 15, 70, percent0, []float64{7, 44, 9}))),
+		},
+		[]*metricspb.Metric{
+			gauge(keys0, timeseries(2, vals0, double(2, 66))),
+			gaugeDist(keys0, timeseries(2, vals0, dist(2, bounds0, []int64{6, 5, 8, 11}))),
+			cumulative(keys0, timeseries(1, vals0, double(2, 22))),
+			cumulativeDist(keys0, timeseries(1, vals0, dist(2, bounds0, []int64{2, 1, 1, 1}))),
+			summary(keys0, timeseries(1, vals0, summ(2, 5, 30, percent0, []float64{7, 44, 9}))),
+		},
+	}, {
+		"MultiMetrics: round 3 - combined rounds of individual metrics",
+		[]*metricspb.Metric{
+			gauge(keys0, timeseries(3, vals0, double(3, 55))),
+			gaugeDist(keys0, timeseries(3, vals0, dist(3, bounds0, []int64{2, 0, 1, 5}))),
+			cumulative(keys0, timeseries(3, vals0, double(3, 55))),
+			cumulativeDist(keys0, timeseries(3, vals0, dist(3, bounds0, []int64{5, 3, 2, 7}))),
+			summary(keys0, timeseries(3, vals0, summ(3, 12, 66, percent0, []float64{3, 22, 5}))),
+		},
+		[]*metricspb.Metric{
+			gauge(keys0, timeseries(3, vals0, double(3, 55))),
+			gaugeDist(keys0, timeseries(3, vals0, dist(3, bounds0, []int64{2, 0, 1, 5}))),
+		},
+	}, {
+		"MultiMetrics: round 4 - combined rounds of individual metrics",
+		[]*metricspb.Metric{
+			cumulative(keys0, timeseries(4, vals0, double(4, 72))),
+			cumulativeDist(keys0, timeseries(4, vals0, dist(4, bounds0, []int64{7, 4, 2, 12}))),
+			summary(keys0, timeseries(4, vals0, summ(4, 14, 96, percent0, []float64{9, 47, 8}))),
+		},
+		[]*metricspb.Metric{
+			cumulative(keys0, timeseries(3, vals0, double(4, 17))),
+			cumulativeDist(keys0, timeseries(3, vals0, dist(4, bounds0, []int64{2, 1, 0, 5}))),
+			summary(keys0, timeseries(3, vals0, summ(4, 2, 30, percent0, []float64{9, 47, 8}))),
+		},
+	}}
+	runScript(t, script)
+}
+
+func Test_multiseries(t *testing.T) {
+	script := []*metricsAdjusterTest{{
+		"Multiseries: round 1 - initial first instance, adjusted should be empty",
+		[]*metricspb.Metric{cumulative(keys0, timeseries(1, vals0, double(1, 44)))},
+		[]*metricspb.Metric{},
+	}, {
+		"Multiseries: round 2 - first instance adjusted based on round 1, initial second instance",
+		[]*metricspb.Metric{cumulative(keys0, timeseries(2, vals0, double(2, 66)), timeseries(2, vals1, double(2, 20)))},
+		[]*metricspb.Metric{cumulative(keys0, timeseries(1, vals0, double(2, 22)))},
+	}, {
+		"Multiseries: round 3 - first instance adjusted based on round 1, second based on round 2",
+		[]*metricspb.Metric{cumulative(keys0, timeseries(3, vals0, double(3, 88)), timeseries(3, vals1, double(3, 49)))},
+		[]*metricspb.Metric{cumulative(keys0, timeseries(1, vals0, double(3, 44)), timeseries(2, vals1, double(3, 29)))},
+	}, {
+		"Multiseries: round 4 - first instance reset, second instance adjusted based on round 2, initial third instance",
+		[]*metricspb.Metric{
+			cumulative(keys0, timeseries(4, vals0, double(4, 87)), timeseries(4, vals1, double(4, 57)), timeseries(4, vals2, double(4, 10)))},
+		[]*metricspb.Metric{
+			cumulative(keys0, timeseries(2, vals1, double(4, 37)))},
+	}, {
+		"Multiseries: round 5 - first instance adusted based on round 4, second on round 2, third on round 4",
+		[]*metricspb.Metric{
+			cumulative(keys0, timeseries(5, vals0, double(5, 90)), timeseries(5, vals1, double(5, 65)), timeseries(5, vals2, double(5, 22)))},
+		[]*metricspb.Metric{
+			cumulative(keys0, timeseries(4, vals0, double(5, 3)), timeseries(2, vals1, double(5, 45)), timeseries(4, vals2, double(5, 12)))},
 	}}
 	runScript(t, script)
 }
@@ -126,8 +214,10 @@ func Test_summary(t *testing.T) {
 var (
 	keys0    = []string{"k1", "k2"}
 	vals0    = []string{"v1", "v2"}
-	bounds0  = []float64{1.0, 2.0, 4.0}
-	percent0 = []float64{10.0, 50.0, 90.0}
+	vals1    = []string{"v10", "v20"}
+	vals2    = []string{"v100", "v200"}
+	bounds0  = []float64{1, 2, 4}
+	percent0 = []float64{10, 50, 90}
 )
 
 type metricsAdjusterTest struct {
