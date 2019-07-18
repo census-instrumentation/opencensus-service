@@ -12,8 +12,8 @@ contrib.go.opencensus.io/exporter/ocagent v0.5.1 h1:TWb6QHJU0L63/AscynXhu5nS8fyw
 contrib.go.opencensus.io/exporter/ocagent v0.5.1/go.mod h1:oGSyf701BHqn69lMacwJJuyGzrk5eiCj86DxXhG2gfk=
 contrib.go.opencensus.io/exporter/prometheus v0.1.0 h1:SByaIoWwNgMdPSgl5sMqM2KDE5H/ukPWBRo314xiDvg=
 contrib.go.opencensus.io/exporter/prometheus v0.1.0/go.mod h1:cGFniUXGZlKRjzOyuZJ6mgB+PgBcCIa79kEKR8YCW+A=
-contrib.go.opencensus.io/exporter/stackdriver v0.12.3-0.20190626200219-09504ed717c7 h1:JLx6F8VdILk5M+2+xVZohpwN0TsC28F8WnJoPNNKogs=
-contrib.go.opencensus.io/exporter/stackdriver v0.12.3-0.20190626200219-09504ed717c7/go.mod h1:iwB6wGarfphGGe/e5CWqyUk/cLzKnWsOKPVW3no6OTw=
+contrib.go.opencensus.io/exporter/stackdriver v0.12.3 h1:qbLeD4GdbBJ/vLoMbvwkOmtK2qdNN/PO/97nsFNQdqY=
+contrib.go.opencensus.io/exporter/stackdriver v0.12.3/go.mod h1:iwB6wGarfphGGe/e5CWqyUk/cLzKnWsOKPVW3no6OTw=
 contrib.go.opencensus.io/exporter/zipkin v0.1.1 h1:PR+1zWqY8ceXs1qDQQIlgXe+sdiwCf0n32bH4+Epk8g=
 contrib.go.opencensus.io/exporter/zipkin v0.1.1/go.mod h1:GMvdSl3eJ2gapOaLKzTKE3qDgUkJ86k9k3yY2eqwkzc=
 contrib.go.opencensus.io/resource v0.1.1 h1:4r2CANuYhKGmYWP02+5E94rLRcS/YeD+KlxSrOsMxk0=
