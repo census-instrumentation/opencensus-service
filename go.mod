@@ -3,7 +3,7 @@ module github.com/census-instrumentation/opencensus-service
 require (
 	contrib.go.opencensus.io/exporter/aws v0.0.0-20181029163544-2befc13012d0
 	contrib.go.opencensus.io/exporter/jaeger v0.1.1-0.20190430175949-e8b55949d948
-	contrib.go.opencensus.io/exporter/ocagent v0.5.0
+	contrib.go.opencensus.io/exporter/ocagent v0.5.1
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.12.3-0.20190626200219-09504ed717c7 // TODO: pin a released version
 	contrib.go.opencensus.io/exporter/zipkin v0.1.1
@@ -13,7 +13,7 @@ require (
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/apache/thrift v0.0.0-20161221203622-b2a4d4ae21c7
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
-	github.com/census-instrumentation/opencensus-proto v0.2.0
+	github.com/census-instrumentation/opencensus-proto v0.2.1
 	github.com/go-kit/kit v0.8.0
 	github.com/gogo/googleapis v1.2.0 // indirect
 	github.com/golang/protobuf v1.3.1
