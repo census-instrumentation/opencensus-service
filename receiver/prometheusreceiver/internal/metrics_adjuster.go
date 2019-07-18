@@ -9,8 +9,8 @@ import (
 )
 
 type timeseriesinfo struct {
-	initial *metricspb.TimeSeries
-	latest  *metricspb.TimeSeries
+	initial  *metricspb.TimeSeries
+	previous *metricspb.TimeSeries
 }
 
 type metricsInstanceMap map[string]*timeseriesinfo
@@ -115,15 +115,15 @@ func (ma *MetricsAdjuster) adjustMetricTimeseries(metric *metricspb.Metric) bool
 		if tsi.initial == nil {
 			// initial timeseries
 			tsi.initial = current
-			tsi.latest = current
+			tsi.previous = current
 		} else {
-			if ma.adjustTimeseries(metric.MetricDescriptor.Type, current, tsi.initial, tsi.latest) {
-				tsi.latest = current
+			if ma.adjustTimeseries(metric.MetricDescriptor.Type, current, tsi.initial, tsi.previous) {
+				tsi.previous = current
 				filtered = append(filtered, current)
 			} else {
 				// reset timeseries
 				tsi.initial = current
-				tsi.latest = current
+				tsi.previous = current
 			}
 		}
 	}
@@ -132,37 +132,37 @@ func (ma *MetricsAdjuster) adjustMetricTimeseries(metric *metricspb.Metric) bool
 }
 
 // returns true if 'current' was adjusted and false if 'current' is an the initial occurence or a reset of the timeseries.
-func (ma *MetricsAdjuster) adjustTimeseries(metricType metricspb.MetricDescriptor_Type, current, initial, latest *metricspb.TimeSeries) bool {
-	if !ma.adjustPoints(metricType, current.GetPoints(), initial.GetPoints(), latest.GetPoints()) {
+func (ma *MetricsAdjuster) adjustTimeseries(metricType metricspb.MetricDescriptor_Type, current, initial, previous *metricspb.TimeSeries) bool {
+	if !ma.adjustPoints(metricType, current.GetPoints(), initial.GetPoints(), previous.GetPoints()) {
 		return false
 	}
 	current.StartTimestamp = initial.StartTimestamp
 	return true
 }
 
-func (ma *MetricsAdjuster) adjustPoints(metricType metricspb.MetricDescriptor_Type, current, initial, latest []*metricspb.Point) bool {
+func (ma *MetricsAdjuster) adjustPoints(metricType metricspb.MetricDescriptor_Type, current, initial, previous []*metricspb.Point) bool {
 	if len(current) != 1 || len(initial) != 1 || len(current) != 1 {
-		ma.logger.Infof("len(current): %v, len(initial): %v, len(latest): %v should all be 1", len(current), len(initial), len(latest))
+		ma.logger.Infof("len(current): %v, len(initial): %v, len(previous): %v should all be 1", len(current), len(initial), len(previous))
 		return true
 	}
-	return ma.adjustPoint(metricType, current[0], initial[0], latest[0])
+	return ma.adjustPoint(metricType, current[0], initial[0], previous[0])
 }
 
 // Note: There is an important, subtle point here. When a new timeseries or a reset is detected, current and initial are the same object.
-// When initial == latest, the latest value/count/sum are all the initial value. When initial != latest, the latest value/count/sum has
-// been adjusted wrt the initial value so both they must be combined to find the actual latest value/count/sum. This happens because the
-// timeseries are updated in-place - if new copies of the timeseries were created instead, latest could be used directly but this would
+// When initial == previous, the previous value/count/sum are all the initial value. When initial != previous, the previous value/count/sum has
+// been adjusted wrt the initial value so both they must be combined to find the actual previous value/count/sum. This happens because the
+// timeseries are updated in-place - if new copies of the timeseries were created instead, previous could be used directly but this would
 // mean reallocating all of the metrics.
-func (ma *MetricsAdjuster) adjustPoint(metricType metricspb.MetricDescriptor_Type, current, initial, latest *metricspb.Point) bool {
+func (ma *MetricsAdjuster) adjustPoint(metricType metricspb.MetricDescriptor_Type, current, initial, previous *metricspb.Point) bool {
 	switch metricType {
 	case metricspb.MetricDescriptor_CUMULATIVE_DOUBLE:
 		currentValue := current.GetDoubleValue()
 		initialValue := initial.GetDoubleValue()
-		latestValue := initialValue
-		if initial != latest {
-			latestValue += latest.GetDoubleValue()
+		previousValue := initialValue
+		if initial != previous {
+			previousValue += previous.GetDoubleValue()
 		}
-		if currentValue < latestValue {
+		if currentValue < previousValue {
 			// reset detected
 			return false
 		}
@@ -171,13 +171,13 @@ func (ma *MetricsAdjuster) adjustPoint(metricType metricspb.MetricDescriptor_Typ
 		// note: sum of squared deviation not currently supported
 		currentDist := current.GetDistributionValue()
 		initialDist := initial.GetDistributionValue()
-		latestCount := initialDist.Count
-		latestSum := initialDist.Sum
-		if initial != latest {
-			latestCount += latest.GetDistributionValue().Count
-			latestSum += latest.GetDistributionValue().Sum
+		previousCount := initialDist.Count
+		previousSum := initialDist.Sum
+		if initial != previous {
+			previousCount += previous.GetDistributionValue().Count
+			previousSum += previous.GetDistributionValue().Sum
 		}
-		if currentDist.Count < latestCount || currentDist.Sum < latestSum {
+		if currentDist.Count < previousCount || currentDist.Sum < previousSum {
 			// reset detected
 			return false
 		}
@@ -190,13 +190,13 @@ func (ma *MetricsAdjuster) adjustPoint(metricType metricspb.MetricDescriptor_Typ
 		currentSum := current.GetSummaryValue().Sum.GetValue()
 		initialCount := initial.GetSummaryValue().Count.GetValue()
 		initialSum := initial.GetSummaryValue().Sum.GetValue()
-		latestCount := initialCount
-		latestSum := initialSum
-		if initial != latest {
-			latestCount += latest.GetSummaryValue().Count.GetValue()
-			latestSum += latest.GetSummaryValue().Sum.GetValue()
+		previousCount := initialCount
+		previousSum := initialSum
+		if initial != previous {
+			previousCount += previous.GetSummaryValue().Count.GetValue()
+			previousSum += previous.GetSummaryValue().Sum.GetValue()
 		}
-		if currentCount < latestCount || currentSum < latestSum {
+		if currentCount < previousCount || currentSum < previousSum {
 			// reset detected
 			return false
 		}

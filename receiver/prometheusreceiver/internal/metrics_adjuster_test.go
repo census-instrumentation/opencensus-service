@@ -36,7 +36,7 @@ func Test_gauge(t *testing.T) {
 		[]*metricspb.Metric{gauge(k1k2, timeseries(2, v1v2, double(2, 66)))},
 		[]*metricspb.Metric{gauge(k1k2, timeseries(2, v1v2, double(2, 66)))},
 	}, {
-		"Gauge: round 3 - value less than previous value - gauge is never adjusted",
+		"Gauge: round 3 - value less than previous value - gauge is not adjusted",
 		[]*metricspb.Metric{gauge(k1k2, timeseries(3, v1v2, double(3, 55)))},
 		[]*metricspb.Metric{gauge(k1k2, timeseries(3, v1v2, double(3, 55)))},
 	}}
