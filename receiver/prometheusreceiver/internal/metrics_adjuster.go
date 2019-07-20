@@ -6,6 +6,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 	"strings"
+	"sync"
 )
 
 type timeseriesinfo struct {
@@ -43,20 +44,27 @@ func getSignature(name string, values []*metricspb.LabelValue) string {
 }
 
 // JobsMap maps from a job instance to a map of metric instances for the job.
-type JobsMap map[string]*metricsInstanceMap
+type JobsMap struct {
+	jobs map[string]*metricsInstanceMap
+	lock sync.Mutex
+}
 
 // NewJobsMap creates a new (empty) JobsMap.
 func NewJobsMap() *JobsMap {
-	jm := JobsMap(make(map[string]*metricsInstanceMap))
-	return &jm
+	return &JobsMap{
+		jobs: make(map[string]*metricsInstanceMap),
+		lock: sync.Mutex{},
+	}
 }
 
 func (jm *JobsMap) get(job, instance string) *metricsInstanceMap {
 	sig := job + ":" + instance
-	metricsMap, ok := (*jm)[sig]
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+	metricsMap, ok := jm.jobs[sig]
 	if !ok {
 		metricsMap = newMetricsInstanceMap()
-		(*jm)[sig] = metricsMap
+		jm.jobs[sig] = metricsMap
 	}
 	return metricsMap
 }

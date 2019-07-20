@@ -199,6 +199,61 @@ http_requests_total{method="post",code="400"} 60
 http_requests_total{method="post",code="500"} 5
 `
 
+// target3 for complicated data types
+var target3Page1 = `
+# HELP go_threads Number of OS threads created
+# TYPE go_threads gauge
+go_threads 18
+
+# A histogram, which has a pretty complex representation in the text format:
+# HELP http_request_duration_seconds A histogram of the request duration.
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{le="0.2"} 10000
+http_request_duration_seconds_bucket{le="0.5"} 11000
+http_request_duration_seconds_bucket{le="1"} 12001
+http_request_duration_seconds_bucket{le="+Inf"} 13003
+http_request_duration_seconds_sum 50000
+http_request_duration_seconds_count 13003
+
+# Finally a summary, which has a complex representation, too:
+# HELP rpc_duration_seconds A summary of the RPC duration in seconds.
+# TYPE rpc_duration_seconds summary
+rpc_duration_seconds{foo="bar" quantile="0.01"} 31
+rpc_duration_seconds{foo="bar" quantile="0.05"} 35
+rpc_duration_seconds{foo="bar" quantile="0.5"} 47
+rpc_duration_seconds{foo="bar" quantile="0.9"} 70
+rpc_duration_seconds{foo="bar" quantile="0.99"} 76
+rpc_duration_seconds_sum{foo="bar"} 8000
+rpc_duration_seconds_count{foo="bar"} 900
+`
+
+var target3Page2 = `
+# HELP go_threads Number of OS threads created
+# TYPE go_threads gauge
+go_threads 16
+
+# A histogram, which has a pretty complex representation in the text format:
+# HELP http_request_duration_seconds A histogram of the request duration.
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{le="0.2"} 11000
+http_request_duration_seconds_bucket{le="0.5"} 12000
+http_request_duration_seconds_bucket{le="1"} 13001
+http_request_duration_seconds_bucket{le="+Inf"} 14003
+http_request_duration_seconds_sum 50100
+http_request_duration_seconds_count 14003
+
+# Finally a summary, which has a complex representation, too:
+# HELP rpc_duration_seconds A summary of the RPC duration in seconds.
+# TYPE rpc_duration_seconds summary
+rpc_duration_seconds{foo="bar" quantile="0.01"} 32
+rpc_duration_seconds{foo="bar" quantile="0.05"} 35
+rpc_duration_seconds{foo="bar" quantile="0.5"} 47
+rpc_duration_seconds{foo="bar" quantile="0.9"} 70
+rpc_duration_seconds{foo="bar" quantile="0.99"} 77
+rpc_duration_seconds_sum{foo="bar"} 8100
+rpc_duration_seconds_count{foo="bar"} 950
+`
+
 var scrapeConfig = `
 config:
   scrape_configs:
@@ -210,6 +265,11 @@ config:
     - job_name: 'target2'
       scrape_interval: 1s
       metrics_path: /target2/metrics
+      static_configs:
+        - targets: ['%s']
+    - job_name: 'target3'
+      scrape_interval: 1s
+      metrics_path: /target3/metrics
       static_configs:
         - targets: ['%s']
 adjust_metrics: true
@@ -228,6 +288,10 @@ func TestEndToEnd(t *testing.T) {
 		{code: 200, data: target2Page2},
 		{code: 200, data: target2Page3},
 	}
+	endpoints["/target3/metrics"] = []mockPrometheusResponse{
+		{code: 200, data: target3Page1},
+		{code: 200, data: target3Page2},
+	}
 
 	mp := newMockPrometheus(endpoints)
 	cst := httptest.NewServer(mp)
@@ -236,7 +300,7 @@ func TestEndToEnd(t *testing.T) {
 	host, port, _ := net.SplitHostPort(cstURL.Host)
 
 	// 2. setup reciver and sinkexporter
-	yamlConfig := fmt.Sprintf(scrapeConfig, cstURL.Host, cstURL.Host)
+	yamlConfig := fmt.Sprintf(scrapeConfig, cstURL.Host, cstURL.Host, cstURL.Host)
 
 	v := viper.New()
 	if err := viperutils.LoadYAMLBytes(v, []byte(yamlConfig)); err != nil {
@@ -273,9 +337,9 @@ func TestEndToEnd(t *testing.T) {
 		results[m.Node.ServiceInfo.Name] = append(result, m)
 	}
 
-	t.Run("shall-return-two-targets", func(t *testing.T) {
-		if l := len(results); l != 2 {
-			t.Errorf("want 2 targets, but got %v\n", l)
+	t.Run("results-num-shall-match-targets", func(t *testing.T) {
+		if l := len(results); l != len(endpoints) {
+			t.Errorf("want %d targets, but got %v\n", len(endpoints), l)
 		}
 	})
 
@@ -628,6 +692,148 @@ func TestEndToEnd(t *testing.T) {
 			},
 		}
 		doCompare(t, want3, &m3)
+	})
+
+	t.Run("verify-target3-results", func(t *testing.T) {
+		mds := results["target3"]
+		if l := len(mds); l != 2 {
+			t.Errorf("want 2, but got %v\n", l)
+		}
+		m1 := mds[0]
+		// m1 shall only have a gauge
+		if l := len(m1.Metrics); l != 1 {
+			t.Errorf("want 1, but got %v\n", l)
+		}
+
+		// only gauge value is returned from the first scrape
+		wantG1 := &metricspb.Metric{
+			MetricDescriptor: &metricspb.MetricDescriptor{
+				Name:        "go_threads",
+				Description: "Number of OS threads created",
+				Type:        metricspb.MetricDescriptor_GAUGE_DOUBLE,
+				LabelKeys:   []*metricspb.LabelKey{}},
+			Timeseries: []*metricspb.TimeSeries{
+				{
+					LabelValues: []*metricspb.LabelValue{},
+					Points: []*metricspb.Point{
+						{Value: &metricspb.Point_DoubleValue{DoubleValue: 18.0}},
+					},
+				},
+			},
+		}
+		gotG1 := m1.Metrics[0]
+		ts1 := gotG1.Timeseries[0].Points[0].Timestamp
+		// set this timestamp to wantG1
+		wantG1.Timeseries[0].Points[0].Timestamp = ts1
+		doCompare(t, wantG1, gotG1)
+
+		// verify the 2nd metricData
+		m2 := mds[1]
+		ts2 := m2.Metrics[0].Timeseries[0].Points[0].Timestamp
+
+		want2 := &data.MetricsData{
+			Node: &commonpb.Node{
+				Identifier: &commonpb.ProcessIdentifier{
+					HostName: host,
+				},
+				ServiceInfo: &commonpb.ServiceInfo{
+					Name: "target3",
+				},
+				Attributes: map[string]string{
+					"scheme": "http",
+					"port":   port,
+				},
+			},
+			Metrics: []*metricspb.Metric{
+				{
+					MetricDescriptor: &metricspb.MetricDescriptor{
+						Name:        "go_threads",
+						Description: "Number of OS threads created",
+						Type:        metricspb.MetricDescriptor_GAUGE_DOUBLE,
+						LabelKeys:   []*metricspb.LabelKey{}},
+					Timeseries: []*metricspb.TimeSeries{
+						{
+							LabelValues: []*metricspb.LabelValue{},
+							Points: []*metricspb.Point{
+								{Timestamp: ts2, Value: &metricspb.Point_DoubleValue{DoubleValue: 16.0}},
+							},
+						},
+					},
+				},
+				{
+					MetricDescriptor: &metricspb.MetricDescriptor{
+						Name:        "http_request_duration_seconds",
+						Description: "A histogram of the request duration.",
+						Unit:        "s",
+						Type:        metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
+						LabelKeys:   []*metricspb.LabelKey{}},
+					Timeseries: []*metricspb.TimeSeries{
+						{
+							StartTimestamp: ts1,
+							LabelValues:    []*metricspb.LabelValue{},
+							Points: []*metricspb.Point{
+								{
+									Timestamp: ts2,
+									Value: &metricspb.Point_DistributionValue{
+										DistributionValue: &metricspb.DistributionValue{
+											BucketOptions: &metricspb.DistributionValue_BucketOptions{
+												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+														Bounds: []float64{0.2, 0.5, 1},
+													},
+												},
+											},
+											Count: 1000,
+											Sum:   100,
+											Buckets: []*metricspb.DistributionValue_Bucket{
+												{Count: 1000},
+												{Count: 0},
+												{Count: 0},
+												{Count: 0},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					MetricDescriptor: &metricspb.MetricDescriptor{
+						Name:        "rpc_duration_seconds",
+						Description: "A summary of the RPC duration in seconds.",
+						Unit:        "s",
+						Type:        metricspb.MetricDescriptor_SUMMARY,
+						LabelKeys:   []*metricspb.LabelKey{{Key: "foo"}}},
+					Timeseries: []*metricspb.TimeSeries{
+						{
+							StartTimestamp: ts1,
+							LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
+							Points: []*metricspb.Point{
+								{
+									Timestamp: ts2, Value: &metricspb.Point_SummaryValue{
+										SummaryValue: &metricspb.SummaryValue{
+											Sum:   &wrappers.DoubleValue{Value: 100.0},
+											Count: &wrappers.Int64Value{Value: 50},
+											Snapshot: &metricspb.SummaryValue_Snapshot{
+												PercentileValues: []*metricspb.SummaryValue_Snapshot_ValueAtPercentile{
+													{Percentile: 1.0, Value: 32},
+													{Percentile: 5.0, Value: 35},
+													{Percentile: 50.0, Value: 47},
+													{Percentile: 90.0, Value: 70},
+													{Percentile: 99.0, Value: 77},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		doCompare(t, want2, &m2)
 	})
 }
 
