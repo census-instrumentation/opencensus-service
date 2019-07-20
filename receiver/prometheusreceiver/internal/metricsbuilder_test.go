@@ -102,7 +102,7 @@ func runBuilderTests(t *testing.T, tests []buildTestData) {
 			mc := newMockMetadataCache(testMetadata)
 			st := startTs
 			for i, page := range tt.inputs {
-				b := newMetricBuilder(testNode, mc, testLogger)
+				b := newMetricBuilder(mc, testLogger)
 				for _, pt := range page.pts {
 					// set ts for testing
 					pt.t = st
@@ -110,17 +110,16 @@ func runBuilderTests(t *testing.T, tests []buildTestData) {
 						t.Error("unexpected error adding data", err)
 					}
 				}
-				metric, err := b.Build()
+				metrics, err := b.Build()
 				if err != nil {
 					t.Error("unexpected error on build", err)
 				}
-				if !reflect.DeepEqual(metric.Metrics, tt.wants[i]) {
+				if !reflect.DeepEqual(metrics, tt.wants[i]) {
 					want := string(exportertest.ToJSON(tt.wants[i]))
-					got := string(exportertest.ToJSON(metric.Metrics))
+					got := string(exportertest.ToJSON(metrics))
 					diff := cmp.Diff(want, got)
 					t.Errorf("metricBuilder.Build() mismatch (-want[%d] +got[%d]):\n%v\n want=%v \n got=%v", i, i, diff, want, got)
 				}
-				mc.UpdateLastScrapeTime(st)
 				st += interval
 			}
 		})
@@ -130,40 +129,15 @@ func runBuilderTests(t *testing.T, tests []buildTestData) {
 func Test_metricBuilder_counters(t *testing.T) {
 	tests := []buildTestData{
 		{
-			name: "empty-metrics-for-first-time",
-			inputs: []*testScrapedPage{
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 100, "foo", "bar"),
-						createDataPoint("counter_test", 200, "foo", "other"),
-					},
-				},
-			},
-			wants: [][]*metricspb.Metric{
-				{},
-			},
-		},
-		{
-			name: "return-deltas-from-first-value",
+			name: "single-item",
 			inputs: []*testScrapedPage{
 				{
 					pts: []*testDataPoint{
 						createDataPoint("counter_test", 100, "foo", "bar"),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 150, "foo", "bar"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 175, "foo", "bar"),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -175,24 +149,7 @@ func Test_metricBuilder_counters(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DoubleValue{DoubleValue: 50.0}},
-								},
-							},
-						},
-					},
-				},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "counter_test",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
-							LabelKeys: []*metricspb.LabelKey{{Key: "foo"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval*2), Value: &metricspb.Point_DoubleValue{DoubleValue: 75.0}},
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DoubleValue{DoubleValue: 100.0}},
 								},
 							},
 						},
@@ -201,86 +158,16 @@ func Test_metricBuilder_counters(t *testing.T) {
 			},
 		},
 		{
-			name: "value-resets-so-is-timestamp",
+			name: "two-items",
 			inputs: []*testScrapedPage{
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 100, "foo", "bar"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 150, "foo", "bar"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 5, "foo", "bar"),
-					},
-				},
-			},
-			wants: [][]*metricspb.Metric{
-				{},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "counter_test",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
-							LabelKeys: []*metricspb.LabelKey{{Key: "foo"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DoubleValue{DoubleValue: 50.0}},
-								},
-							},
-						},
-					},
-				},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "counter_test",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
-							LabelKeys: []*metricspb.LabelKey{{Key: "foo"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs + interval),
-								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval*2), Value: &metricspb.Point_DoubleValue{DoubleValue: 5.0}},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "new-metrics-in-between-scrapes",
-			inputs: []*testScrapedPage{
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 100, "foo", "bar"),
-					},
-				},
 				{
 					pts: []*testDataPoint{
 						createDataPoint("counter_test", 150, "foo", "bar"),
 						createDataPoint("counter_test", 25, "foo", "other"),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 175, "foo", "bar"),
-						createDataPoint("counter_test", 50, "foo", "other"),
-						createDataPoint("counter_test2", 10, "bar", "foo"),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -292,19 +179,33 @@ func Test_metricBuilder_counters(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DoubleValue{DoubleValue: 50.0}},
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DoubleValue{DoubleValue: 150.0}},
 								},
 							},
 							{
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "other", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DoubleValue{DoubleValue: 25.0}},
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DoubleValue{DoubleValue: 25.0}},
 								},
 							},
 						},
 					},
 				},
+			},
+		},
+		{
+			name: "two-metrics",
+			inputs: []*testScrapedPage{
+				{
+					pts: []*testDataPoint{
+						createDataPoint("counter_test", 150, "foo", "bar"),
+						createDataPoint("counter_test", 25, "foo", "other"),
+						createDataPoint("counter_test2", 100, "foo", "bar"),
+					},
+				},
+			},
+			wants: [][]*metricspb.Metric{
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -316,14 +217,14 @@ func Test_metricBuilder_counters(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval*2), Value: &metricspb.Point_DoubleValue{DoubleValue: 75.0}},
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DoubleValue{DoubleValue: 150.0}},
 								},
 							},
 							{
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "other", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval*2), Value: &metricspb.Point_DoubleValue{DoubleValue: 50.0}},
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DoubleValue{DoubleValue: 25.0}},
 								},
 							},
 						},
@@ -332,108 +233,13 @@ func Test_metricBuilder_counters(t *testing.T) {
 						MetricDescriptor: &metricspb.MetricDescriptor{
 							Name:      "counter_test2",
 							Type:      metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
-							LabelKeys: []*metricspb.LabelKey{{Key: "bar"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs + interval),
-								LabelValues:    []*metricspb.LabelValue{{Value: "foo", HasValue: true}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval*2), Value: &metricspb.Point_DoubleValue{DoubleValue: 10.0}},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "new-metrics-from-same-group-with-new-tag",
-			inputs: []*testScrapedPage{
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 100, "foo", "bar"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 150, "foo", "bar"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 55, "akey", "avalue"),
-						createDataPoint("counter_test", 175, "foo", "bar"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("counter_test", 80, "akey", "avalue"),
-						createDataPoint("counter_test", 200, "foo", "bar"),
-					},
-				},
-			},
-			wants: [][]*metricspb.Metric{
-				{},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "counter_test",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
 							LabelKeys: []*metricspb.LabelKey{{Key: "foo"}}},
 						Timeseries: []*metricspb.TimeSeries{
 							{
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DoubleValue{DoubleValue: 50.0}},
-								},
-							},
-						},
-					},
-				},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "counter_test",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
-							LabelKeys: []*metricspb.LabelKey{{Key: "akey"}, {Key: "foo"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs + interval),
-								LabelValues:    []*metricspb.LabelValue{{Value: "avalue", HasValue: true}, {Value: "", HasValue: false}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval*2), Value: &metricspb.Point_DoubleValue{DoubleValue: 55.0}},
-								},
-							},
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "bar", HasValue: true}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval*2), Value: &metricspb.Point_DoubleValue{DoubleValue: 75.0}},
-								},
-							},
-						},
-					},
-				},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "counter_test",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
-							LabelKeys: []*metricspb.LabelKey{{Key: "akey"}, {Key: "foo"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs + interval),
-								LabelValues:    []*metricspb.LabelValue{{Value: "avalue", HasValue: true}, {Value: "", HasValue: false}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval*3), Value: &metricspb.Point_DoubleValue{DoubleValue: 80.0}},
-								},
-							},
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "bar", HasValue: true}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval*3), Value: &metricspb.Point_DoubleValue{DoubleValue: 100.0}},
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DoubleValue{DoubleValue: 100.0}},
 								},
 							},
 						},
@@ -449,14 +255,8 @@ func Test_metricBuilder_counters(t *testing.T) {
 						createDataPoint("poor_name_count", 100, "foo", "bar"),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("poor_name_count", 150, "foo", "bar"),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -468,7 +268,7 @@ func Test_metricBuilder_counters(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DoubleValue{DoubleValue: 50.0}},
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DoubleValue{DoubleValue: 100.0}},
 								},
 							},
 						},
@@ -746,7 +546,7 @@ func Test_metricBuilder_untype(t *testing.T) {
 func Test_metricBuilder_histogram(t *testing.T) {
 	tests := []buildTestData{
 		{
-			name: "empty-metrics-for-first-time",
+			name: "single item",
 			inputs: []*testScrapedPage{
 				{
 					pts: []*testDataPoint{
@@ -759,42 +559,6 @@ func Test_metricBuilder_histogram(t *testing.T) {
 				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
-			},
-		},
-		{
-			name: "return-deltas-from-first-value",
-			inputs: []*testScrapedPage{
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 1, "foo", "bar", "le", "10"),
-						createDataPoint("hist_test", 2, "foo", "bar", "le", "20"),
-						createDataPoint("hist_test", 10, "foo", "bar", "le", "+inf"),
-						createDataPoint("hist_test_sum", 99, "foo", "bar"),
-						createDataPoint("hist_test_count", 10, "foo", "bar"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 2, "foo", "bar", "le", "10"),
-						createDataPoint("hist_test", 3, "foo", "bar", "le", "20"),
-						createDataPoint("hist_test", 11, "foo", "bar", "le", "+inf"),
-						createDataPoint("hist_test_sum", 100, "foo", "bar"),
-						createDataPoint("hist_test_count", 11, "foo", "bar"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 2, "foo", "bar", "le", "10"),
-						createDataPoint("hist_test", 4, "foo", "bar", "le", "20"),
-						createDataPoint("hist_test", 12, "foo", "bar", "le", "+inf"),
-						createDataPoint("hist_test_sum", 110, "foo", "bar"),
-						createDataPoint("hist_test_count", 12, "foo", "bar"),
-					},
-				},
-			},
-			wants: [][]*metricspb.Metric{
-				{},
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -806,7 +570,7 @@ func Test_metricBuilder_histogram(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DistributionValue{
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DistributionValue{
 										DistributionValue: &metricspb.DistributionValue{
 											BucketOptions: &metricspb.DistributionValue_BucketOptions{
 												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
@@ -815,38 +579,9 @@ func Test_metricBuilder_histogram(t *testing.T) {
 													},
 												},
 											},
-											Count:   1,
-											Sum:     1.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 0}, {Count: 0}},
-										}}},
-								},
-							},
-						},
-					},
-				},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "hist_test",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
-							LabelKeys: []*metricspb.LabelKey{{Key: "foo"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + 2*interval), Value: &metricspb.Point_DistributionValue{
-										DistributionValue: &metricspb.DistributionValue{
-											BucketOptions: &metricspb.DistributionValue_BucketOptions{
-												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
-													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
-														Bounds: []float64{10, 20},
-													},
-												},
-											},
-											Count:   2,
-											Sum:     11.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 1}, {Count: 0}},
+											Count:   10,
+											Sum:     99.0,
+											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 1}, {Count: 8}},
 										}}},
 								},
 							},
@@ -872,37 +607,8 @@ func Test_metricBuilder_histogram(t *testing.T) {
 						createDataPoint("hist_test_count", 3, "key2", "v2"),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 2, "foo", "bar", "le", "10"),
-						createDataPoint("hist_test", 3, "foo", "bar", "le", "20"),
-						createDataPoint("hist_test", 11, "foo", "bar", "le", "+inf"),
-						createDataPoint("hist_test_sum", 100, "foo", "bar"),
-						createDataPoint("hist_test_count", 11, "foo", "bar"),
-						createDataPoint("hist_test", 1, "key2", "v2", "le", "10"),
-						createDataPoint("hist_test", 2, "key2", "v2", "le", "20"),
-						createDataPoint("hist_test", 4, "key2", "v2", "le", "+inf"),
-						createDataPoint("hist_test_sum", 80, "key2", "v2"),
-						createDataPoint("hist_test_count", 4, "key2", "v2"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 2, "foo", "bar", "le", "10"),
-						createDataPoint("hist_test", 4, "foo", "bar", "le", "20"),
-						createDataPoint("hist_test", 12, "foo", "bar", "le", "+inf"),
-						createDataPoint("hist_test_sum", 110, "foo", "bar"),
-						createDataPoint("hist_test_count", 12, "foo", "bar"),
-						createDataPoint("hist_test", 1, "key2", "v2", "le", "10"),
-						createDataPoint("hist_test", 2, "key2", "v2", "le", "20"),
-						createDataPoint("hist_test", 4, "key2", "v2", "le", "+inf"),
-						createDataPoint("hist_test_sum", 80, "key2", "v2"),
-						createDataPoint("hist_test_count", 4, "key2", "v2"),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -914,7 +620,7 @@ func Test_metricBuilder_histogram(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}, {Value: "", HasValue: false}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DistributionValue{
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DistributionValue{
 										DistributionValue: &metricspb.DistributionValue{
 											BucketOptions: &metricspb.DistributionValue_BucketOptions{
 												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
@@ -923,9 +629,9 @@ func Test_metricBuilder_histogram(t *testing.T) {
 													},
 												},
 											},
-											Count:   1,
-											Sum:     1.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 0}, {Count: 0}},
+											Count:   10,
+											Sum:     99.0,
+											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 1}, {Count: 8}},
 										}}},
 								},
 							},
@@ -933,7 +639,7 @@ func Test_metricBuilder_histogram(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "v2", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DistributionValue{
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DistributionValue{
 										DistributionValue: &metricspb.DistributionValue{
 											BucketOptions: &metricspb.DistributionValue_BucketOptions{
 												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
@@ -942,57 +648,9 @@ func Test_metricBuilder_histogram(t *testing.T) {
 													},
 												},
 											},
-											Count:   1,
-											Sum:     30.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 0}, {Count: 0}, {Count: 1}},
-										}}},
-								},
-							},
-						},
-					},
-				},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "hist_test",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
-							LabelKeys: []*metricspb.LabelKey{{Key: "foo"}, {Key: "key2"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}, {Value: "", HasValue: false}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + 2*interval), Value: &metricspb.Point_DistributionValue{
-										DistributionValue: &metricspb.DistributionValue{
-											BucketOptions: &metricspb.DistributionValue_BucketOptions{
-												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
-													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
-														Bounds: []float64{10, 20},
-													},
-												},
-											},
-											Count:   2,
-											Sum:     11.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 1}, {Count: 0}},
-										}}},
-								},
-							},
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "v2", HasValue: true}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + 2*interval), Value: &metricspb.Point_DistributionValue{
-										DistributionValue: &metricspb.DistributionValue{
-											BucketOptions: &metricspb.DistributionValue_BucketOptions{
-												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
-													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
-														Bounds: []float64{10, 20},
-													},
-												},
-											},
-											Count:   1,
-											Sum:     30.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 0}, {Count: 0}, {Count: 1}},
+											Count:   3,
+											Sum:     50.0,
+											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 1}, {Count: 1}},
 										}}},
 								},
 							},
@@ -1023,47 +681,8 @@ func Test_metricBuilder_histogram(t *testing.T) {
 						createDataPoint("hist_test2_count", 3),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 2, "foo", "bar", "le", "10"),
-						createDataPoint("hist_test", 3, "foo", "bar", "le", "20"),
-						createDataPoint("hist_test", 11, "foo", "bar", "le", "+inf"),
-						createDataPoint("hist_test_sum", 100, "foo", "bar"),
-						createDataPoint("hist_test_count", 11, "foo", "bar"),
-						createDataPoint("hist_test", 1, "key2", "v2", "le", "10"),
-						createDataPoint("hist_test", 2, "key2", "v2", "le", "20"),
-						createDataPoint("hist_test", 4, "key2", "v2", "le", "+inf"),
-						createDataPoint("hist_test_sum", 80, "key2", "v2"),
-						createDataPoint("hist_test_count", 4, "key2", "v2"),
-						createDataPoint("hist_test2", 3, "le", "10"),
-						createDataPoint("hist_test2", 4, "le", "20"),
-						createDataPoint("hist_test2", 5, "le", "+inf"),
-						createDataPoint("hist_test2_sum", 55),
-						createDataPoint("hist_test2_count", 5),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 2, "foo", "bar", "le", "10"),
-						createDataPoint("hist_test", 4, "foo", "bar", "le", "20"),
-						createDataPoint("hist_test", 12, "foo", "bar", "le", "+inf"),
-						createDataPoint("hist_test_sum", 110, "foo", "bar"),
-						createDataPoint("hist_test_count", 12, "foo", "bar"),
-						createDataPoint("hist_test", 1, "key2", "v2", "le", "10"),
-						createDataPoint("hist_test", 2, "key2", "v2", "le", "20"),
-						createDataPoint("hist_test", 4, "key2", "v2", "le", "+inf"),
-						createDataPoint("hist_test_sum", 80, "key2", "v2"),
-						createDataPoint("hist_test_count", 4, "key2", "v2"),
-						createDataPoint("hist_test2", 3, "le", "10"),
-						createDataPoint("hist_test2", 4, "le", "20"),
-						createDataPoint("hist_test2", 6, "le", "+inf"),
-						createDataPoint("hist_test2_sum", 100),
-						createDataPoint("hist_test2_count", 6),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -1075,7 +694,7 @@ func Test_metricBuilder_histogram(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}, {Value: "", HasValue: false}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DistributionValue{
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DistributionValue{
 										DistributionValue: &metricspb.DistributionValue{
 											BucketOptions: &metricspb.DistributionValue_BucketOptions{
 												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
@@ -1084,9 +703,9 @@ func Test_metricBuilder_histogram(t *testing.T) {
 													},
 												},
 											},
-											Count:   1,
-											Sum:     1.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 0}, {Count: 0}},
+											Count:   10,
+											Sum:     99.0,
+											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 1}, {Count: 8}},
 										}}},
 								},
 							},
@@ -1094,109 +713,7 @@ func Test_metricBuilder_histogram(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "v2", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DistributionValue{
-										DistributionValue: &metricspb.DistributionValue{
-											BucketOptions: &metricspb.DistributionValue_BucketOptions{
-												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
-													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
-														Bounds: []float64{10, 20},
-													},
-												},
-											},
-											Count:   1,
-											Sum:     30.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 0}, {Count: 0}, {Count: 1}},
-										}}},
-								},
-							},
-						},
-					},
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "hist_test2",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
-							LabelKeys: []*metricspb.LabelKey{}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DistributionValue{
-										DistributionValue: &metricspb.DistributionValue{
-											BucketOptions: &metricspb.DistributionValue_BucketOptions{
-												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
-													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
-														Bounds: []float64{10, 20},
-													},
-												},
-											},
-											Count:   2,
-											Sum:     5.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 2}, {Count: 0}, {Count: 0}},
-										}}},
-								},
-							},
-						},
-					},
-				},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "hist_test",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
-							LabelKeys: []*metricspb.LabelKey{{Key: "foo"}, {Key: "key2"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}, {Value: "", HasValue: false}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + 2*interval), Value: &metricspb.Point_DistributionValue{
-										DistributionValue: &metricspb.DistributionValue{
-											BucketOptions: &metricspb.DistributionValue_BucketOptions{
-												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
-													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
-														Bounds: []float64{10, 20},
-													},
-												},
-											},
-											Count:   2,
-											Sum:     11.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 1}, {Count: 0}},
-										}}},
-								},
-							},
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "", HasValue: false}, {Value: "v2", HasValue: true}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + 2*interval), Value: &metricspb.Point_DistributionValue{
-										DistributionValue: &metricspb.DistributionValue{
-											BucketOptions: &metricspb.DistributionValue_BucketOptions{
-												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
-													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
-														Bounds: []float64{10, 20},
-													},
-												},
-											},
-											Count:   1,
-											Sum:     30.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 0}, {Count: 0}, {Count: 1}},
-										}}},
-								},
-							},
-						},
-					},
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "hist_test2",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
-							LabelKeys: []*metricspb.LabelKey{}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + 2*interval), Value: &metricspb.Point_DistributionValue{
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DistributionValue{
 										DistributionValue: &metricspb.DistributionValue{
 											BucketOptions: &metricspb.DistributionValue_BucketOptions{
 												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
@@ -1206,8 +723,35 @@ func Test_metricBuilder_histogram(t *testing.T) {
 												},
 											},
 											Count:   3,
-											Sum:     50,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 2}, {Count: 0}, {Count: 1}},
+											Sum:     50.0,
+											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 1}, {Count: 1}},
+										}}},
+								},
+							},
+						},
+					},
+					{
+						MetricDescriptor: &metricspb.MetricDescriptor{
+							Name:      "hist_test2",
+							Type:      metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
+							LabelKeys: []*metricspb.LabelKey{}},
+						Timeseries: []*metricspb.TimeSeries{
+							{
+								StartTimestamp: timestampFromMs(startTs),
+								LabelValues:    []*metricspb.LabelValue{},
+								Points: []*metricspb.Point{
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DistributionValue{
+										DistributionValue: &metricspb.DistributionValue{
+											BucketOptions: &metricspb.DistributionValue_BucketOptions{
+												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
+													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
+														Bounds: []float64{10, 20},
+													},
+												},
+											},
+											Count:   3,
+											Sum:     50.0,
+											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 1}, {Count: 1}},
 										}}},
 								},
 							},
@@ -1228,27 +772,8 @@ func Test_metricBuilder_histogram(t *testing.T) {
 						createDataPoint("hist_test_count", 10, "foo", "bar"),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 2, "foo", "bar", "le", "10"),
-						createDataPoint("hist_test", 11, "foo", "bar", "le", "+inf"),
-						createDataPoint("hist_test", 3, "foo", "bar", "le", "20"),
-						createDataPoint("hist_test_count", 11, "foo", "bar"),
-						createDataPoint("hist_test_sum", 100, "foo", "bar"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test_count", 12, "foo", "bar"),
-						createDataPoint("hist_test", 12, "foo", "bar", "le", "+inf"),
-						createDataPoint("hist_test_sum", 110, "foo", "bar"),
-						createDataPoint("hist_test", 4, "foo", "bar", "le", "20"),
-						createDataPoint("hist_test", 2, "foo", "bar", "le", "10"),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -1260,7 +785,7 @@ func Test_metricBuilder_histogram(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DistributionValue{
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DistributionValue{
 										DistributionValue: &metricspb.DistributionValue{
 											BucketOptions: &metricspb.DistributionValue_BucketOptions{
 												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
@@ -1269,38 +794,9 @@ func Test_metricBuilder_histogram(t *testing.T) {
 													},
 												},
 											},
-											Count:   1,
-											Sum:     1.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 0}, {Count: 0}},
-										}}},
-								},
-							},
-						},
-					},
-				},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "hist_test",
-							Type:      metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION,
-							LabelKeys: []*metricspb.LabelKey{{Key: "foo"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + 2*interval), Value: &metricspb.Point_DistributionValue{
-										DistributionValue: &metricspb.DistributionValue{
-											BucketOptions: &metricspb.DistributionValue_BucketOptions{
-												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
-													Explicit: &metricspb.DistributionValue_BucketOptions_Explicit{
-														Bounds: []float64{10, 20},
-													},
-												},
-											},
-											Count:   2,
-											Sum:     11.0,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 1}, {Count: 0}},
+											Count:   10,
+											Sum:     99.0,
+											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}, {Count: 1}, {Count: 8}},
 										}}},
 								},
 							},
@@ -1320,16 +816,8 @@ func Test_metricBuilder_histogram(t *testing.T) {
 						createDataPoint("hist_test_sum", 100),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 4, "le", "+inf"),
-						createDataPoint("hist_test_count", 4),
-						createDataPoint("hist_test_sum", 150),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -1341,7 +829,7 @@ func Test_metricBuilder_histogram(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DistributionValue{
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DistributionValue{
 										DistributionValue: &metricspb.DistributionValue{
 											BucketOptions: &metricspb.DistributionValue_BucketOptions{
 												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
@@ -1350,9 +838,9 @@ func Test_metricBuilder_histogram(t *testing.T) {
 													},
 												},
 											},
-											Count:   1,
-											Sum:     50,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}},
+											Count:   3,
+											Sum:     100,
+											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 3}},
 										}}},
 								},
 							},
@@ -1372,16 +860,8 @@ func Test_metricBuilder_histogram(t *testing.T) {
 						createDataPoint("hist_test_sum", 100),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 4, "le", "20"),
-						createDataPoint("hist_test_count", 4),
-						createDataPoint("hist_test_sum", 150),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -1393,7 +873,7 @@ func Test_metricBuilder_histogram(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_DistributionValue{
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_DistributionValue{
 										DistributionValue: &metricspb.DistributionValue{
 											BucketOptions: &metricspb.DistributionValue_BucketOptions{
 												Type: &metricspb.DistributionValue_BucketOptions_Explicit_{
@@ -1402,9 +882,9 @@ func Test_metricBuilder_histogram(t *testing.T) {
 													},
 												},
 											},
-											Count:   1,
-											Sum:     50,
-											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 1}},
+											Count:   3,
+											Sum:     100,
+											Buckets: []*metricspb.DistributionValue_Bucket{{Count: 3}},
 										}}},
 								},
 							},
@@ -1422,15 +902,8 @@ func Test_metricBuilder_histogram(t *testing.T) {
 						createDataPoint("hist_test_count", 10),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test_count", 11),
-						createDataPoint("hist_test_sum", 100),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{},
 			},
 		},
@@ -1445,17 +918,8 @@ func Test_metricBuilder_histogram(t *testing.T) {
 						createDataPoint("hist_test_count", 3),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 1, "foo", "bar", "le", "10"),
-						createDataPoint("hist_test", 2, "foo", "bar", "le", "20"),
-						createDataPoint("hist_test", 4, "foo", "bar", "le", "+inf"),
-						createDataPoint("hist_test_count", 4),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{},
 			},
 		},
@@ -1470,17 +934,8 @@ func Test_metricBuilder_histogram(t *testing.T) {
 						createDataPoint("hist_test_sum", 99),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("hist_test", 1, "foo", "bar", "le", "10"),
-						createDataPoint("hist_test", 2, "foo", "bar", "le", "20"),
-						createDataPoint("hist_test", 4, "foo", "bar", "le", "+inf"),
-						createDataPoint("hist_test_sum", 100),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{},
 			},
 		},
@@ -1492,23 +947,6 @@ func Test_metricBuilder_histogram(t *testing.T) {
 func Test_metricBuilder_summary(t *testing.T) {
 	tests := []buildTestData{
 		{
-			name: "empty-metrics-for-first-time",
-			inputs: []*testScrapedPage{
-				{
-					pts: []*testDataPoint{
-						createDataPoint("summary_test", 1, "foo", "bar", "quantile", "0.5"),
-						createDataPoint("summary_test", 2, "foo", "bar", "quantile", "0.75"),
-						createDataPoint("summary_test", 5, "foo", "bar", "quantile", "1"),
-						createDataPoint("summary_test_sum", 100, "foo", "bar"),
-						createDataPoint("summary_test_count", 500, "foo", "bar"),
-					},
-				},
-			},
-			wants: [][]*metricspb.Metric{
-				{},
-			},
-		},
-		{
 			name: "no-sum-and-count",
 			inputs: []*testScrapedPage{
 				{
@@ -1516,14 +954,8 @@ func Test_metricBuilder_summary(t *testing.T) {
 						createDataPoint("summary_test", 5, "foo", "bar", "quantile", "1"),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("summary_test", 5, "foo", "bar", "quantile", "1"),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{},
 			},
 		},
@@ -1536,21 +968,8 @@ func Test_metricBuilder_summary(t *testing.T) {
 						createDataPoint("summary_test_count", 500, "foo", "bar"),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("summary_test_sum", 100, "foo", "bar"),
-						createDataPoint("summary_test_count", 500, "foo", "bar"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("summary_test_sum", 150, "foo", "bar"),
-						createDataPoint("summary_test_count", 520, "foo", "bar"),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -1563,34 +982,10 @@ func Test_metricBuilder_summary(t *testing.T) {
 								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
 								Points: []*metricspb.Point{
 									{
-										Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_SummaryValue{
+										Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_SummaryValue{
 											SummaryValue: &metricspb.SummaryValue{
-												Sum:   &wrappers.DoubleValue{Value: 0.0},
-												Count: &wrappers.Int64Value{Value: 0},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "summary_test",
-							Type:      metricspb.MetricDescriptor_SUMMARY,
-							LabelKeys: []*metricspb.LabelKey{{Key: "foo"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
-								Points: []*metricspb.Point{
-									{
-										Timestamp: timestampFromMs(startTs + 2*interval), Value: &metricspb.Point_SummaryValue{
-											SummaryValue: &metricspb.SummaryValue{
-												Sum:   &wrappers.DoubleValue{Value: 50.0},
-												Count: &wrappers.Int64Value{Value: 20},
+												Sum:   &wrappers.DoubleValue{Value: 100.0},
+												Count: &wrappers.Int64Value{Value: 500},
 											},
 										},
 									},
@@ -1602,7 +997,7 @@ func Test_metricBuilder_summary(t *testing.T) {
 			},
 		},
 		{
-			name: "return-deltas-for-count-sum-from-first-value",
+			name: "regular-summary",
 			inputs: []*testScrapedPage{
 				{
 					pts: []*testDataPoint{
@@ -1613,27 +1008,8 @@ func Test_metricBuilder_summary(t *testing.T) {
 						createDataPoint("summary_test_count", 500, "foo", "bar"),
 					},
 				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("summary_test", 1, "foo", "bar", "quantile", "0.5"),
-						createDataPoint("summary_test", 2, "foo", "bar", "quantile", "0.75"),
-						createDataPoint("summary_test", 5, "foo", "bar", "quantile", "1"),
-						createDataPoint("summary_test_sum", 100, "foo", "bar"),
-						createDataPoint("summary_test_count", 500, "foo", "bar"),
-					},
-				},
-				{
-					pts: []*testDataPoint{
-						createDataPoint("summary_test", 1, "foo", "bar", "quantile", "0.5"),
-						createDataPoint("summary_test", 2, "foo", "bar", "quantile", "0.75"),
-						createDataPoint("summary_test", 5.5, "foo", "bar", "quantile", "1"),
-						createDataPoint("summary_test_sum", 150, "foo", "bar"),
-						createDataPoint("summary_test_count", 520, "foo", "bar"),
-					},
-				},
 			},
 			wants: [][]*metricspb.Metric{
-				{},
 				{
 					{
 						MetricDescriptor: &metricspb.MetricDescriptor{
@@ -1645,10 +1021,10 @@ func Test_metricBuilder_summary(t *testing.T) {
 								StartTimestamp: timestampFromMs(startTs),
 								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
 								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + interval), Value: &metricspb.Point_SummaryValue{
+									{Timestamp: timestampFromMs(startTs), Value: &metricspb.Point_SummaryValue{
 										SummaryValue: &metricspb.SummaryValue{
-											Sum:   &wrappers.DoubleValue{Value: 0.0},
-											Count: &wrappers.Int64Value{Value: 0},
+											Sum:   &wrappers.DoubleValue{Value: 100.0},
+											Count: &wrappers.Int64Value{Value: 500},
 											Snapshot: &metricspb.SummaryValue_Snapshot{
 												PercentileValues: []*metricspb.SummaryValue_Snapshot_ValueAtPercentile{
 													{Percentile: 50.0, Value: 1},
@@ -1661,79 +1037,11 @@ func Test_metricBuilder_summary(t *testing.T) {
 						},
 					},
 				},
-				{
-					{
-						MetricDescriptor: &metricspb.MetricDescriptor{
-							Name:      "summary_test",
-							Type:      metricspb.MetricDescriptor_SUMMARY,
-							LabelKeys: []*metricspb.LabelKey{{Key: "foo"}}},
-						Timeseries: []*metricspb.TimeSeries{
-							{
-								StartTimestamp: timestampFromMs(startTs),
-								LabelValues:    []*metricspb.LabelValue{{Value: "bar", HasValue: true}},
-								Points: []*metricspb.Point{
-									{Timestamp: timestampFromMs(startTs + 2*interval), Value: &metricspb.Point_SummaryValue{
-										SummaryValue: &metricspb.SummaryValue{
-											Sum:   &wrappers.DoubleValue{Value: 50.0},
-											Count: &wrappers.Int64Value{Value: 20},
-											Snapshot: &metricspb.SummaryValue_Snapshot{
-												PercentileValues: []*metricspb.SummaryValue_Snapshot_ValueAtPercentile{
-													{Percentile: 50.0, Value: 1},
-													{Percentile: 75.0, Value: 2},
-													{Percentile: 100.0, Value: 5.5},
-												},
-											}}}},
-								},
-							},
-						},
-					},
-				},
 			},
 		},
 	}
 
 	runBuilderTests(t, tests)
-}
-
-func Test_metricBuilder_strangeTimestamp(t *testing.T) {
-	// edge case, simulate cumulative metrics like counter which uses timestamp from original system with value resets
-	// during different scrape runs, however, the metric timestamp is not consistent with lastScrape timestamp
-	mc := newMockMetadataCache(testMetadata)
-	systemTs := startTs + 5*interval
-	b := newMetricBuilder(testNode, mc, testLogger)
-	lbs := createLabels("counter_test")
-	// round 1
-	_ = b.AddDataPoint(lbs, startTs, 100)
-	_, _ = b.Build()
-	mc.lastScrapeTs = systemTs
-
-	// round 2
-	_ = b.AddDataPoint(lbs, startTs+interval, 50)
-	md, _ := b.Build()
-	mc.lastScrapeTs += interval
-	if len(md.Metrics) != 0 {
-		t.Errorf("expect to metrics to be empty, but got %v", string(exportertest.ToJSON(md)))
-	}
-
-	// round 3
-	_ = b.AddDataPoint(lbs, startTs+interval, 75)
-	md, _ = b.Build()
-	mc.lastScrapeTs += interval
-
-	// check
-	if len(md.Metrics) != 1 {
-		t.Error("exepct 1 metric to be return")
-	}
-
-	pv := md.Metrics[0].Timeseries[0].Points[0].Value.(*metricspb.Point_DoubleValue)
-	if pv.DoubleValue != float64(25) {
-		t.Errorf("expect value from the 3rd run to be 25, but got %v", pv.DoubleValue)
-	}
-
-	if !reflect.DeepEqual(md.Metrics[0].Timeseries[0].StartTimestamp, timestampFromMs(startTs+interval)) {
-		t.Errorf("timestamp mismatch got %v, want %v", md.Metrics[0].Timeseries[0].StartTimestamp, timestampFromMs(startTs+interval))
-	}
-
 }
 
 func Test_metricBuilder_skipped(t *testing.T) {
@@ -1767,7 +1075,7 @@ func Test_metricBuilder_skipped(t *testing.T) {
 func Test_metricBuilder_baddata(t *testing.T) {
 	t.Run("empty-metric-name", func(t *testing.T) {
 		mc := newMockMetadataCache(testMetadata)
-		b := newMetricBuilder(testNode, mc, testLogger)
+		b := newMetricBuilder(mc, testLogger)
 		if err := b.AddDataPoint(labels.FromStrings("a", "b"), startTs, 123); err != errMetricNameNotFound {
 			t.Error("expecting errMetricNameNotFound error, but get nil")
 			return
@@ -1780,22 +1088,16 @@ func Test_metricBuilder_baddata(t *testing.T) {
 
 	t.Run("histogram-datapoint-no-bucket-label", func(t *testing.T) {
 		mc := newMockMetadataCache(testMetadata)
-		b := newMetricBuilder(testNode, mc, testLogger)
-		if err := b.AddDataPoint(createLabels("hist_test", "k", "v"), startTs, 123); err != nil {
-			t.Errorf("expecting nil for the first time to trigger cache, but get error %v", err)
-		}
-		if err := b.AddDataPoint(createLabels("hist_test", "k", "v"), startTs+interval, 123); err != errEmptyBoundaryLabel {
+		b := newMetricBuilder(mc, testLogger)
+		if err := b.AddDataPoint(createLabels("hist_test", "k", "v"), startTs, 123); err != errEmptyBoundaryLabel {
 			t.Error("expecting errEmptyBoundaryLabel error, but get nil")
 		}
 	})
 
 	t.Run("summary-datapoint-no-quantile-label", func(t *testing.T) {
 		mc := newMockMetadataCache(testMetadata)
-		b := newMetricBuilder(testNode, mc, testLogger)
-		if err := b.AddDataPoint(createLabels("summary_test", "k", "v"), startTs, 123); err != nil {
-			t.Errorf("expecting nil for the first time to trigger cache, but get error %v", err)
-		}
-		if err := b.AddDataPoint(createLabels("summary_test", "k", "v"), startTs+interval, 123); err != errEmptyBoundaryLabel {
+		b := newMetricBuilder(mc, testLogger)
+		if err := b.AddDataPoint(createLabels("summary_test", "k", "v"), startTs, 123); err != errEmptyBoundaryLabel {
 			t.Error("expecting errEmptyBoundaryLabel error, but get nil")
 		}
 	})

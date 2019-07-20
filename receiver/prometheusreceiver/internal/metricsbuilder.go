@@ -21,9 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
-	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
@@ -38,16 +36,10 @@ var trimmableSuffixes = []string{metricsSuffixBucket, metricsSuffixCount, metric
 var errNoDataToBuild = errors.New("there's no data to build")
 var errNoBoundaryLabel = errors.New("given metricType has no BucketLabel or QuantileLabel")
 var errEmptyBoundaryLabel = errors.New("BucketLabel or QuantileLabel is empty")
-var dummyMetric = &data.MetricsData{
-	Node: &commonpb.Node{
-		Identifier:  &commonpb.ProcessIdentifier{HostName: "127.0.0.1"},
-		ServiceInfo: &commonpb.ServiceInfo{Name: "internal"},
-	},
-	Metrics: make([]*metricspb.Metric, 0),
-}
+
+var dummyMetrics = make([]*metricspb.Metric, 0)
 
 type metricBuilder struct {
-	node              *commonpb.Node
 	ts                int64
 	hasData           bool
 	hasInternalMetric bool
@@ -60,10 +52,9 @@ type metricBuilder struct {
 // newMetricBuilder creates a MetricBuilder which is allowed to feed all the datapoints from a single prometheus
 // scraped page by calling its AddDataPoint function, and turn them into an opencensus data.MetricsData object
 // by calling its Build function
-func newMetricBuilder(node *commonpb.Node, mc MetadataCache, logger *zap.SugaredLogger) *metricBuilder {
+func newMetricBuilder(mc MetadataCache, logger *zap.SugaredLogger) *metricBuilder {
 
 	return &metricBuilder{
-		node:    node,
 		mc:      mc,
 		metrics: make([]*metricspb.Metric, 0),
 		logger:  logger,
@@ -99,10 +90,10 @@ func (b *metricBuilder) AddDataPoint(ls labels.Labels, t int64, v float64) error
 }
 
 // Build is to build an opencensus data.MetricsData based on all added data complexValue
-func (b *metricBuilder) Build() (*data.MetricsData, error) {
+func (b *metricBuilder) Build() ([]*metricspb.Metric, error) {
 	if !b.hasData {
 		if b.hasInternalMetric {
-			return dummyMetric, nil
+			return dummyMetrics, nil
 		}
 		return nil, errNoDataToBuild
 	}
@@ -114,10 +105,7 @@ func (b *metricBuilder) Build() (*data.MetricsData, error) {
 		b.currentMf = nil
 	}
 
-	return &data.MetricsData{
-		Node:    b.node,
-		Metrics: b.metrics,
-	}, nil
+	return b.metrics, nil
 }
 
 // TODO: move the following helper functions to a proper place, as they are not called directly in this go file

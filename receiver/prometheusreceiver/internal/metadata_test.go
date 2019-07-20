@@ -19,28 +19,5 @@ import (
 )
 
 func Test_mCache_EvictUnused(t *testing.T) {
-	mc := &mCache{startValues: make(map[string]*ObservedValue), accessTimes: 1}
-	mc.StoreObservedValue("k1", startTs, 10)
-	if l := mc.startValues["k1"].lastAccessRun; l != 1 {
-		t.Errorf("expect lastAccessRun to be 1, but get %v", l)
-	}
-
-	mc.accessTimes = 2
-	mc.LoadObservedValue("k1")
-	if l := mc.startValues["k1"].lastAccessRun; l != 2 {
-		t.Errorf("expect lastAccessRun to be 2, but get %v", l)
-	}
-
-	mc.accessTimes = 5
-	mc.EvictUnused()
-	if len(mc.startValues) != 1 {
-		t.Error("not expect cached value to be evicted")
-	}
-
-	mc.accessTimes = 6
-	mc.EvictUnused()
-	if len(mc.startValues) != 0 {
-		t.Error("expect cached value to be evicted")
-	}
 
 }

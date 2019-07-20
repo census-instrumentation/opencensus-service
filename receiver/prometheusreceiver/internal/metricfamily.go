@@ -18,15 +18,12 @@ import (
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/pkg/textparse"
 	"github.com/prometheus/prometheus/scrape"
 	"sort"
 	"strings"
 )
-
-const nilStartTime int64 = 0
 
 // MetricFamily is unit which is corresponding to the metrics items which shared the same TYPE/UNIT/... metadata from
 // a single scrape.
@@ -125,11 +122,11 @@ func (mf *metricFamily) getGroups() []*metricGroup {
 	return groups
 }
 
-func (mf *metricFamily) loadMetricGroupOrCreate(groupKey string, ls labels.Labels, startTs, ts int64) *metricGroup {
+func (mf *metricFamily) loadMetricGroupOrCreate(groupKey string, ls labels.Labels, ts int64) *metricGroup {
 	mg, ok := mf.groups[groupKey]
 	if !ok {
 		mg = &metricGroup{
-			startTs:      startTs,
+			family:       mf,
 			ts:           ts,
 			ls:           ls,
 			complexValue: make([]*dataPoint, 0),
@@ -139,61 +136,6 @@ func (mf *metricFamily) loadMetricGroupOrCreate(groupKey string, ls labels.Label
 		mf.groupOrders[groupKey] = len(mf.groupOrders)
 	}
 	return mg
-}
-
-// evaluateStartTimeAndValue to check if a given metric data point is the first observed. it returns the following
-// 3 values in turn:
-// startTs:       the start timestamp of this data
-// adjustedValue: the adjustedValue based on the stored startValue, it only applies to datapoints of cumulative types,
-// 				  except quantiles of summaries, which shall not take detlas
-// ok:            a flag to indicate if we shall continue to process this data point, we usually discard the first
-//                observed value of cumulative types
-func (mf *metricFamily) evaluateStartTimeAndValue(metricName, groupKey string, ls labels.Labels, t int64, v float64) (int64, float64, bool) {
-	if !mf.isCumulativeType() || mf.mtype == metricspb.MetricDescriptor_SUMMARY && ls.Has(model.QuantileLabel) {
-		return nilStartTime, v, true
-	}
-	key := metricName + "|" + groupKey
-	// since we have removed metadata style tags from the labels which we used to generate groupKey, we need to add them
-	// back to value key for complex types like histogram and summary
-	if mf.mtype == metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION {
-		key += "|" + ls.Get(model.BucketLabel)
-	}
-
-	ov, ok := mf.mc.LoadObservedValue(key)
-	lastScrapeTime := mf.mc.LastScrapeTime()
-	// no startValue indicates the metric is observed for the first time
-	if !ok {
-		if lastScrapeTime == 0 {
-			// LastScrapeTime == 0, means this is the first time the target is scraped by the agent
-			// store the value and key to cache
-			mf.mc.StoreObservedValue(key, t, v)
-			// also skip the rest operations
-			return nilStartTime, 0, false
-		}
-		// otherwise, the metric is new to the target, we can assume the start time is the last known scrape time
-		// and starting value is 0
-		mf.mc.StoreObservedValue(key, lastScrapeTime, 0)
-		return lastScrapeTime, v, true
-	}
-
-	// update lastSeen value
-	lastSeen := ov.LastSeen
-	ov.LastSeen = v
-	// current value smaller than startValue indicates a remote server restart
-	if lastSeen > v {
-		// lastScrapeTime greater than current timestamp, only possible when the timestamp is from the metrics endpoint
-		// response and honor timestamp setting is enabled
-		if lastScrapeTime >= t {
-			// use this timestamp as timestamp and consider this as a first observed value and skip this value
-			mf.mc.StoreObservedValue(key, t, v)
-			return nilStartTime, 0, false
-		}
-
-		mf.mc.StoreObservedValue(key, lastScrapeTime, 0)
-		return lastScrapeTime, v, true
-	}
-
-	return ov.Ts, v - ov.StartValue, true
 }
 
 func (mf *metricFamily) getLabelKeys() []*metricspb.LabelKey {
@@ -207,12 +149,7 @@ func (mf *metricFamily) getLabelKeys() []*metricspb.LabelKey {
 func (mf *metricFamily) Add(metricName string, ls labels.Labels, t int64, v float64) error {
 
 	groupKey := mf.getGroupKey(ls)
-	startTs, value, ok := mf.evaluateStartTimeAndValue(metricName, groupKey, ls, t, v)
-	if !ok {
-		return nil
-	}
-	v = value
-	mg := mf.loadMetricGroupOrCreate(groupKey, ls, startTs, t)
+	mg := mf.loadMetricGroupOrCreate(groupKey, ls, t)
 	switch mf.mtype {
 	case metricspb.MetricDescriptor_CUMULATIVE_DISTRIBUTION:
 		fallthrough
@@ -220,7 +157,7 @@ func (mf *metricFamily) Add(metricName string, ls labels.Labels, t int64, v floa
 		if strings.HasSuffix(metricName, metricsSuffixSum) {
 			// always use the timestamp from sum (count is ok too), because the startTs from quantiles won't be reliable
 			// in cases like remote server restart
-			mg.startTs = startTs
+			mg.ts = t
 			mg.sum = v
 			mg.hasSum = true
 		} else if strings.HasSuffix(metricName, metricsSuffixCount) {
@@ -294,7 +231,7 @@ type dataPoint struct {
 // a couple data complexValue (buckets and count/sum), a group of a metric family always share a same set of tags. for
 // simple types like counter and gauge, each data point is a group of itself
 type metricGroup struct {
-	startTs      int64
+	family       *metricFamily
 	ts           int64
 	ls           labels.Labels
 	count        float64
@@ -347,7 +284,7 @@ func (mg *metricGroup) toDistributionTimeSeries(orderedLabelKeys []string) *metr
 	}
 
 	return &metricspb.TimeSeries{
-		StartTimestamp: timestampFromMs(mg.startTs),
+		StartTimestamp: timestampFromMs(mg.ts),
 		LabelValues:    populateLabelValues(orderedLabelKeys, mg.ls),
 		Points: []*metricspb.Point{
 			{
@@ -391,7 +328,7 @@ func (mg *metricGroup) toSummaryTimeSeries(orderedLabelKeys []string) *metricspb
 		Snapshot: snapshot,
 	}
 	return &metricspb.TimeSeries{
-		StartTimestamp: timestampFromMs(mg.startTs),
+		StartTimestamp: timestampFromMs(mg.ts),
 		LabelValues:    populateLabelValues(orderedLabelKeys, mg.ls),
 		Points: []*metricspb.Point{
 			{Timestamp: timestampFromMs(mg.ts), Value: &metricspb.Point_SummaryValue{SummaryValue: summaryValue}},
@@ -402,8 +339,8 @@ func (mg *metricGroup) toSummaryTimeSeries(orderedLabelKeys []string) *metricspb
 func (mg *metricGroup) toDoubleValueTimeSeries(orderedLabelKeys []string) *metricspb.TimeSeries {
 	var startTs *timestamp.Timestamp
 	// gauge/undefined types has no start time
-	if mg.startTs != nilStartTime {
-		startTs = timestampFromMs(mg.startTs)
+	if mg.family.isCumulativeType() {
+		startTs = timestampFromMs(mg.ts)
 	}
 
 	return &metricspb.TimeSeries{

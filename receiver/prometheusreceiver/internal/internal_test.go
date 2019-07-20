@@ -34,33 +34,12 @@ func init() {
 	testLogger = zapLogger.Sugar()
 }
 
-func newMockMetadataCache(data map[string]scrape.MetricMetadata) *mockMetadataCache {
-	return &mockMetadataCache{
-		mCache: mCache{startValues: make(map[string]*ObservedValue)},
-		data:   data,
-	}
-}
-
 type mockMetadataCache struct {
-	mCache
-	data         map[string]scrape.MetricMetadata
-	lastScrapeTs int64
+	data map[string]scrape.MetricMetadata
 }
 
-func (m *mockMetadataCache) LoadObservedValue(key string) (*ObservedValue, bool) {
-	return m.mCache.LoadObservedValue(key)
-}
-
-func (m *mockMetadataCache) StoreStartValue(key string, ts int64, value float64) {
-	m.mCache.StoreObservedValue(key, ts, value)
-}
-
-func (m *mockMetadataCache) LastScrapeTime() int64 {
-	return m.lastScrapeTs
-}
-
-func (m *mockMetadataCache) UpdateLastScrapeTime(ts int64) {
-	m.lastScrapeTs = ts
+func newMockMetadataCache(data map[string]scrape.MetricMetadata) *mockMetadataCache {
+	return &mockMetadataCache{data: data}
 }
 
 func (m *mockMetadataCache) Metadata(metricName string) (scrape.MetricMetadata, bool) {

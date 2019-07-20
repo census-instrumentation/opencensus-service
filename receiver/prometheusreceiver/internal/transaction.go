@@ -19,6 +19,7 @@ import (
 	"errors"
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
 	"github.com/census-instrumentation/opencensus-service/consumer"
+	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/storage"
@@ -40,28 +41,32 @@ var errNoJobInstance = errors.New("job or instance cannot be found from labels")
 // A transaction is corresponding to an individual scrape operation or stale report.
 // That said, whenever prometheus receiver scrapped a target metric endpoint a page of raw metrics is returned,
 // a transaction, which acts as appender, is created to process this page of data, the scrapeLoop will call the Add or
-// AddFast method to insert metrics data complexValue, when finished either Commit, which means success, is called and data
+// AddFast method to insert metrics data points, when finished either Commit, which means success, is called and data
 // will be flush to the downstream consumer, or Rollback, which means discard all the data, is called and all data
-// complexValue are discarded.
+// points are discarded.
 type transaction struct {
 	id            int64
 	ctx           context.Context
 	isNew         bool
 	sink          consumer.MetricsConsumer
+	job           string
+	instance      string
+	jobsMap       *JobsMap
 	ms            MetadataService
-	mc            MetadataCache
+	node          *commonpb.Node
 	metricBuilder *metricBuilder
 	logger        *zap.SugaredLogger
 }
 
-func newTransaction(ctx context.Context, ms MetadataService, sink consumer.MetricsConsumer, logger *zap.SugaredLogger) *transaction {
+func newTransaction(ctx context.Context, jobsMap *JobsMap, ms MetadataService, sink consumer.MetricsConsumer, logger *zap.SugaredLogger) *transaction {
 	return &transaction{
-		id:     atomic.AddInt64(&idSeq, 1),
-		ctx:    ctx,
-		isNew:  true,
-		sink:   sink,
-		ms:     ms,
-		logger: logger,
+		id:      atomic.AddInt64(&idSeq, 1),
+		ctx:     ctx,
+		isNew:   true,
+		sink:    sink,
+		jobsMap: jobsMap,
+		ms:      ms,
+		logger:  logger,
 	}
 }
 
@@ -84,11 +89,13 @@ func (tr *transaction) AddFast(ls labels.Labels, _ uint64, t int64, v float64) e
 	if math.IsNaN(v) {
 		return nil
 	}
+
 	select {
 	case <-tr.ctx.Done():
 		return errTransactionAborted
 	default:
 	}
+
 	if tr.isNew {
 		if err := tr.initTransaction(ls); err != nil {
 			return err
@@ -107,9 +114,12 @@ func (tr *transaction) initTransaction(ls labels.Labels) error {
 	if err != nil {
 		return err
 	}
-	tr.mc = mc
-	node := createNode(job, instance, mc.SharedLabels().Get(model.SchemeLabel))
-	tr.metricBuilder = newMetricBuilder(node, mc, tr.logger)
+	if tr.jobsMap != nil {
+		tr.job = job
+		tr.instance = instance
+	}
+	tr.node = createNode(job, instance, mc.SharedLabels().Get(model.SchemeLabel))
+	tr.metricBuilder = newMetricBuilder(mc, tr.logger)
 	tr.isNew = false
 	return nil
 }
@@ -117,34 +127,30 @@ func (tr *transaction) initTransaction(ls labels.Labels) error {
 // submit metrics data to consumers
 func (tr *transaction) Commit() error {
 	if tr.isNew {
-		// In a situation like not able to connect to the remote server, scrapeloop will still commit even if it has
-		// never added any data complexValue, that the transaction has not been initialized.
+		// In a situation like not able to connect to the remote server, scrapeloop will still commit even if it had
+		// never added any data points, that the transaction has not been initialized.
 		return nil
 	}
 
-	// evict unused cache values
-	defer func() {
-		if tr.mc != nil {
-			tr.mc.EvictUnused()
-		}
-	}()
-
-	md, err := tr.metricBuilder.Build()
+	metrics, err := tr.metricBuilder.Build()
 	if err != nil {
 		return err
 	}
 
-	if len(md.Metrics) != 0 {
-		return tr.sink.ConsumeMetricsData(context.Background(), *md)
+	if metrics != nil && len(metrics) > 0 {
+		if tr.jobsMap != nil {
+			metrics = NewMetricsAdjuster(tr.jobsMap.get(tr.job, tr.instance), tr.logger).AdjustMetrics(metrics)
+		}
+		md := data.MetricsData{
+			Node:    tr.node,
+			Metrics: metrics,
+		}
+		return tr.sink.ConsumeMetricsData(context.Background(), md)
 	}
-
 	return nil
 }
 
 func (tr *transaction) Rollback() error {
-	if tr.mc != nil {
-		tr.mc.EvictUnused()
-	}
 	return nil
 }
 

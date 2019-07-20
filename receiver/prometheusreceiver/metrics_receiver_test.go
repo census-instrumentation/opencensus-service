@@ -22,7 +22,6 @@ import (
 	"github.com/census-instrumentation/opencensus-service/data"
 	"github.com/census-instrumentation/opencensus-service/exporter/exportertest"
 	"github.com/census-instrumentation/opencensus-service/internal/config/viperutils"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/viper"
@@ -145,7 +144,6 @@ go_threads 18
 # TYPE http_requests_total counter
 http_requests_total{method="post",code="200"} 199
 http_requests_total{method="post",code="400"} 12
-http_requests_total{method="post",code="500"} 3
 
 # HELP http_request_duration_seconds A histogram of the request duration.
 # TYPE http_request_duration_seconds histogram
@@ -165,6 +163,7 @@ rpc_duration_seconds_sum 5002
 rpc_duration_seconds_count 1001
 `
 
+// target2 is going to have 3 pages, and there's a newly appeared item
 var target2Page1 = `
 # HELP go_threads Number of OS threads created
 # TYPE go_threads gauge
@@ -188,6 +187,18 @@ http_requests_total{method="post",code="400"} 60
 http_requests_total{method="post",code="500"} 3
 `
 
+var target2Page3 = `
+# HELP go_threads Number of OS threads created
+# TYPE go_threads gauge
+go_threads 16
+
+# HELP http_requests_total The total number of HTTP requests.
+# TYPE http_requests_total counter
+http_requests_total{method="post",code="200"} 50
+http_requests_total{method="post",code="400"} 60
+http_requests_total{method="post",code="500"} 5
+`
+
 var scrapeConfig = `
 config:
   scrape_configs:
@@ -201,16 +212,7 @@ config:
       metrics_path: /target2/metrics
       static_configs:
         - targets: ['%s']
-`
-
-var scrapeConfig1 = `
-config:
-  scrape_configs:
-    - job_name: 'target1'
-      scrape_interval: 1s
-      metrics_path: /target1/metrics
-      static_configs:
-        - targets: ['%s']
+adjust_metrics: true
 `
 
 func TestEndToEnd(t *testing.T) {
@@ -224,6 +226,7 @@ func TestEndToEnd(t *testing.T) {
 	endpoints["/target2/metrics"] = []mockPrometheusResponse{
 		{code: 200, data: target2Page1},
 		{code: 200, data: target2Page2},
+		{code: 200, data: target2Page3},
 	}
 
 	mp := newMockPrometheus(endpoints)
@@ -315,14 +318,6 @@ func TestEndToEnd(t *testing.T) {
 		m2 := mds[1]
 		ts2 := m2.Metrics[0].Timeseries[0].Points[0].Timestamp
 
-		// ts for metric: `http_requests_total{method="post",code="500"} 3` since this metric is newly created from
-		// the 2nd successful response, however, there's a 500 response inbetween, the startTimestamp of this metric
-		// will be the ts from 2nd scrape even if it failed
-		tsHTTPReqCounter500 := m2.Metrics[1].Timeseries[2].StartTimestamp
-		if !(toUnixNano(ts1) < toUnixNano(tsHTTPReqCounter500) && toUnixNano(tsHTTPReqCounter500) < toUnixNano(ts2)) {
-			t.Errorf("expect %#v  < %#v < %#v", ts1, tsHTTPReqCounter500, ts2)
-		}
-
 		want2 := &data.MetricsData{
 			Node: &commonpb.Node{
 				Identifier: &commonpb.ProcessIdentifier{
@@ -378,16 +373,6 @@ func TestEndToEnd(t *testing.T) {
 							},
 							Points: []*metricspb.Point{
 								{Timestamp: ts2, Value: &metricspb.Point_DoubleValue{DoubleValue: 7.0}},
-							},
-						},
-						{
-							StartTimestamp: tsHTTPReqCounter500,
-							LabelValues: []*metricspb.LabelValue{
-								{Value: "500", HasValue: true},
-								{Value: "post", HasValue: true},
-							},
-							Points: []*metricspb.Point{
-								{Timestamp: ts2, Value: &metricspb.Point_DoubleValue{DoubleValue: 3.0}},
 							},
 						},
 					},
@@ -468,10 +453,8 @@ func TestEndToEnd(t *testing.T) {
 
 	t.Run("verify-target2-results", func(t *testing.T) {
 		mds := results["target2"]
-		// input has 3 pages, however, the 2nd one is 500 error,
-		// expecting two metricData to be produced
-		if l := len(mds); l != 2 {
-			t.Errorf("want 2, but got %v\n", l)
+		if l := len(mds); l != 3 {
+			t.Errorf("want 3, but got %v\n", l)
 		}
 		m1 := mds[0]
 		// m1 shall only have a gauge
@@ -562,24 +545,90 @@ func TestEndToEnd(t *testing.T) {
 								{Timestamp: ts2, Value: &metricspb.Point_DoubleValue{DoubleValue: 10.0}},
 							},
 						},
+					},
+				},
+			},
+		}
+		doCompare(t, want2, &m2)
+
+		// verify the 3nd metricData, with the new code=500 counter which first appeared on 2nd run
+		m3 := mds[2]
+		// its start timestamp shall be from the 2nd run
+		ts3 := m3.Metrics[0].Timeseries[0].Points[0].Timestamp
+
+		want3 := &data.MetricsData{
+			Node: &commonpb.Node{
+				Identifier: &commonpb.ProcessIdentifier{
+					HostName: host,
+				},
+				ServiceInfo: &commonpb.ServiceInfo{
+					Name: "target2",
+				},
+				Attributes: map[string]string{
+					"scheme": "http",
+					"port":   port,
+				},
+			},
+			Metrics: []*metricspb.Metric{
+				{
+					MetricDescriptor: &metricspb.MetricDescriptor{
+						Name:        "go_threads",
+						Description: "Number of OS threads created",
+						Type:        metricspb.MetricDescriptor_GAUGE_DOUBLE,
+						LabelKeys:   []*metricspb.LabelKey{}},
+					Timeseries: []*metricspb.TimeSeries{
+						{
+							LabelValues: []*metricspb.LabelValue{},
+							Points: []*metricspb.Point{
+								{Timestamp: ts3, Value: &metricspb.Point_DoubleValue{DoubleValue: 16.0}},
+							},
+						},
+					},
+				},
+				{
+					MetricDescriptor: &metricspb.MetricDescriptor{
+						Name:        "http_requests_total",
+						Description: "The total number of HTTP requests.",
+						Type:        metricspb.MetricDescriptor_CUMULATIVE_DOUBLE,
+						LabelKeys:   []*metricspb.LabelKey{{Key: "code"}, {Key: "method"}},
+					},
+					Timeseries: []*metricspb.TimeSeries{
 						{
 							StartTimestamp: ts1,
+							LabelValues: []*metricspb.LabelValue{
+								{Value: "200", HasValue: true},
+								{Value: "post", HasValue: true},
+							},
+							Points: []*metricspb.Point{
+								{Timestamp: ts3, Value: &metricspb.Point_DoubleValue{DoubleValue: 40.0}},
+							},
+						},
+						{
+							StartTimestamp: ts1,
+							LabelValues: []*metricspb.LabelValue{
+								{Value: "400", HasValue: true},
+								{Value: "post", HasValue: true},
+							},
+							Points: []*metricspb.Point{
+								{Timestamp: ts3, Value: &metricspb.Point_DoubleValue{DoubleValue: 10.0}},
+							},
+						},
+						{
+							StartTimestamp: ts2,
 							LabelValues: []*metricspb.LabelValue{
 								{Value: "500", HasValue: true},
 								{Value: "post", HasValue: true},
 							},
 							Points: []*metricspb.Point{
-								{Timestamp: ts2, Value: &metricspb.Point_DoubleValue{DoubleValue: 3.0}},
+								{Timestamp: ts3, Value: &metricspb.Point_DoubleValue{DoubleValue: 2.0}},
 							},
 						},
 					},
 				},
 			},
 		}
-
-		doCompare(t, want2, &m2)
+		doCompare(t, want3, &m3)
 	})
-
 }
 
 func doCompare(t *testing.T, want, got interface{}) {
@@ -589,8 +638,4 @@ func doCompare(t *testing.T, want, got interface{}) {
 		diff := cmp.Diff(ww, gg)
 		t.Errorf("metricBuilder.Build() mismatch (-want +got):\n%v\n want=%v \n got=%v\n", diff, ww, gg)
 	}
-}
-
-func toUnixNano(ts *timestamp.Timestamp) int64 {
-	return ts.Seconds*1000000000 + int64(ts.Nanos)
 }
