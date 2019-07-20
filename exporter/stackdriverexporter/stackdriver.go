@@ -17,6 +17,7 @@ package stackdriverexporter
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -144,16 +145,33 @@ func stackdriverTraceExportersFromViperInternal(v *viper.Viper, sef stackdriverE
 // ExportSpans is the method that translates OpenCensus-Proto Traces into AWS X-Ray spans.
 // It uniquely maintains
 func (sde *stackdriverExporter) pushTraceData(ctx context.Context, td data.TraceData) (int, error) {
-	agent := agentForLibraryInfo(td.Node.GetLibraryInfo())
+	setAgentLabelFromNode(td)
+	return exporterwrapper.PushOcProtoSpansToOCTraceExporter(sde.exporter, td)
+}
+
+func setAgentLabelFromNode(td data.TraceData) {
+	if td.Node == nil {
+		return
+	}
+	li := td.Node.GetLibraryInfo()
+	if li == nil {
+		return
+	}
+	agent := agentForLibraryInfo(li)
 	agentVal := &tracepb.AttributeValue{
 		Value: &tracepb.AttributeValue_StringValue{
 			StringValue: &tracepb.TruncatableString{Value: agent},
 		},
 	}
 	for _, span := range td.Spans {
+		if span.Attributes == nil {
+			span.Attributes = &tracepb.Span_Attributes{}
+		}
+		if span.Attributes.AttributeMap == nil {
+			span.Attributes.AttributeMap = map[string]*tracepb.AttributeValue{}
+		}
 		span.GetAttributes().GetAttributeMap()[agentLabel] = agentVal
 	}
-	return exporterwrapper.PushOcProtoSpansToOCTraceExporter(sde.exporter, td)
 }
 
 func (sde *stackdriverExporter) ConsumeMetricsData(ctx context.Context, md data.MetricsData) error {
@@ -179,34 +197,8 @@ func (sde *stackdriverExporter) ConsumeMetricsData(ctx context.Context, md data.
 }
 
 func agentForLibraryInfo(li *commonpb.LibraryInfo) string {
+	langName := strings.ToLower(li.Language.String())
 	// The exporter must be the OpenCensus agent exporter because the spans
 	// have been written to the OpenCensus service.
-	return "opencensus-" + getLanguageName(li.Language) + " " + li.CoreLibraryVersion + "; ocagent-exporter " + li.ExporterVersion
-}
-
-func getLanguageName(l commonpb.LibraryInfo_Language) string {
-	switch l {
-	case commonpb.LibraryInfo_LANGUAGE_UNSPECIFIED:
-		return "unspecified"
-	case commonpb.LibraryInfo_CPP:
-		return "cpp"
-	case commonpb.LibraryInfo_C_SHARP:
-		return "c_sharp"
-	case commonpb.LibraryInfo_ERLANG:
-		return "erlang"
-	case commonpb.LibraryInfo_GO_LANG:
-		return "go"
-	case commonpb.LibraryInfo_JAVA:
-		return "java"
-	case commonpb.LibraryInfo_NODE_JS:
-		return "node"
-	case commonpb.LibraryInfo_PHP:
-		return "php"
-	case commonpb.LibraryInfo_PYTHON:
-		return "python"
-	case commonpb.LibraryInfo_RUBY:
-		return "ruby"
-	default:
-		return "unknown"
-	}
+	return "opencensus-" + langName + " " + li.CoreLibraryVersion + "; ocagent-exporter " + li.ExporterVersion
 }
