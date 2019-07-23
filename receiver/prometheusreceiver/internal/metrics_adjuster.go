@@ -44,8 +44,8 @@ import (
 //    adds more contention and latency to each scrape so the current approach is used. Note that
 //    the go routine will need to be cancelled upon StopMetricsReception().
 
-contains the information necessary to adjust from the initial point and to
-// detect resets.
+// timeseriesinfo contains the information necessary to adjust from the initial point and to detect
+// resets.
 type timeseriesinfo struct {
 	lastAccess time.Time
 	initial    *metricspb.TimeSeries
