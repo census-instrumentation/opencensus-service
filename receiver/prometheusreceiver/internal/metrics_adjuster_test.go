@@ -306,15 +306,15 @@ func Test_jobGC(t *testing.T) {
 	gcInterval := time.Duration(10 * time.Millisecond)
 	jobsMap := NewJobsMap(gcInterval)
 
-	// run job 1, round 1
+	// run job 1, round 1 - all entries marked
 	runScript(t, jobsMap.get("job", "0"), job1Script1)
 	// sleep longer than gcInterval to enable job gc in the next run
 	time.Sleep(2 * gcInterval)
-	// run job 2, round1 - trigger job gc  - unmark all entries
+	// run job 2, round1 - trigger job gc, unmarking all entries
 	runScript(t, jobsMap.get("job", "1"), job2Script1)
 	// sleep longer than gcInterval to enable job gc in the next run
 	time.Sleep(2 * gcInterval)
-	// re-run job 2, round1 - trigger job gc  - remove unmarked entries
+	// re-run job 2, round1 - trigger job gc, removing unmarked entries
 	runScript(t, jobsMap.get("job", "1"), job2Script1)
 	// run job 1, round 2 - verify that all job 1 timeseries have been gc'd
 	runScript(t, jobsMap.get("job", "0"), job1Script2)

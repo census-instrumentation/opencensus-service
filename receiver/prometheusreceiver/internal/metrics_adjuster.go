@@ -34,11 +34,15 @@ import (
 // The gc for the timeseriesMap is straightforward - the map is locked and, for each timeseriesinfo
 // in the map, if it has not been marked, it is removed otherwise it is unmarked.
 //
-// Alternative Strategy
-// If the job-level gc doesn't run often enough, or runs too often, a separate go routine can
-// be spawned at JobMap creation time that gc's at periodic intervals. This approach potentially
-// adds more contention and latency to each scrape so the current approach is used. Note that
-// the go routine will need to be cancelled upon StopMetricsReception().
+// Alternative Strategies
+// 1. If the job-level gc doesn't run often enough, or runs too often, a separate go routine can
+//    be spawned at JobMap creation time that gc's at periodic intervals. This approach potentially
+//    adds more contention and latency to each scrape so the current approach is used. Note that
+//    the go routine will need to be cancelled upon StopMetricsReception().
+// 2. If the gc of each timeseriesMap during the gc of the JobsMap causes too much contention,
+//    the gc of timeseriesMaps can be moved to the end of MetricsAdjuster().AdjustMetrics(). This
+//    approach requires adding 'lastGC' Time and (potentially) a gcInterval duration to
+//    timeseriesMap so the current approach is used instead.
 
 // timeseriesinfo contains the information necessary to adjust from the initial point and to detect
 // resets.
@@ -115,7 +119,7 @@ func NewJobsMap(gcInterval time.Duration) *JobsMap {
 func (jm *JobsMap) gc() {
 	current := time.Now()
 	jm.Lock()
-	// recheck lastGC to make s
+	// recheck lastGC to make sure gc is necessary
 	if current.Sub(jm.lastGC) > jm.gcInterval {
 		for sig, tsm := range jm.jobsMap {
 			tsm.Lock()
