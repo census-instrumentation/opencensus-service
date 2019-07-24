@@ -15,50 +15,45 @@ import (
 // Job-level gc:
 // The Prometheus receiver will likely execute in a long running service whose lifetime may exceed
 // the lifetimes of many of the jobs that it is collecting from. In order to keep the JobsMap from
-// getting overwhelmed by entries of no-longer existing jobs, the JobsMap has a timestamp tracking
-// the last time is was gc'd and each timeseriesMap entry in the JobsMap has a timestamp tracking
-// the last time it was accessed.
-//
-// At the end of each JobsMap.get(), if the last time the JobsMap was gc'd exceeds the 'gcInterval',
-// the JobsMap is locked and any entries whose last access exceeds the 'jobMaxLifetime' is removed
-// from the JobMap. This collection is done in a go routine to prevent blocking the return of
-// the original call to JobsMap.get().
+// leaking memory for entries of no-longer existing jobs, the JobsMap needs to remove entries that
+// haven't been accessed for a long period of time.
 //
 // Timeseries-level gc:
 // Some jobs that the Prometheus receiver is collecting from may export timeseries based on metrics
-// from other jobs (e.g. cAdvisor). In order to keep the timeseriesMap from getting overwhelmed by
-// timeseriesinfo of no-longer existing jobs, each timeseriesinfo entry in the map has a timestamp
-// tracking the last time it was accessed.
+// from other jobs (e.g. cAdvisor). In order to keep the timeseriesMap from leaking memory for entries
+// of no-longer existing jobs, the timeseriesMap for each job needs to remove entries that haven't
+// been accessed for a long period of time.
 //
-// At the end of each call to MetricAdjuster.AdjustMetrics(), when the associated timeseriesMap is
-// already locked, each timeseriesinfo entry is examined and removed from the timeseriesMap if
-// its last access exceeds 'timeseriesMaxLife'.
+// The gc strategy uses a standard mark-and-sweep approach - each time a timeseriesMap is accessed,
+// it is marked. Similarly, each time a timeseriesinfo is accessed, it is also marked.
 //
-// Alternative Strategies:
-// 1. The overhead of timeseries-level gc is expected to be low but, if it is not, the gc can be
-//    done at the same time that the job-level gc is done. This approach adds overhead to the
-//    job-level gc and, potentially, more contention so the simpler approach is currently used.
+// At the end of each JobsMap.get(), if the last time the JobsMap was gc'd exceeds the 'gcInterval',
+// the JobsMap is locked and any timeseriesMaps that are unmarked are removed from the JobsMap
+// otherwise the timeseriesMap is gc'd
 //
-// 2. If the job-level gc doesn't run often enough, or runs too often, a separate go routine can
-//    be spawned at JobMap creation time that gc's at periodic intervals. This approach potentially
-//    adds more contention and latency to each scrape so the current approach is used. Note that
-//    the go routine will need to be cancelled upon StopMetricsReception().
+// The gc for the timeseriesMap is straightforward - the map is locked and, for each timeseriesinfo
+// in the map, if it has not been marked, it is removed otherwise it is unmarked.
+//
+// Alternative Strategy
+// If the job-level gc doesn't run often enough, or runs too often, a separate go routine can
+// be spawned at JobMap creation time that gc's at periodic intervals. This approach potentially
+// adds more contention and latency to each scrape so the current approach is used. Note that
+// the go routine will need to be cancelled upon StopMetricsReception().
 
 // timeseriesinfo contains the information necessary to adjust from the initial point and to detect
 // resets.
 type timeseriesinfo struct {
-	lastAccess time.Time
-	initial    *metricspb.TimeSeries
-	previous   *metricspb.TimeSeries
+	mark     bool
+	initial  *metricspb.TimeSeries
+	previous *metricspb.TimeSeries
 }
 
 // timeseriesMap maps from a timeseries instance (metric * label values) to the timeseries info for
 // the instance.
 type timeseriesMap struct {
 	sync.RWMutex
-	timeseriesMaxLifetime time.Duration
-	lastAccess            time.Time
-	tsiMap                map[string]*timeseriesinfo
+	mark   bool
+	tsiMap map[string]*timeseriesinfo
 }
 
 // Get the timeseriesinfo for the timeseries associated with the metric and label values.
@@ -71,26 +66,25 @@ func (tsm *timeseriesMap) get(
 		tsi = &timeseriesinfo{}
 		tsm.tsiMap[sig] = tsi
 	}
-	tsi.lastAccess = tsm.lastAccess
+	tsm.mark = true
+	tsi.mark = true
 	return tsi
 }
 
 // Remove timeseries that have aged out.
 func (tsm *timeseriesMap) gc() {
-	current := time.Now()
 	for ts, tsi := range tsm.tsiMap {
-		if current.Sub(tsi.lastAccess) > tsm.timeseriesMaxLifetime {
+		if !tsi.mark {
 			delete(tsm.tsiMap, ts)
+		} else {
+			tsi.mark = false
 		}
 	}
+	tsm.mark = false
 }
 
-func newTimeseriesMap(timeseriesMaxLifetime time.Duration) *timeseriesMap {
-	return &timeseriesMap{
-		timeseriesMaxLifetime: timeseriesMaxLifetime,
-		lastAccess:            time.Now(),
-		tsiMap:                map[string]*timeseriesinfo{},
-	}
+func newTimeseriesMap() *timeseriesMap {
+	return &timeseriesMap{mark: true, tsiMap: map[string]*timeseriesinfo{}}
 }
 
 // Create a unique timeseries signature consisting of the metric name and label values.
@@ -107,64 +101,51 @@ func getTimeseriesSignature(name string, values []*metricspb.LabelValue) string 
 // JobsMap maps from a job instance to a map of timeseries instances for the job.
 type JobsMap struct {
 	sync.RWMutex
-	gcInterval            time.Duration
-	jobMaxLifetime        time.Duration
-	timeseriesMaxLifetime time.Duration
-	lastGC                time.Time
-	jobsMap               map[string]*timeseriesMap
+	gcInterval time.Duration
+	lastGC     time.Time
+	jobsMap    map[string]*timeseriesMap
 }
-
-const (
-	defaultGcInterval            = time.Duration(5 * time.Minute)
-	defaultJobMaxLifetime        = time.Duration(2 * time.Minute)
-	defaultTimeseriesMaxLifetime = time.Duration(2 * time.Minute)
-)
 
 // NewJobsMap creates a new (empty) JobsMap.
-func NewJobsMap() *JobsMap {
-	return newJobsMapWithDurations(defaultGcInterval, defaultJobMaxLifetime,
-		defaultTimeseriesMaxLifetime)
+func NewJobsMap(gcInterval time.Duration) *JobsMap {
+	return &JobsMap{gcInterval: gcInterval, lastGC: time.Now(), jobsMap: make(map[string]*timeseriesMap)}
 }
 
-// newJobsMap creates a new (empty) JobsMap with specified durations.
-func newJobsMapWithDurations(gcInterval, jobMaxLifetime, timeseriesMaxLifetime time.Duration) *JobsMap {
-	return &JobsMap{
-		gcInterval:            gcInterval,
-		jobMaxLifetime:        jobMaxLifetime,
-		timeseriesMaxLifetime: timeseriesMaxLifetime,
-		lastGC:                time.Now(),
-		jobsMap:               make(map[string]*timeseriesMap),
+// remove
+func (jm *JobsMap) gc() {
+	current := time.Now()
+	jm.Lock()
+	// recheck lastGC to make s
+	if current.Sub(jm.lastGC) > jm.gcInterval {
+		for sig, tsm := range jm.jobsMap {
+			tsm.Lock()
+			if !tsm.mark {
+				delete(jm.jobsMap, sig)
+			} else {
+				tsm.gc()
+			}
+			tsm.Unlock()
+		}
+		jm.lastGC = time.Now()
 	}
+	jm.Unlock()
 }
 
-func (jm *JobsMap) gc(gcInterval time.Duration, lastGC time.Time) {
+func (jm *JobsMap) maybeGC(gcInterval time.Duration, lastGC time.Time) {
 	current := time.Now()
 	if current.Sub(lastGC) > gcInterval {
-		go func() {
-			jm.Lock()
-			if current.Sub(jm.lastGC) > jm.gcInterval {
-				for sig, tsm := range jm.jobsMap {
-					tsm.Lock()
-					if current.Sub(tsm.lastAccess) > jm.jobMaxLifetime {
-						delete(jm.jobsMap, sig)
-					}
-					tsm.Unlock()
-				}
-				jm.lastGC = time.Now()
-			}
-			jm.Unlock()
-		}()
+		go jm.gc()
 	}
 }
 
 func (jm *JobsMap) get(job, instance string) *timeseriesMap {
 	sig := job + ":" + instance
 	jm.RLock()
-	jobMaxLifetime := jm.jobMaxLifetime
+	gcInterval := jm.gcInterval
 	lastGC := jm.lastGC
 	tsm, ok := jm.jobsMap[sig]
 	jm.RUnlock()
-	defer jm.gc(jobMaxLifetime, lastGC)
+	defer jm.maybeGC(gcInterval, lastGC)
 	if ok {
 		return tsm
 	}
@@ -174,7 +155,7 @@ func (jm *JobsMap) get(job, instance string) *timeseriesMap {
 	if ok2 {
 		return tsm2
 	}
-	tsm2 = newTimeseriesMap(jm.timeseriesMaxLifetime)
+	tsm2 = newTimeseriesMap()
 	jm.jobsMap[sig] = tsm2
 	return tsm2
 }
@@ -201,13 +182,11 @@ func NewMetricsAdjuster(tsm *timeseriesMap, logger *zap.SugaredLogger) *MetricsA
 func (ma *MetricsAdjuster) AdjustMetrics(metrics []*metricspb.Metric) []*metricspb.Metric {
 	var adjusted = make([]*metricspb.Metric, 0, len(metrics))
 	ma.tsm.Lock()
-	ma.tsm.lastAccess = time.Now()
 	for _, metric := range metrics {
 		if ma.adjustMetric(metric) {
 			adjusted = append(adjusted, metric)
 		}
 	}
-	ma.tsm.gc()
 	ma.tsm.Unlock()
 	return adjusted
 }
