@@ -15,15 +15,13 @@
 package internal
 
 import (
-	"reflect"
-	"testing"
-
-	"go.uber.org/zap"
-
+	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
-
-	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
+	"go.uber.org/zap"
+	"reflect"
+	"testing"
+	"time"
 )
 
 func Test_gauge(t *testing.T) {
@@ -40,7 +38,7 @@ func Test_gauge(t *testing.T) {
 		[]*metricspb.Metric{gauge(k1k2, timeseries(3, v1v2, double(3, 55)))},
 		[]*metricspb.Metric{gauge(k1k2, timeseries(3, v1v2, double(3, 55)))},
 	}}
-	runScript(t, script)
+	runScript(t, NewJobsMap(time.Duration(time.Minute)).get("job", "0"), script)
 }
 
 func Test_gaugeDistribution(t *testing.T) {
@@ -57,7 +55,7 @@ func Test_gaugeDistribution(t *testing.T) {
 		[]*metricspb.Metric{gaugeDist(k1k2, timeseries(3, v1v2, dist(3, bounds0, []int64{2, 0, 1, 5})))},
 		[]*metricspb.Metric{gaugeDist(k1k2, timeseries(3, v1v2, dist(3, bounds0, []int64{2, 0, 1, 5})))},
 	}}
-	runScript(t, script)
+	runScript(t, NewJobsMap(time.Duration(time.Minute)).get("job", "0"), script)
 }
 
 func Test_cumulative(t *testing.T) {
@@ -78,7 +76,7 @@ func Test_cumulative(t *testing.T) {
 		[]*metricspb.Metric{cumulative(k1k2, timeseries(4, v1v2, double(4, 72)))},
 		[]*metricspb.Metric{cumulative(k1k2, timeseries(3, v1v2, double(4, 17)))},
 	}}
-	runScript(t, script)
+	runScript(t, NewJobsMap(time.Duration(time.Minute)).get("job", "0"), script)
 }
 
 func Test_cumulativeDistribution(t *testing.T) {
@@ -99,7 +97,7 @@ func Test_cumulativeDistribution(t *testing.T) {
 		[]*metricspb.Metric{cumulativeDist(k1k2, timeseries(4, v1v2, dist(4, bounds0, []int64{7, 4, 2, 12})))},
 		[]*metricspb.Metric{cumulativeDist(k1k2, timeseries(3, v1v2, dist(4, bounds0, []int64{2, 1, 0, 5})))},
 	}}
-	runScript(t, script)
+	runScript(t, NewJobsMap(time.Duration(time.Minute)).get("job", "0"), script)
 }
 
 func Test_summary(t *testing.T) {
@@ -120,7 +118,7 @@ func Test_summary(t *testing.T) {
 		[]*metricspb.Metric{summary(k1k2, timeseries(4, v1v2, summ(4, 14, 96, percent0, []float64{9, 47, 8})))},
 		[]*metricspb.Metric{summary(k1k2, timeseries(3, v1v2, summ(4, 2, 30, percent0, []float64{9, 47, 8})))},
 	}}
-	runScript(t, script)
+	runScript(t, NewJobsMap(time.Duration(time.Minute)).get("job", "0"), script)
 }
 
 func Test_multiMetrics(t *testing.T) {
@@ -179,7 +177,7 @@ func Test_multiMetrics(t *testing.T) {
 			summary(k1k2, timeseries(3, v1v2, summ(4, 2, 30, percent0, []float64{9, 47, 8}))),
 		},
 	}}
-	runScript(t, script)
+	runScript(t, NewJobsMap(time.Duration(time.Minute)).get("job", "0"), script)
 }
 
 func Test_multiTimeseries(t *testing.T) {
@@ -208,7 +206,7 @@ func Test_multiTimeseries(t *testing.T) {
 		[]*metricspb.Metric{
 			cumulative(k1k2, timeseries(4, v1v2, double(5, 3)), timeseries(2, v10v20, double(5, 45)), timeseries(4, v100v200, double(5, 12)))},
 	}}
-	runScript(t, script)
+	runScript(t, NewJobsMap(time.Duration(time.Minute)).get("job", "0"), script)
 }
 
 func Test_emptyLabels(t *testing.T) {
@@ -229,7 +227,97 @@ func Test_emptyLabels(t *testing.T) {
 		[]*metricspb.Metric{cumulative(k1k2k3, timeseries(3, []string{"", "", ""}, double(3, 88)))},
 		[]*metricspb.Metric{cumulative(k1k2k3, timeseries(1, []string{"", "", ""}, double(3, 44)))},
 	}}
-	runScript(t, script)
+	runScript(t, NewJobsMap(time.Duration(time.Minute)).get("job", "0"), script)
+}
+
+func Test_tsGC(t *testing.T) {
+	script1 := []*metricsAdjusterTest{{
+		"TsGC: round 1 - initial instances, adjusted should be empty",
+		[]*metricspb.Metric{
+			cumulative(k1k2, timeseries(1, v1v2, double(1, 44)), timeseries(1, v10v20, double(1, 20))),
+			cumulativeDist(k1k2, timeseries(1, v1v2, dist(1, bounds0, []int64{4, 2, 3, 7})), timeseries(1, v10v20, dist(1, bounds0, []int64{40, 20, 30, 70}))),
+		},
+		[]*metricspb.Metric{},
+	}}
+
+	script2 := []*metricsAdjusterTest{{
+		"TsGC: round 2 -  metrics first timeseries adjusted based on round 2, second timeseries not updated",
+		[]*metricspb.Metric{
+			cumulative(k1k2, timeseries(2, v1v2, double(2, 88))),
+			cumulativeDist(k1k2, timeseries(2, v1v2, dist(2, bounds0, []int64{8, 7, 9, 14}))),
+		},
+		[]*metricspb.Metric{
+			cumulative(k1k2, timeseries(1, v1v2, double(2, 44))),
+			cumulativeDist(k1k2, timeseries(1, v1v2, dist(2, bounds0, []int64{4, 5, 6, 7}))),
+		},
+	}}
+
+	script3 := []*metricsAdjusterTest{{
+		"TsGC: round 3 - metrics first timeseries adjusted based on round 2, second timeseries empty due to timeseries gc()",
+		[]*metricspb.Metric{
+			cumulative(k1k2, timeseries(3, v1v2, double(3, 99)), timeseries(3, v10v20, double(3, 80))),
+			cumulativeDist(k1k2, timeseries(3, v1v2, dist(3, bounds0, []int64{9, 8, 10, 15})), timeseries(3, v10v20, dist(3, bounds0, []int64{55, 66, 33, 77}))),
+		},
+		[]*metricspb.Metric{
+			cumulative(k1k2, timeseries(1, v1v2, double(3, 55))),
+			cumulativeDist(k1k2, timeseries(1, v1v2, dist(3, bounds0, []int64{5, 6, 7, 8}))),
+		},
+	}}
+
+	jobsMap := NewJobsMap(time.Duration(time.Minute))
+
+	// run round 1
+	runScript(t, jobsMap.get("job", "0"), script1)
+	// gc the tsmap, unmarking all entries
+	jobsMap.get("job", "0").gc()
+	// run round 2 - update metrics first timeseries only
+	runScript(t, jobsMap.get("job", "0"), script2)
+	// gc the tsmap, collecting umarked entries
+	jobsMap.get("job", "0").gc()
+	// run round 3 - verify that metrics second timeseries have been gc'd
+	runScript(t, jobsMap.get("job", "0"), script3)
+}
+
+func Test_jobGC(t *testing.T) {
+	job1Script1 := []*metricsAdjusterTest{{
+		"JobGC: job 1, round 1 - initial instances, adjusted should be empty",
+		[]*metricspb.Metric{
+			cumulative(k1k2, timeseries(1, v1v2, double(1, 44)), timeseries(1, v10v20, double(1, 20))),
+			cumulativeDist(k1k2, timeseries(1, v1v2, dist(1, bounds0, []int64{4, 2, 3, 7})), timeseries(1, v10v20, dist(1, bounds0, []int64{40, 20, 30, 70}))),
+		},
+		[]*metricspb.Metric{},
+	}}
+
+	job2Script1 := []*metricsAdjusterTest{{
+		"JobGC: job2, round 1 - no metrics adjusted, just trigger gc",
+		[]*metricspb.Metric{},
+		[]*metricspb.Metric{},
+	}}
+
+	job1Script2 := []*metricsAdjusterTest{{
+		"JobGC: job 1, round 2- metrics timeseries empty due to job-level gc",
+		[]*metricspb.Metric{
+			cumulative(k1k2, timeseries(4, v1v2, double(4, 99)), timeseries(4, v10v20, double(4, 80))),
+			cumulativeDist(k1k2, timeseries(4, v1v2, dist(4, bounds0, []int64{9, 8, 10, 15})), timeseries(4, v10v20, dist(4, bounds0, []int64{55, 66, 33, 77}))),
+		},
+		[]*metricspb.Metric{},
+	}}
+
+	gcInterval := time.Duration(10 * time.Millisecond)
+	jobsMap := NewJobsMap(gcInterval)
+
+	// run job 1, round 1 - all entries marked
+	runScript(t, jobsMap.get("job", "0"), job1Script1)
+	// sleep longer than gcInterval to enable job gc in the next run
+	time.Sleep(2 * gcInterval)
+	// run job 2, round1 - trigger job gc, unmarking all entries
+	runScript(t, jobsMap.get("job", "1"), job2Script1)
+	// sleep longer than gcInterval to enable job gc in the next run
+	time.Sleep(2 * gcInterval)
+	// re-run job 2, round1 - trigger job gc, removing unmarked entries
+	runScript(t, jobsMap.get("job", "1"), job2Script1)
+	// run job 1, round 2 - verify that all job 1 timeseries have been gc'd
+	runScript(t, jobsMap.get("job", "0"), job1Script2)
 }
 
 var (
@@ -249,10 +337,11 @@ type metricsAdjusterTest struct {
 	adjusted    []*metricspb.Metric
 }
 
-func runScript(t *testing.T, script []*metricsAdjusterTest) {
+func runScript(t *testing.T, tsm *timeseriesMap, script []*metricsAdjusterTest) {
 	l, _ := zap.NewProduction()
 	defer l.Sync() // flushes buffer, if any
-	ma := NewMetricsAdjuster(newMetricsInstanceMap(), l.Sugar())
+	ma := NewMetricsAdjuster(tsm, l.Sugar())
+
 	for _, test := range script {
 		adjusted := ma.AdjustMetrics(test.metrics)
 		if !reflect.DeepEqual(test.adjusted, adjusted) {
