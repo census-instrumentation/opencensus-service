@@ -79,6 +79,10 @@ func (tsm *timeseriesMap) get(
 func (tsm *timeseriesMap) gc() {
 	tsm.Lock()
 	defer tsm.Unlock()
+	// this shouldn't happen under the current gc() strategy
+	if !tsm.mark {
+		return
+	}
 	for ts, tsi := range tsm.tsiMap {
 		if !tsi.mark {
 			delete(tsm.tsiMap, ts)
@@ -119,11 +123,10 @@ func NewJobsMap(gcInterval time.Duration) *JobsMap {
 
 // Remove jobs and timeseries that have aged out.
 func (jm *JobsMap) gc() {
-	current := time.Now()
 	jm.Lock()
 	defer jm.Unlock()
-	// recheck lastGC to make sure gc is necessary
-	if current.Sub(jm.lastGC) > jm.gcInterval {
+	// once the structure is locked, confrim that gc() is still necessary
+	if time.Now().Sub(jm.lastGC) > jm.gcInterval {
 		for sig, tsm := range jm.jobsMap {
 			if !tsm.mark {
 				delete(jm.jobsMap, sig)
@@ -136,8 +139,8 @@ func (jm *JobsMap) gc() {
 }
 
 func (jm *JobsMap) maybeGC() {
-	current := time.Now()
-	if current.Sub(jm.lastGC) > jm.gcInterval {
+	// speculatively check if gc() is necessary, recheck once the structure is locked
+	if time.Now().Sub(jm.lastGC) > jm.gcInterval {
 		go jm.gc()
 	}
 }
