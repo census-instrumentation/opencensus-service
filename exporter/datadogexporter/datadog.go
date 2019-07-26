@@ -23,6 +23,9 @@ import (
 )
 
 type datadogConfig struct {
+	// ServiceName specifies the service name used for tracing.
+	ServiceName string `mapstructure:"service_name,omitempty"`
+
 	// Namespace specifies the namespaces to which metric keys are appended.
 	Namespace string `mapstructure:"namespace,omitempty"`
 
@@ -61,6 +64,7 @@ func DatadogTraceExportersFromViper(v *viper.Viper) (tps []consumer.TraceConsume
 
 	// TODO(jbd): Create new exporter for each service name.
 	de := datadog.NewExporter(datadog.Options{
+		Service:   dc.ServiceName,
 		Namespace: dc.Namespace,
 		TraceAddr: dc.TraceAddr,
 		StatsAddr: dc.MetricsAddr,
