@@ -77,6 +77,8 @@ func (tsm *timeseriesMap) get(
 
 // Remove timeseries that have aged out.
 func (tsm *timeseriesMap) gc() {
+	tsm.Lock()
+	defer tsm.Unlock()
 	for ts, tsi := range tsm.tsiMap {
 		if !tsi.mark {
 			delete(tsm.tsiMap, ts)
@@ -115,29 +117,27 @@ func NewJobsMap(gcInterval time.Duration) *JobsMap {
 	return &JobsMap{gcInterval: gcInterval, lastGC: time.Now(), jobsMap: make(map[string]*timeseriesMap)}
 }
 
-// remove
+// Remove jobs and timeseries that have aged out.
 func (jm *JobsMap) gc() {
 	current := time.Now()
 	jm.Lock()
+	defer jm.Unlock()
 	// recheck lastGC to make sure gc is necessary
 	if current.Sub(jm.lastGC) > jm.gcInterval {
 		for sig, tsm := range jm.jobsMap {
-			tsm.Lock()
 			if !tsm.mark {
 				delete(jm.jobsMap, sig)
 			} else {
 				tsm.gc()
 			}
-			tsm.Unlock()
 		}
 		jm.lastGC = time.Now()
 	}
-	jm.Unlock()
 }
 
-func (jm *JobsMap) maybeGC(gcInterval time.Duration, lastGC time.Time) {
+func (jm *JobsMap) maybeGC() {
 	current := time.Now()
-	if current.Sub(lastGC) > gcInterval {
+	if current.Sub(jm.lastGC) > jm.gcInterval {
 		go jm.gc()
 	}
 }
@@ -145,11 +145,9 @@ func (jm *JobsMap) maybeGC(gcInterval time.Duration, lastGC time.Time) {
 func (jm *JobsMap) get(job, instance string) *timeseriesMap {
 	sig := job + ":" + instance
 	jm.RLock()
-	gcInterval := jm.gcInterval
-	lastGC := jm.lastGC
 	tsm, ok := jm.jobsMap[sig]
 	jm.RUnlock()
-	defer jm.maybeGC(gcInterval, lastGC)
+	defer jm.maybeGC()
 	if ok {
 		return tsm
 	}
@@ -186,12 +184,12 @@ func NewMetricsAdjuster(tsm *timeseriesMap, logger *zap.SugaredLogger) *MetricsA
 func (ma *MetricsAdjuster) AdjustMetrics(metrics []*metricspb.Metric) []*metricspb.Metric {
 	var adjusted = make([]*metricspb.Metric, 0, len(metrics))
 	ma.tsm.Lock()
+	defer ma.tsm.Unlock()
 	for _, metric := range metrics {
 		if ma.adjustMetric(metric) {
 			adjusted = append(adjusted, metric)
 		}
 	}
-	ma.tsm.Unlock()
 	return adjusted
 }
 
