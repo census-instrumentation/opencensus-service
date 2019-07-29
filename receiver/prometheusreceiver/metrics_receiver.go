@@ -114,7 +114,7 @@ func (pr *Preceiver) StartMetricsReception(ctx context.Context, asyncErrorChan c
 	pr.startOnce.Do(func() {
 		c, cancel := context.WithCancel(ctx)
 		pr.cancel = cancel
-		jobsMap := internal.NewJobsMap()
+		jobsMap := internal.NewJobsMap(time.Duration(2 * time.Minute))
 		if !pr.cfg.AdjustMetrics {
 			jobsMap = nil
 		}
