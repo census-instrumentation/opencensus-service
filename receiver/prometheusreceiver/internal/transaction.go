@@ -24,6 +24,7 @@ import (
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/zap"
+	"math"
 	"strings"
 	"sync/atomic"
 )
@@ -81,11 +82,20 @@ func (tr *transaction) Add(l labels.Labels, t int64, v float64) (uint64, error) 
 
 // returning an error from this method can cause the whole appending transaction to be aborted and fail
 func (tr *transaction) AddFast(ls labels.Labels, _ uint64, t int64, v float64) error {
+	// Important, must handle. prometheus will still try to feed the appender some data even if it failed to
+	// scrape the remote target,  if the previous scrape was success and some data were cached internally
+	// in our case, we don't need these data, simply drop them shall be good enough. more details:
+	// https://github.com/prometheus/prometheus/blob/851131b0740be7291b98f295567a97f32fffc655/scrape/scrape.go#L933-L935
+	if math.IsNaN(v) {
+		return nil
+	}
+
 	select {
 	case <-tr.ctx.Done():
 		return errTransactionAborted
 	default:
 	}
+
 	if tr.isNew {
 		if err := tr.initTransaction(ls); err != nil {
 			return err
@@ -127,7 +137,7 @@ func (tr *transaction) Commit() error {
 		return err
 	}
 
-	if metrics != nil {
+	if metrics != nil && len(metrics) > 0 {
 		if tr.jobsMap != nil {
 			metrics = NewMetricsAdjuster(tr.jobsMap.get(tr.job, tr.instance), tr.logger).AdjustMetrics(metrics)
 		}
