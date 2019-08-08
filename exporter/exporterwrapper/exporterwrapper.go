@@ -34,6 +34,12 @@ import (
 	spandatatranslator "github.com/census-instrumentation/opencensus-service/translator/trace/spandata"
 )
 
+// OCSpanExporter is an interface for the ExportSpan function of trace.Exporter.
+// This enables passing in fake exporters in unit tests.
+type OCSpanExporter interface {
+	ExportSpan(sd *trace.SpanData)
+}
+
 // NewExporterWrapper returns a consumer.TraceConsumer that converts OpenCensus Proto TraceData
 // to OpenCensus-Go SpanData and calls into the given trace.Exporter.
 //
@@ -42,7 +48,7 @@ import (
 // by various vendors and contributors. Eventually the goal is to
 // get those exporters converted to directly receive
 // OpenCensus Proto TraceData.
-func NewExporterWrapper(exporterName string, spanName string, ocExporter trace.Exporter) (exporter.TraceExporter, error) {
+func NewExporterWrapper(exporterName string, spanName string, ocExporter OCSpanExporter) (exporter.TraceExporter, error) {
 	return exporterhelper.NewTraceExporter(
 		exporterName,
 		func(ctx context.Context, td data.TraceData) (int, error) {
@@ -57,7 +63,7 @@ func NewExporterWrapper(exporterName string, spanName string, ocExporter trace.E
 
 // PushOcProtoSpansToOCTraceExporter pushes TraceData to the given trace.Exporter by converting the
 // protos to trace.SpanData.
-func PushOcProtoSpansToOCTraceExporter(ocExporter trace.Exporter, td data.TraceData) (int, error) {
+func PushOcProtoSpansToOCTraceExporter(ocExporter OCSpanExporter, td data.TraceData) (int, error) {
 	var errs []error
 	var goodSpans []*tracepb.Span
 	for _, span := range td.Spans {

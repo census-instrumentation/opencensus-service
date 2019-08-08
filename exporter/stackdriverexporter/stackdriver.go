@@ -17,6 +17,7 @@ package stackdriverexporter
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,10 +25,17 @@ import (
 	"github.com/spf13/viper"
 	"go.opencensus.io/trace"
 
+	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
+	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
+	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
+	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 	"github.com/census-instrumentation/opencensus-service/consumer"
 	"github.com/census-instrumentation/opencensus-service/data"
+	"github.com/census-instrumentation/opencensus-service/exporter/exporterhelper"
 	"github.com/census-instrumentation/opencensus-service/exporter/exporterwrapper"
 )
+
+const agentLabel = "g.co/agent"
 
 type stackdriverConfig struct {
 	ProjectID     string `mapstructure:"project,omitempty"`
@@ -36,9 +44,20 @@ type stackdriverConfig struct {
 	MetricPrefix  string `mapstructure:"metric_prefix,omitempty"`
 }
 
+// This interface and factory function type enable passing a fake Stackdriver
+// exporter for a unit test.
+type stackdriverExporterInterface interface {
+	exporterwrapper.OCSpanExporter
+	ExportMetricsProto(ctx context.Context, node *commonpb.Node, rsc *resourcepb.Resource, metrics []*metricspb.Metric) error
+	Flush()
+}
+type stackdriverExporterFactory = func(o stackdriver.Options) (stackdriverExporterInterface, error)
+
+var _ stackdriverExporterInterface = (*stackdriver.Exporter)(nil)
+
 // TODO: Add metrics support to the exporterwrapper.
 type stackdriverExporter struct {
-	exporter *stackdriver.Exporter
+	exporter stackdriverExporterInterface
 }
 
 var _ consumer.MetricsConsumer = (*stackdriverExporter)(nil)
@@ -46,6 +65,12 @@ var _ consumer.MetricsConsumer = (*stackdriverExporter)(nil)
 // StackdriverTraceExportersFromViper unmarshals the viper and returns an consumer.TraceConsumer targeting
 // Stackdriver according to the configuration settings.
 func StackdriverTraceExportersFromViper(v *viper.Viper) (tps []consumer.TraceConsumer, mps []consumer.MetricsConsumer, doneFns []func() error, err error) {
+	return stackdriverTraceExportersFromViperInternal(v, func(o stackdriver.Options) (stackdriverExporterInterface, error) {
+		return stackdriver.NewExporter(o)
+	})
+}
+
+func stackdriverTraceExportersFromViperInternal(v *viper.Viper, sef stackdriverExporterFactory) (tps []consumer.TraceConsumer, mps []consumer.MetricsConsumer, doneFns []func() error, err error) {
 	var cfg struct {
 		Stackdriver *stackdriverConfig `mapstructure:"stackdriver"`
 	}
@@ -63,7 +88,7 @@ func StackdriverTraceExportersFromViper(v *viper.Viper) (tps []consumer.TraceCon
 	// TODO:  For each ProjectID, create a different exporter
 	// or at least a unique Stackdriver client per ProjectID.
 
-	sde, serr := stackdriver.NewExporter(stackdriver.Options{
+	sde, serr := sef(stackdriver.Options{
 		// If the project ID is an empty string, it will be set by default based on
 		// the project this is running on in GCP.
 		ProjectID: sc.ProjectID,
@@ -88,7 +113,13 @@ func StackdriverTraceExportersFromViper(v *viper.Viper) (tps []consumer.TraceCon
 		exporter: sde,
 	}
 
-	sdte, err := exporterwrapper.NewExporterWrapper("stackdriver_trace", "ocservice.exporter.Stackdriver.ConsumeTraceData", sde)
+	sdte, err := exporterhelper.NewTraceExporter(
+		"stackdriver_trace",
+		exp.pushTraceData,
+		exporterhelper.WithSpanName("ocservice.exporter.Stackdriver.ConsumeTraceData"),
+		exporterhelper.WithRecordMetrics(true),
+	)
+
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -111,6 +142,38 @@ func StackdriverTraceExportersFromViper(v *viper.Viper) (tps []consumer.TraceCon
 	return
 }
 
+// ExportSpans is the method that translates OpenCensus-Proto Traces into AWS X-Ray spans.
+// It uniquely maintains
+func (sde *stackdriverExporter) pushTraceData(ctx context.Context, td data.TraceData) (int, error) {
+	setAgentLabelFromNode(td)
+	return exporterwrapper.PushOcProtoSpansToOCTraceExporter(sde.exporter, td)
+}
+
+func setAgentLabelFromNode(td data.TraceData) {
+	if td.Node == nil {
+		return
+	}
+	li := td.Node.GetLibraryInfo()
+	if li == nil {
+		return
+	}
+	agent := agentForLibraryInfo(li)
+	agentVal := &tracepb.AttributeValue{
+		Value: &tracepb.AttributeValue_StringValue{
+			StringValue: &tracepb.TruncatableString{Value: agent},
+		},
+	}
+	for _, span := range td.Spans {
+		if span.Attributes == nil {
+			span.Attributes = &tracepb.Span_Attributes{}
+		}
+		if span.Attributes.AttributeMap == nil {
+			span.Attributes.AttributeMap = map[string]*tracepb.AttributeValue{}
+		}
+		span.GetAttributes().GetAttributeMap()[agentLabel] = agentVal
+	}
+}
+
 func (sde *stackdriverExporter) ConsumeMetricsData(ctx context.Context, md data.MetricsData) error {
 	ctx, span := trace.StartSpan(ctx,
 		"opencensus.service.exporter.stackdriver.ExportMetricsData",
@@ -131,4 +194,11 @@ func (sde *stackdriverExporter) ConsumeMetricsData(ctx context.Context, md data.
 	}
 
 	return nil
+}
+
+func agentForLibraryInfo(li *commonpb.LibraryInfo) string {
+	langName := strings.ToLower(li.Language.String())
+	// The exporter must be the OpenCensus agent exporter because the spans
+	// have been written to the OpenCensus service.
+	return "opencensus-" + langName + " " + li.CoreLibraryVersion + "; ocagent-exporter " + li.ExporterVersion
 }
