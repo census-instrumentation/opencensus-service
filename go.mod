@@ -3,9 +3,9 @@ module github.com/census-instrumentation/opencensus-service
 require (
 	contrib.go.opencensus.io/exporter/aws v0.0.0-20181029163544-2befc13012d0
 	contrib.go.opencensus.io/exporter/jaeger v0.1.1-0.20190430175949-e8b55949d948
-	contrib.go.opencensus.io/exporter/ocagent v0.5.1
+	contrib.go.opencensus.io/exporter/ocagent v0.6.0
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
-	contrib.go.opencensus.io/exporter/stackdriver v0.12.4
+	contrib.go.opencensus.io/exporter/stackdriver v0.12.5
 	contrib.go.opencensus.io/exporter/zipkin v0.1.1
 	contrib.go.opencensus.io/resource v0.1.2
 	github.com/DataDog/datadog-go v2.2.0+incompatible // indirect
@@ -17,9 +17,9 @@ require (
 	github.com/go-kit/kit v0.8.0
 	github.com/gogo/googleapis v1.2.0 // indirect
 	github.com/golang/protobuf v1.3.2
-	github.com/google/go-cmp v0.3.0
+	github.com/google/go-cmp v0.3.1
 	github.com/gorilla/mux v1.6.2
-	github.com/grpc-ecosystem/grpc-gateway v1.8.5
+	github.com/grpc-ecosystem/grpc-gateway v1.9.4
 	github.com/honeycombio/opencensus-exporter v1.0.1
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jaegertracing/jaeger v1.9.0
@@ -55,7 +55,7 @@ require (
 	go.uber.org/zap v1.9.1
 	golang.org/x/lint v0.0.0-20190409202823-959b441ac422
 	google.golang.org/api v0.7.0
-	google.golang.org/grpc v1.22.0
+	google.golang.org/grpc v1.22.1
 	gopkg.in/DataDog/dd-trace-go.v1 v1.12.1 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 )
