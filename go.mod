@@ -59,3 +59,5 @@ require (
 	gopkg.in/DataDog/dd-trace-go.v1 v1.12.1 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 )
+
+replace git.apache.org/thrift.git => github.com/apache/thrift v0.12.0
