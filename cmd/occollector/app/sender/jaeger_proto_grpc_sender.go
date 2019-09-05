@@ -40,7 +40,9 @@ var _ consumer.TraceConsumer = (*JaegerThriftHTTPSender)(nil)
 // The collector endpoint should be of the form "hostname:14250".
 func NewJaegerProtoGRPCSender(collectorEndpoint string, zlogger *zap.Logger) *JaegerProtoGRPCSender {
 	client, err := grpc.Dial(collectorEndpoint, grpc.WithInsecure())
-	zlogger.Fatal("Failed to dail grpc connection", zap.Error(err))
+	if err != nil {
+		zlogger.Fatal("Failed to dail grpc connection", zap.Error(err))
+	}
 	collectorServiceClient := jaegerproto.NewCollectorServiceClient(client)
 	s := &JaegerProtoGRPCSender{
 		client: collectorServiceClient,
