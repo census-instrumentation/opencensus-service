@@ -21,6 +21,8 @@ import (
 	"strings"
 	"testing"
 
+	"go.opencensus.io/trace"
+
 	tracetranslator "github.com/census-instrumentation/opencensus-service/translator/trace"
 
 	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
@@ -111,6 +113,28 @@ func TestNilOCProtoNodeToJaegerThrift(t *testing.T) {
 	if got.Process != unknownProcess {
 		t.Fatalf("got unexpected Jaeger Process field")
 	}
+}
+
+func TestTestOCProtoToJagerSpans(t *testing.T) {
+	testSpans := []*tracepb.Span{
+		{
+			TraceId: []byte("0123456789abcdef"),
+			SpanId:  []byte("01234567"),
+			Status:  &tracepb.Status{Code: trace.StatusCodeNotFound, Message: "cache miss"},
+		},
+	}
+	spans, err := ocSpansToJaegerSpans(testSpans)
+	if err != nil {
+		t.Fatalf("error getting spans: %v", err)
+	}
+
+	if spans[0].Tags[0].Key != "status.code" {
+		t.Fatal("wrong key found for status.code")
+	}
+	if spans[0].Tags[1].Key != "status.message" {
+		t.Fatal("wrong key found for status.message")
+	}
+
 }
 
 func TestOCProtoToJaegerThrift(t *testing.T) {

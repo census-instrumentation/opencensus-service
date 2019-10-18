@@ -202,6 +202,8 @@ func ocSpansToJaegerSpans(ocSpans []*tracepb.Span) ([]*jaeger.Span, error) {
 			}
 		}
 
+		jSpan.Tags = appendJaegerTagFromOCStatus(jSpan.Tags, ocSpan.Status)
+
 		jSpans = append(jSpans, jSpan)
 	}
 
@@ -381,6 +383,32 @@ func timestampToEpochMicroseconds(ts *timestamp.Timestamp) int64 {
 		return 0
 	}
 	return ts.GetSeconds()*1e6 + int64(ts.GetNanos()/1e3)
+}
+
+func appendJaegerTagFromOCStatus(jTags []*jaeger.Tag, status *tracepb.Status) []*jaeger.Tag {
+	if status == nil {
+		return jTags
+	}
+	code := int64(status.GetCode())
+	message := status.GetMessage()
+	tags := []*jaeger.Tag{
+		{
+			Key:   "status.code",
+			VType: jaeger.TagType_LONG,
+			VLong: &code,
+		},
+		{
+			Key:   "status.message",
+			VType: jaeger.TagType_STRING,
+			VStr:  &message,
+		},
+	}
+	if status.GetCode() != 0 {
+		t := true
+		tags = append(tags, &jaeger.Tag{Key: "error", VBool: &t, VType: jaeger.TagType_BOOL})
+	}
+
+	return append(jTags, tags...)
 }
 
 func ocSpanAttributesToJaegerTags(ocAttribs *tracepb.Span_Attributes) []*jaeger.Tag {
