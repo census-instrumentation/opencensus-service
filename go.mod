@@ -14,26 +14,26 @@ require (
 	github.com/apache/thrift v0.0.0-20161221203622-b2a4d4ae21c7
 	github.com/bmizerany/perks v0.0.0-20141205001514-d9a9656a3a4b // indirect
 	github.com/census-instrumentation/opencensus-proto v0.2.1
-	github.com/go-kit/kit v0.8.0
+	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
+	github.com/go-kit/kit v0.9.0
 	github.com/gogo/googleapis v1.2.0 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/google/go-cmp v0.3.1
 	github.com/gorilla/mux v1.6.2
-	github.com/grpc-ecosystem/grpc-gateway v1.9.4
+	github.com/grpc-ecosystem/grpc-gateway v1.9.5
 	github.com/honeycombio/opencensus-exporter v1.0.1
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jaegertracing/jaeger v1.9.0
 	github.com/omnition/scribe-go v0.0.0-20190131012523-9e3c68f31124
-	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/openzipkin/zipkin-go v0.1.6
 	github.com/orijtech/prometheus-go-metrics-exporter v0.0.3-0.20190313163149-b321c5297f60
 	github.com/philhofer/fwd v1.0.0 // indirect
-	github.com/pkg/errors v0.8.0
+	github.com/pkg/errors v0.8.1
 	github.com/prashantv/protectmem v0.0.0-20171002184600-e20412882b3a // indirect
-	github.com/prometheus/client_golang v0.9.2
-	github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
-	github.com/prometheus/procfs v0.0.0-20190117184657-bf6a532e95b1
-	github.com/prometheus/prometheus v0.0.0-20190131111325-62e591f928dd
+	github.com/prometheus/client_golang v1.2.0
+	github.com/prometheus/common v0.7.0
+	github.com/prometheus/procfs v0.0.5
+	github.com/prometheus/prometheus v0.0.0-20200106144642-d9613e5c466c
 	github.com/rs/cors v1.6.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/cast v1.2.0
@@ -54,10 +54,12 @@ require (
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/lint v0.0.0-20190409202823-959b441ac422
-	google.golang.org/api v0.7.0
+	google.golang.org/api v0.8.0
 	google.golang.org/grpc v1.22.1
 	gopkg.in/DataDog/dd-trace-go.v1 v1.12.1 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 )
 
 replace git.apache.org/thrift.git => github.com/apache/thrift v0.12.0
+
+go 1.13
