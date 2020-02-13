@@ -53,7 +53,8 @@ require (
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1
-	golang.org/x/lint v0.0.0-20190409202823-959b441ac422
+	golang.org/x/lint v0.0.0-20200130185559-910be7a94367
+	golang.org/x/tools v0.0.0-20200213181106-9f716520f454 // indirect
 	google.golang.org/api v0.8.0
 	google.golang.org/grpc v1.22.1
 	gopkg.in/DataDog/dd-trace-go.v1 v1.12.1 // indirect
