@@ -1,0 +1,21 @@
+FROM alpine:3.7 as helper
+RUN apk update \
+    && apk add --no-cache ca-certificates \
+    && update-ca-certificates \
+    && touch ./config.yaml
+
+FROM golang:1.13-alpine as builder
+RUN apk update \
+    && apk add alpine-sdk
+
+ADD . /home/opencensus
+
+RUN cd /home/opencensus \
+    && make binaries-all-sys
+
+FROM scratch
+COPY --from=builder /home/opencensus/bin/ocagent_linux /
+COPY --from=helper ./config.yaml config.yaml
+COPY --from=helper /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+ENTRYPOINT ["/ocagent_linux"]
+EXPOSE 55678 55679

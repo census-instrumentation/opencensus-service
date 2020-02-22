@@ -1,6 +1,6 @@
 receivers:
     opencensus:
-        address: "127.0.0.1:55678"
+        address: "0.0.0.0:55678"
 
     zipkin:
         address: "127.0.0.1:9411"
@@ -12,6 +12,16 @@ exporters:
 
     zipkin:
         endpoint: "http://127.0.0.1:9411/api/v2/spans"
+
+    # kairosdb:
+    #     endpoint: "http://uba-kairosdb.veridium-dev.com/api/v1/datapoints"
+    #     log_level: debug
+    #     log_consumed_metrics: false
+    #     log_produced_metrics:  true
+    #     http:
+    #         max_connections: 10 # the maximum number of concurrent connections opened to the kairosdb rest api.
+    #         connection_timeout: 10 # the number of seconds allowed for one batch ingest call to kairosdb.
+    #         use_compression: true # enable or disables the http transport compression.
 
 zpages:
     port: 55679
