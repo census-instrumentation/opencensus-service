@@ -46,8 +46,9 @@ import (
 // Configuration defines the behavior and the ports that
 // the Jaeger receiver will use.
 type Configuration struct {
-	CollectorThriftPort int `mapstructure:"tchannel_port"`
-	CollectorHTTPPort   int `mapstructure:"collector_http_port"`
+	Address             string `mapstructure:"address"`
+	CollectorThriftPort int    `mapstructure:"tchannel_port"`
+	CollectorHTTPPort   int    `mapstructure:"collector_http_port"`
 
 	AgentPort              int `mapstructure:"agent_port"`
 	AgentCompactThriftPort int `mapstructure:"agent_compact_thrift_port"`
@@ -118,7 +119,7 @@ func (jr *jReceiver) collectorAddr() string {
 	if port <= 0 {
 		port = defaultCollectorHTTPPort
 	}
-	return fmt.Sprintf(":%d", port)
+	return fmt.Sprintf("%s:%d", jr.config.Address, port)
 }
 
 const defaultAgentPort = 5778
@@ -131,7 +132,7 @@ func (jr *jReceiver) agentAddress() string {
 	if port <= 0 {
 		port = defaultAgentPort
 	}
-	return fmt.Sprintf(":%d", port)
+	return fmt.Sprintf("%s:%d", jr.config.Address, port)
 }
 
 func (jr *jReceiver) tchannelAddr() string {
@@ -142,7 +143,7 @@ func (jr *jReceiver) tchannelAddr() string {
 	if port <= 0 {
 		port = defaultTChannelPort
 	}
-	return fmt.Sprintf(":%d", port)
+	return fmt.Sprintf("%s:%d", jr.config.Address, port)
 }
 
 func (jr *jReceiver) AgentCompactThriftAddr() string {
@@ -153,7 +154,7 @@ func (jr *jReceiver) AgentCompactThriftAddr() string {
 	if port <= 0 {
 		port = defaultCompactThriftUDPPort
 	}
-	return fmt.Sprintf(":%d", port)
+	return fmt.Sprintf("%s:%d", jr.config.Address, port)
 }
 
 func (jr *jReceiver) agentBinaryThriftAddr() string {
@@ -164,7 +165,7 @@ func (jr *jReceiver) agentBinaryThriftAddr() string {
 	if port <= 0 {
 		port = defaultBinaryThriftUDPPort
 	}
-	return fmt.Sprintf(":%d", port)
+	return fmt.Sprintf("%s:%d", jr.config.Address, port)
 }
 
 func (jr *jReceiver) TraceSource() string {

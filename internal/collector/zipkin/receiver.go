@@ -37,7 +37,7 @@ func Start(logger *zap.Logger, v *viper.Viper, traceConsumer consumer.TraceConsu
 		return nil, err
 	}
 
-	addr := ":" + strconv.FormatInt(int64(rOpts.Port), 10)
+	addr := rOpts.Address + ":" + strconv.FormatInt(int64(rOpts.Port), 10)
 	zi, err := zipkinreceiver.New(addr, traceConsumer)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create the Zipkin receiver: %v", err)

@@ -64,6 +64,7 @@ func TestStart(t *testing.T) {
 			name: "grpc_settings",
 			viperFn: func() *viper.Viper {
 				v := viper.New()
+				v.Set("receivers.opencensus.address", "127.0.0.1")
 				v.Set("receivers.opencensus.port", 55678)
 				v.Set("receivers.opencensus.max-recv-msg-size-mib", 32)
 				v.Set("receivers.opencensus.max-concurrent-streams", 64)

@@ -43,6 +43,7 @@ func Start(logger *zap.Logger, v *viper.Viper, traceConsumer consumer.TraceConsu
 
 	ctx := context.Background()
 	config := &jaegerreceiver.Configuration{
+		Address:             rOpts.Address,
 		CollectorThriftPort: rOpts.ThriftTChannelPort,
 		CollectorHTTPPort:   rOpts.ThriftHTTPPort,
 	}

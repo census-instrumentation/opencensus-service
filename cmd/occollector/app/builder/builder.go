@@ -74,6 +74,13 @@ func DebugTailSamplingEnabled(v *viper.Viper) bool {
 
 // JaegerReceiverCfg holds configuration for Jaeger receivers.
 type JaegerReceiverCfg struct {
+	// Address is an IP address or a name that can be resolved to a local address.
+	//
+	// It can use a name, but this is not recommended, because it will create
+	// a listener for at most one of the host's IP addresses.
+	//
+	// The default value bind to all available interfaces on the local computer.
+	Address string `mapstructure:"address"`
 	// ThriftTChannelPort is the port that the relay receives on for jaeger thrift tchannel requests
 	ThriftTChannelPort int `mapstructure:"jaeger-thrift-tchannel-port"`
 	// ThriftHTTPPort is the port that the relay receives on for jaeger thrift http requests
@@ -102,6 +109,13 @@ func (cfg *JaegerReceiverCfg) InitFromViper(v *viper.Viper) (*JaegerReceiverCfg,
 
 // OpenCensusReceiverCfg holds configuration for OpenCensus receiver.
 type OpenCensusReceiverCfg struct {
+	// Address is an IP address or a name that can be resolved to a local address.
+	//
+	// It can use a name, but this is not recommended, because it will create
+	// a listener for at most one of the host's IP addresses.
+	//
+	// The default value bind to all available interfaces on the local computer.
+	Address string `mapstructure:"address"`
 	// Port is the port that the receiver will use
 	Port int `mapstructure:"port"`
 
@@ -161,6 +175,13 @@ func (cfg *OpenCensusReceiverCfg) InitFromViper(v *viper.Viper) (*OpenCensusRece
 
 // ZipkinReceiverCfg holds configuration for Zipkin receiver.
 type ZipkinReceiverCfg struct {
+	// Address is an IP address or a name that can be resolved to a local address.
+	//
+	// It can use a name, but this is not recommended, because it will create
+	// a listener for at most one of the host's IP addresses.
+	//
+	// The default value bind to all available interfaces on the local computer.
+	Address string `mapstructure:"address"`
 	// Port is the port that the receiver will use
 	Port int `mapstructure:"port"`
 }

@@ -74,7 +74,10 @@ func receiverOptions(v *viper.Viper) (addr string, opts []opencensusreceiver.Opt
 		opts = append(opts, opencensusreceiver.WithGRPCServerOptions(grpcServerOptions...))
 	}
 
-	addr = ":" + strconv.FormatInt(int64(rOpts.Port), 10)
+	addr = rOpts.Address + ":" + strconv.FormatInt(int64(rOpts.Port), 10)
+	if rOpts.Address != "" {
+		zapFields = append(zapFields, zap.String("address", rOpts.Address))
+	}
 	zapFields = append(zapFields, zap.Int("port", rOpts.Port))
 
 	return addr, opts, zapFields, err
