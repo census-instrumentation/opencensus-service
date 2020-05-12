@@ -477,6 +477,11 @@ func ExportersFromViperConfig(logger *zap.Logger, v *viper.Viper) ([]consumer.Tr
 	if exportersViper == nil {
 		return nil, nil, nil, nil
 	}
+
+	exportersViper.AutomaticEnv()
+	exportersViper.SetEnvPrefix("exporters")
+	exportersViper.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
+
 	for _, cfg := range parseFns {
 		tes, mes, tesDoneFns, err := cfg.fn(exportersViper)
 		if err != nil {
