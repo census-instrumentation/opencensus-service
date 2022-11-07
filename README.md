@@ -1,6 +1,6 @@
 # OpenCensus Service
 
-*IMPORTANT:* This project is now in __maintenance mode__: only bug/security/dependency PRs will be accepted and published.
+*IMPORTANT:* This project is now __archived__: it is no longer accepting any PRs.
 
 Development of new features and improvements will be done on its successor project: [__OpenTelemetry Service__](https://github.com/open-telemetry/opentelemetry-service/). 
 
